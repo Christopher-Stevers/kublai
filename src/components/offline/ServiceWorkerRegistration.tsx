@@ -55,10 +55,10 @@ export function ServiceWorkerRegistration() {
       try { reloadReleaseOnce(target, window.sessionStorage, () => window.location.reload()); } catch { /* Storage-disabled browsers keep the current screen. */ }
     };
     const schedule = () => {
-      clearTimeout(timer);
+      if (timer !== undefined) { clearTimeout(timer); timer = undefined; }
       if (!pending || disposed) return;
       observer.observe(document.body, {subtree: true, childList: true, characterData: true, attributes: true});
-      timer = setTimeout(() => { void swapIfSafe(); }, Math.max(50, 5000 - (Date.now() - lastInteraction)));
+      timer = setTimeout(() => { timer = undefined; void swapIfSafe(); }, Math.max(50, 5000 - (Date.now() - lastInteraction)));
     };
     const interact = () => { lastInteraction = Date.now(); schedule(); };
     const controlChanged = () => schedule();
@@ -124,7 +124,7 @@ export function ServiceWorkerRegistration() {
       } catch { /* Existing authenticated online use remains available. */ }
     })();
     return () => {
-      disposed = true; recoveryWindow.__foremenhqReleaseRecoveryReady = false; clearTimeout(timer); unsubscribe(); stopReleaseWork(); observer.disconnect();
+      disposed = true; recoveryWindow.__foremenhqReleaseRecoveryReady = false; if (timer !== undefined) clearTimeout(timer); unsubscribe(); stopReleaseWork(); observer.disconnect();
       registration?.removeEventListener("updatefound", updateFound);
       for (const type of ["pointerdown", "keydown", "input"]) window.removeEventListener(type, interact, true);
       window.removeEventListener("focusout", schedule);

@@ -81,3 +81,54 @@ it("can quietly activate a waiting worker for the already loaded build without r
   expect(postMessage).toHaveBeenCalledWith({type:"FOREMENHQ_ACTIVATE_RELEASE"});
   expect(reload).not.toHaveBeenCalled();
 });
+
+it("does not reset an absent timer for interactions or mutation events without a pending release", async () => {
+  vi.useFakeTimers(); vi.stubEnv("NEXT_PUBLIC_BUILD_ID", "a".repeat(64));
+  const worker = { postMessage: vi.fn() };
+  const registration = { active: worker, waiting: null, installing: null, update: async () => undefined, addEventListener: () => undefined, removeEventListener: () => undefined };
+  vi.stubGlobal("navigator", { onLine: true, connection: { effectiveType: "4g", downlink: 10 }, serviceWorker: { register: async () => registration, ready: Promise.resolve(registration), controller: worker, addEventListener: () => undefined, removeEventListener: () => undefined } });
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ build: "a".repeat(64) })));
+  const client = new QueryClient({ defaultOptions: { mutations: { gcTime: Infinity } } });
+  const view = render(<QueryClientProvider client={client}><ServiceWorkerRegistration /></QueryClientProvider>);
+  await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+  const clear = vi.spyOn(globalThis, "clearTimeout");
+  const install = vi.spyOn(globalThis, "setTimeout");
+  act(() => {
+    for (let i = 0; i < 10; i++) {
+      window.dispatchEvent(new Event("pointerdown"));
+      window.dispatchEvent(new Event("input"));
+      client.getMutationCache().build(client, { mutationFn: async () => undefined });
+    }
+  });
+  expect(clear).not.toHaveBeenCalled();
+  expect(install).not.toHaveBeenCalled();
+  expect(worker.postMessage).not.toHaveBeenCalled();
+  view.unmount();
+  expect(clear).not.toHaveBeenCalled();
+});
+
+it("remembers interactions before an update is pending and waits the original quiet period", async () => {
+  await Promise.all([import("~/lib/private-background-work"), import("~/lib/drawing-offline-queue"), import("~/lib/replicache-material-list")]);
+  vi.useFakeTimers(); vi.stubEnv("NEXT_PUBLIC_BUILD_ID", "a".repeat(64));
+  class Channel {
+    port1: { onmessage?: (event: { data: unknown }) => void; close: () => void } = { close: () => undefined };
+    port2 = { respond: (data: unknown) => this.port1.onmessage?.({ data }) };
+  }
+  vi.stubGlobal("MessageChannel", Channel);
+  const postMessage = vi.fn((data: { type: string; build: string }, ports?: { respond(data: unknown): void }[]) => {
+    if (data.type === "FOREMENHQ_WARM_RELEASE") ports?.[0]?.respond({ ready: true, build: data.build });
+  });
+  const worker = { postMessage };
+  const registration = { active: worker, waiting: null, installing: null, update: async () => undefined, addEventListener: () => undefined, removeEventListener: () => undefined };
+  vi.stubGlobal("navigator", { onLine: true, connection: { effectiveType: "4g", downlink: 10 }, serviceWorker: { register: async () => registration, ready: Promise.resolve(registration), controller: worker, addEventListener: () => undefined, removeEventListener: () => undefined } });
+  let finish!: (response: Response) => void;
+  vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(resolve => { finish = resolve; })));
+  render(<QueryClientProvider client={new QueryClient()}><ServiceWorkerRegistration /></QueryClientProvider>);
+  await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
+  fireEvent.input(window);
+  await act(async () => { await vi.advanceTimersByTimeAsync(2000); finish(Response.json({ build: "b".repeat(64) })); });
+  await act(async () => { await vi.advanceTimersByTimeAsync(2999); });
+  expect(reload).not.toHaveBeenCalled();
+  await act(async () => { await vi.advanceTimersByTimeAsync(2); });
+  expect(reload).toHaveBeenCalledTimes(1);
+});
