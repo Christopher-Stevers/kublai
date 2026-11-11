@@ -310,35 +310,94 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T18:07:24.851242+00:00",
+  "updatedAt": "2026-11-11T23:02:49.975156+00:00",
   "completedCandidateLabCaptures": 6,
   "candidateRegression": {
-    "status": "failed",
-    "source": "perf/artifacts/candidate-r18-ready-then-pinch-v2-2026-11-11/assessment.json",
-    "sourceBuild": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
-    "sourceFingerprint": "ec149c2ed24935019cae5150c928b9af6606d8c41c8eba552d2a9185cf1b05dd",
-    "labBuild": "kQwDUUMWJAxQExPo56xqn",
+    "status": "failed-no-regression-gate",
+    "sourceBuild": "47b6e70541a3f513f852e93aef05aa4f389544f72f4626082f447f53d0956ece",
+    "sourceFingerprint": "4541b37e0ff7144287d9187384eeb9ae7ebe1c9aa88e31fcaa53cee03a8b05c7",
     "baseline": "baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
     "protocol": "ready-then-pinch-v2",
     "samples": 120,
-    "passedCells": 23,
+    "passedCells": 19,
     "failedCells": [
       {
-        "journey": "changeqty",
-        "link": "Office",
-        "baselineMedianMs": 114.14365500002168,
-        "candidateMedianMs": 132.0944390000077,
-        "changePercent": 15.726484314859723,
+        "journey": "openjob",
+        "link": "Site",
+        "baselineMedianMs": 82.45718499994837,
+        "candidateMedianMs": 98.78848099999595,
+        "changePercent": 19.805788907367884,
         "passed": false,
         "candidateSamplesMs": [
-          121.40256099996623,
-          115.97635099990293,
-          141.18210599990562,
-          132.0944390000077,
-          136.1096729999408
+          98.80413500010036,
+          98.78848099999595,
+          98.62032200000249,
+          98.95154699997511,
+          98.19167400000151
+        ]
+      },
+      {
+        "journey": "openjob",
+        "link": "Office",
+        "baselineMedianMs": 82.27076399989892,
+        "candidateMedianMs": 99.26195100008044,
+        "changePercent": 20.652764328531582,
+        "passed": false,
+        "candidateSamplesMs": [
+          99.18357499991544,
+          122.72213899996132,
+          95.67875500000082,
+          99.60614400007762,
+          99.26195100008044
+        ]
+      },
+      {
+        "journey": "openmateriallist",
+        "link": "Basement",
+        "baselineMedianMs": 215.1409510000376,
+        "candidateMedianMs": 243.24347200000193,
+        "changePercent": 13.062376488221172,
+        "passed": false,
+        "candidateSamplesMs": [
+          256.54810800001724,
+          258.35586500004865,
+          224.5498110000044,
+          242.86362000001827,
+          243.24347200000193
+        ]
+      },
+      {
+        "journey": "openmateriallist",
+        "link": "Site",
+        "baselineMedianMs": 215.63234400004148,
+        "candidateMedianMs": 242.85099700000137,
+        "changePercent": 12.622713501623227,
+        "passed": false,
+        "candidateSamplesMs": [
+          245.06805399991572,
+          221.8630000000121,
+          250.5676050001057,
+          242.85099700000137,
+          242.1076700000558
+        ]
+      },
+      {
+        "journey": "changeqty",
+        "link": "Site",
+        "baselineMedianMs": 115.20544599997811,
+        "candidateMedianMs": 130.7447229999816,
+        "changePercent": 13.488318078301997,
+        "passed": false,
+        "candidateSamplesMs": [
+          131.13235600001644,
+          115.55458700004965,
+          114.66995700006373,
+          130.7447229999816,
+          131.86369000002742
         ]
       }
     ],
+    "source": "perf/artifacts/candidate-r19-ready-then-pinch-v2-2026-11-11/assessment.json",
     "activation": false,
     "previousFailedEvidenceRetained": true
   },
@@ -1295,6 +1354,36 @@
         "no compiled topology or browser latency proof",
         "no speed matrix or activation"
       ]
+    },
+    "failedCellsDiagnostic": {
+      "status": "ten-supplemental-operations-completed",
+      "source": "perf/artifacts/failed-cells-diagnostic-2026-11-11-attempt1/",
+      "methodSha256": "931297b0f03f1f94424262bfc9ff2da63bbf923e39c36538e3239b1a7c553d65",
+      "operations": 10,
+      "guardRejections": 0,
+      "unexpectedDatabaseErrors": 0,
+      "cleanupConfirmed": true,
+      "acceptanceEvidence": false,
+      "originalR19RejectionUnchanged": true,
+      "limits": [
+        "One instrumented observation per source/cell",
+        "Native timer counts do not establish their uninstrumented latency cost",
+        "Negative CPU sampling deltas and profiler bookkeeping retained"
+      ]
+    },
+    "timerFixes": {
+      "commits": [
+        "2e32a462",
+        "fff75a2a"
+      ],
+      "cacheSuitesPassed": 39,
+      "cacheSchedulerCases": 8,
+      "releaseSchedulerCases": 4,
+      "scopedLintPassed": true,
+      "independentCacheReviewPassed": true,
+      "speedImprovementMeasured": false,
+      "activated": false,
+      "nextCandidateScope": "Exact R19 plus two runtime timer patches and focused test sources; other held features excluded."
     }
   },
   "historicalCandidateRegressions": [
@@ -1358,6 +1447,36 @@
             89.04961600003298,
             98.51810200000182,
             84.45573800010607
+          ]
+        }
+      ],
+      "activation": false,
+      "previousFailedEvidenceRetained": true
+    },
+    {
+      "status": "failed",
+      "source": "perf/artifacts/candidate-r18-ready-then-pinch-v2-2026-11-11/assessment.json",
+      "sourceBuild": "c58613f12a7ae0590934ecdb15ddbc7a39e3a2f587f26d5f98792c92a4de64e8",
+      "sourceFingerprint": "ec149c2ed24935019cae5150c928b9af6606d8c41c8eba552d2a9185cf1b05dd",
+      "labBuild": "kQwDUUMWJAxQExPo56xqn",
+      "baseline": "baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+      "protocol": "ready-then-pinch-v2",
+      "samples": 120,
+      "passedCells": 23,
+      "failedCells": [
+        {
+          "journey": "changeqty",
+          "link": "Office",
+          "baselineMedianMs": 114.14365500002168,
+          "candidateMedianMs": 132.0944390000077,
+          "changePercent": 15.726484314859723,
+          "passed": false,
+          "candidateSamplesMs": [
+            121.40256099996623,
+            115.97635099990293,
+            141.18210599990562,
+            132.0944390000077,
+            136.1096729999408
           ]
         }
       ],

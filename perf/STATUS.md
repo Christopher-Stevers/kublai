@@ -1063,3 +1063,28 @@ web topology, browser delivery latency or poll removal. Role/session expiry and
 other authority-change coverage remain open. No application build, production
 schema, worker release, speed-matrix rerun or activation occurred. See
 `live/chat-overview-hints.md` and `live/chat-overview-pg-plan.md`.
+
+## Failed-cell profiling and timer fixes — 2026-11-11
+
+A separate instrumented diagnostic completed one Phase 0/R19 pair for each of
+the five failed cells. All ten operations, original default adapters, raw traces
+and profiles remain preserved; both private 14-read preflights pass, database
+errors and write-guard rejections are zero, and all owned runtime is cleaned.
+These observations do not replace the full R19 rejection or count as another
+accepted matrix. Profiling overhead and negative CPU sample deltas prevent
+precise component-cost claims. See `artifacts/failed-cells-diagnostic-2026-11-11-attempt1/`.
+
+The traces identify repeated native timer resets from cache observer events:
+25 installation/removal pairs per job opening, 110 per material-list opening and
+six per quantity operation. Fix `2e32a462` keeps one pending persistence timer
+while preserving the trailing 300 ms quiet period, all eligibility notifications
+and immediate authority denial. Eight focused cases plus existing cache/update
+suites pass (39 tests); scoped lint and independent review pass. Fix `fff75a2a`
+skips absent update-coordinator timers while retaining interaction timestamps
+and safe release conditions; four focused cases and lint pass. No latency
+improvement is claimed yet.
+
+The next candidate will contain exactly these two runtime patches on R19, plus
+their test sources. The already prepared receiving/photo and chat changes remain
+separate. Production still runs the Phase 0 bootstrap; no worker or schema change
+has been made, and Pixel debugging remains deferred at Tim's request.
