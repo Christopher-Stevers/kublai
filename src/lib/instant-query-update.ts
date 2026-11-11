@@ -1,4 +1,4 @@
-import { hashKey, type QueryClient, type QueryKey } from "@tanstack/react-query";
+import { hashKey, type Query, type QueryClient, type QueryKey } from "@tanstack/react-query";
 
 export interface InstantChange<T> {
   commit?: (result: T) => void;
@@ -7,6 +7,8 @@ export interface InstantChange<T> {
 }
 
 const active = new WeakMap<QueryClient, Set<string>>();
+const pendingQueries = new WeakSet<object>();
+export const isInstantQueryPending = (query: object) => pendingQueries.has(query);
 
 /** A short-lived optimistic edit, not an offline queue. Lock one cached record
  * until its request settles, so two failed edits cannot restore one another.
@@ -26,12 +28,25 @@ export function beginInstantQueryUpdate<T, TResult = unknown>(
   }
   if (locks.has(hash)) throw new Error("This change is still being saved.");
   locks.add(hash);
-  const finish = () => locks.delete(hash);
+  const query: Query | undefined = client.getQueryCache().find({ queryKey, exact: true });
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    locks.delete(hash);
+    if (query) {
+      pendingQueries.delete(query);
+      // Notify the persistence subscriber after the marker clears. An accepted
+      // response may not alter the optimistic value, but it is now safe to save.
+      if (client.getQueryCache().find({ queryKey, exact: true }) === query)
+        client.setQueryData(queryKey, client.getQueryData(queryKey));
+    }
+  };
 
   // Query cancellation reverts synchronously; do it before taking the snapshot.
   // Do not wait for transport cancellation before showing the user's edit.
   void client.cancelQueries({ queryKey, exact: true });
-  const query = client.getQueryCache().find({ queryKey, exact: true });
+  if (query) pendingQueries.add(query);
   const previous = client.getQueryData<T>(queryKey);
   let optimistic: T | undefined;
   try {
@@ -40,7 +55,7 @@ export function beginInstantQueryUpdate<T, TResult = unknown>(
     finish();
     throw error;
   }
-  const stillOwned = () => previous !== undefined &&
+  const stillOwned = () => !finished && previous !== undefined &&
     client.getQueryCache().find({ queryKey, exact: true }) === query &&
     client.getQueryData<T>(queryKey) === optimistic;
 

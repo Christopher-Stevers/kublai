@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
-import { beginInstantQueryUpdate } from "./instant-query-update";
+import { beginInstantQueryUpdate, isInstantQueryPending } from "./instant-query-update";
 
 const key = ["order", "fixture"];
 const setup = () => {
@@ -14,9 +14,12 @@ describe("short-lived optimistic query edits", () => {
   it("updates immediately and restores a refused write", () => {
     const client = setup();
     const change = beginInstantQueryUpdate<Row>(client, key, old => ({ ...old, notes: "after" }));
+    const query = client.getQueryCache().find({ queryKey: key })!;
+    expect(isInstantQueryPending(query)).toBe(true);
     expect(client.getQueryData(key)).toEqual({ notes: "after", count: 2 });
     change.rollback();
     change.finish?.();
+    expect(isInstantQueryPending(query)).toBe(false);
     expect(client.getQueryData(key)).toEqual({ notes: "before", count: 2 });
   });
 
