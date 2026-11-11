@@ -2,11 +2,8 @@ import { openStreamingFile } from "../utils/open-streaming-file";
 import { randomUUID } from "node:crypto";
 import { readFile, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
-import { MAX_DRAWING_UPLOAD_BYTES } from "../../lib/drawing-upload-limits";
 
 export const JOB_ROOM_FILE_PUBLIC_PREFIX = "/api/job-rooms/files";
-export const MAX_JOB_FLOOR_PLAN_UPLOAD_BYTES = MAX_DRAWING_UPLOAD_BYTES;
-
 const UPLOAD_ROOT = path.join(process.cwd(), "uploads", "job-floor-plans");
 
 function safeJobId(jobId: string) {

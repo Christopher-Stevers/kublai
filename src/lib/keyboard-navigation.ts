@@ -188,11 +188,6 @@ export function releasePress(element: HTMLElement, cancelled = false) {
   if (element.isConnected) element.click();
 }
 
-/** The same events a mouse's left click sends, for menus that open on press. */
-export function leftClick(element: HTMLElement) {
-  if (pressItem(element)) releasePress(element);
-}
-
 /** A right click: opens the arc scroller, or the item's own context menu. */
 export function rightClick(element: Element) {
   element.dispatchEvent(

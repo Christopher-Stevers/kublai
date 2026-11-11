@@ -61,15 +61,6 @@ export function readDrawingText(source: { url: string; page: number }) {
   return result;
 }
 
-export function findDrawingText(words: DrawingText[], query: string) {
-  const text = query.trim().toLocaleLowerCase();
-  return text
-    ? words
-        .filter((word) => word.text.toLocaleLowerCase().includes(text))
-        .slice(0, 100)
-    : [];
-}
-
 export function suggestSheetMetadata(words: DrawingText[]) {
   // The register already restricts words to the user's selected title-block region.
   return extractDrawingIdentity(words, { allowInterior: true });

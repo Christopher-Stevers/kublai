@@ -2,13 +2,11 @@
 import { setPageInterval as setInterval, clearPageInterval as clearInterval } from "~/lib/app-page-activity";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDownIcon, FlaskConicalIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { SlipLineImage } from "./SlipLineImage";
 import {
   alignTrialLines,
   trialDisagreements,
-  trialReaders,
   readerLabels,
   readersInTrial,
   type TrialReader,
@@ -17,18 +15,6 @@ import {
   type TrialLine,
 } from "~/lib/packing-slip-trial";
 
-export type TrialSummary = {
-  runId: string;
-  updatedAt: string;
-  counts: Record<
-    TrialReader,
-    { complete: number; failed: number; total: number }
-  >;
-  cases: Array<{
-    documentId: string;
-    readers?: Partial<Record<TrialReader, "pending" | "complete" | "failed">>;
-  }>;
-};
 type Comparison = {
   runId: string;
   stale: boolean;
@@ -87,71 +73,6 @@ function useTrial<T>(
     };
   }, [jobId, documentId, online]);
   return { trial, error };
-}
-export function PackingSlipTrialSummary({
-  jobId,
-  online,
-  onUpdate,
-}: {
-  jobId: string;
-  online: boolean;
-  onUpdate?: (summary: TrialSummary | null) => void;
-}) {
-  const { trial, error } = useTrial<TrialSummary>(jobId, undefined, online);
-  useEffect(() => {
-    onUpdate?.(trial);
-  }, [trial, onUpdate]);
-  if (!trial)
-    return error ? (
-      <p className="text-muted-foreground mb-3 text-sm">
-        Reader comparison: {error}
-      </p>
-    ) : null;
-  const readers = trialReaders.filter((r) => trial.counts[r]?.total > 0),
-    done = readers.filter(
-      (r) =>
-        trial.counts[r].complete + trial.counts[r].failed >=
-        trial.counts[r].total,
-    ).length;
-  // Folded away: the queue is for receiving, the comparison is a side study.
-  return (
-    <details aria-label="Packing-slip trial progress" className="group mb-4">
-      <summary className="text-muted-foreground flex w-fit cursor-pointer list-none items-center gap-2 py-1 text-sm [&::-webkit-details-marker]:hidden">
-        <FlaskConicalIcon className="size-4" />
-        Reader comparison · {done} of {readers.length} readers done
-        <ChevronDownIcon className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
-      </summary>
-      <p className="text-muted-foreground mt-2 text-sm">
-        Every slip is read again, including previously approved slips. Open one
-        to compare each part and its confidence. Your verification supplies the
-        answer key.
-      </p>
-      <div className="mt-3 grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-3 lg:grid-cols-5">
-        {readers.map((reader) => {
-          const c = trial.counts[reader];
-          return (
-            <div key={reader} className="min-w-0">
-              <span className="text-sm font-medium">
-                {readerLabels[reader]}
-              </span>
-              <p className="text-muted-foreground text-sm tabular-nums">
-                {c.complete} / {c.total} slips
-                {c.failed ? ` · ${c.failed} failed` : ""}
-              </p>
-              <div className="bg-muted mt-1.5 h-1 overflow-hidden rounded-full">
-                <div
-                  className="bg-foreground/60 h-full"
-                  style={{
-                    width: `${c.total ? (c.complete / c.total) * 100 : 0}%`,
-                  }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </details>
-  );
 }
 function Score({ label, score }: { label: string; score: TrialScore }) {
   return (
