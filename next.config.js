@@ -22,6 +22,7 @@ const config = {
 
   // Ignore TypeScript errors during build (typecheck should be run separately)
   typescript: {
+    tsconfigPath: process.env.NEXT_TSCONFIG_PATH ?? "tsconfig.json",
     ignoreBuildErrors: false, // Keep TypeScript checking during build
   },
   serverExternalPackages: ["pdfjs-dist", "@napi-rs/canvas", "node:sqlite"],
