@@ -1,4 +1,5 @@
 import "~/styles/globals.css";
+import { SpeedTelemetry } from "~/components/performance/SpeedTelemetry";
 import { OFFLINE_TEST_BOOT_SCRIPT } from "~/lib/offline-test-document";
 
 import { type Metadata, type Viewport } from "next";
@@ -119,6 +120,7 @@ export default function RootLayout({
           <SessionProviderWrapper>
             <TRPCReactProvider>
               <ClientConsoleErrorReporter />
+              <SpeedTelemetry />
               <ServiceWorkerRegistration />
               <PushAccountBinding />
               {children}

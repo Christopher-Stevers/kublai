@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "cpuSlowdown": 4,
+  "runs": 5,
+  "noiseRatio": 0.1,
+  "journeys": ["coldstart", "openjob", "switchjobtabs", "openmateriallist", "changeqty", "receiveline", "opensheetpinch", "sendchat"],
+  "links": {"Basement": {"bytesPerSecond": 50000, "latencyMs": 400}, "Site": {"bytesPerSecond": 300000, "latencyMs": 150}, "Office": {"bytesPerSecond": -1, "latencyMs": 0}},
+  "targets": {"sharedGzipBytes": 120000, "screenGzipBytes": 180000, "deployGzipBytes": 100000, "visitedPaintP95Ms": 100, "repeatVisibleMs": 300, "repeatWorkingMs": 1000, "firstSiteWorkingMs": 3000, "readP95Ms": 20, "fieldINPP75Ms": 50, "frameP99Ms": 16.7, "idlePolls": 0},
+  "conditionalTargets": {"newSheetReadableMs": 3000, "newSheetSharpMs": 8000},
+  "status": "Phase 0 incomplete: field, hardware, and repeatability evidence required before tightening measured budgets"
+}

@@ -1,0 +1,93 @@
+// Browser driver for the disposable seeded application, never a remote URL.
+import fs from "node:fs";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { chromium } from "@playwright/test";
+import { budgets, validateReport } from "./check.mjs";
+const base = new URL(process.env.PERF_BASE_URL ?? "http://127.0.0.1:3481");
+if (!["127.0.0.1", "localhost", "[::1]"].includes(base.hostname))
+  throw new Error("Performance write journeys require loopback isolated lab");
+if (!process.env.PERF_JOURNEY_ADAPTER)
+  throw new Error(
+    "PERF_JOURNEY_ADAPTER must name the seeded-app journey module; no live-data fallback",
+  );
+const adapter = await import(
+  pathToFileURL(path.resolve(process.env.PERF_JOURNEY_ADAPTER))
+);
+const attestation = await fetch(new URL("/api/perf-lab", base)).then((r) =>
+  r.json(),
+);
+if (
+  attestation.provenance !== "isolated-seeded-app" ||
+  attestation.productionDatabase !== false
+)
+  throw new Error("Disposable seeded database attestation missing");
+for (const name of budgets.journeys)
+  if (typeof adapter[name] !== "function")
+    throw new Error(`Missing scripted journey ${name}`);
+const browser = await chromium.launch({
+  executablePath: process.env.CHROMIUM_PATH ?? "/usr/bin/chromium",
+  headless: true,
+  args: ["--no-sandbox"],
+});
+const samples = [];
+try {
+  for (const [link, profile] of Object.entries(budgets.links))
+    for (const journey of budgets.journeys)
+      for (let run = 0; run < 5; run++) {
+        const context = await browser.newContext({
+          viewport: { width: 390, height: 844 },
+          deviceScaleFactor: 3,
+          isMobile: true,
+          hasTouch: true,
+        });
+        // A hard boundary: browser traffic cannot escape to production, Clerk or any other host.
+        await context.route("**/*", (route) => {
+          const u = new URL(route.request().url());
+          return u.origin === base.origin ||
+            ["data:", "blob:"].includes(u.protocol)
+            ? route.continue()
+            : route.abort("blockedbyclient");
+        });
+        const page = await context.newPage();
+        const cdp = await context.newCDPSession(page);
+        await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+        await cdp.send("Network.enable");
+        await cdp.send("Network.emulateNetworkConditions", {
+          offline: false,
+          latency: profile.latencyMs,
+          downloadThroughput: profile.bytesPerSecond,
+          uploadThroughput: profile.bytesPerSecond,
+        });
+        try {
+          await adapter.prepare?.({ page, base: base.href, journey, run });
+          const start = performance.now();
+          // Journey must resolve only after its observable painted/sharp state; no fixed-delay completion.
+          await adapter[journey]({ page, base: base.href, run, cdp });
+          const durationMs = performance.now() - start;
+          samples.push({ journey, link, run, durationMs });
+          console.log(
+            `${journey}/${link}/${run + 1}: ${durationMs.toFixed(1)}ms`,
+          );
+        } finally {
+          await context.close();
+        }
+      }
+  const report = {
+    version: 1,
+    provenance: "isolated-seeded-app",
+    cpuSlowdown: 4,
+    build: process.env.PERF_BUILD ?? "unknown",
+    timestamp: new Date().toISOString(),
+    samples,
+    static: await adapter.staticMetrics?.(),
+  };
+  const errors = validateReport(report);
+  if (errors.length) throw new Error(errors.join("\n"));
+  fs.writeFileSync(
+    process.env.PERF_OUTPUT ?? "perf-report.json",
+    JSON.stringify(report, null, 2),
+  );
+} finally {
+  await browser.close();
+}
