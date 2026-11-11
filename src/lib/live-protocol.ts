@@ -5,7 +5,8 @@ export type LiveTopic =
   | "replicache"
   | "catalogue"
   | "conversations"
-  | "chat";
+  | "chat"
+  | "preferences";
 export type LiveHint = {
   topic: LiveTopic;
   version: number;
@@ -17,9 +18,14 @@ export function liveHint(value: unknown): LiveHint | null {
   if (!value || typeof value !== "object") return null;
   const row = value as Record<string, unknown>;
   if (
-    !["material", "replicache", "catalogue", "conversations", "chat"].includes(
-      String(row.topic),
-    ) ||
+    ![
+      "material",
+      "replicache",
+      "catalogue",
+      "conversations",
+      "chat",
+      "preferences",
+    ].includes(String(row.topic)) ||
     !Number.isSafeInteger(row.version) ||
     (row.version as number) < 0
   )
@@ -53,6 +59,10 @@ export function liveHint(value: unknown): LiveHint | null {
 }
 
 /** Match the account boundary used by drawing/device stores, including simulation. */
-export function liveAccountScope(organizationId: string, userId: string, simulationId?: string | null) {
+export function liveAccountScope(
+  organizationId: string,
+  userId: string,
+  simulationId?: string | null,
+) {
   return `${organizationId}:${userId}${simulationId ? `:simulation:${simulationId}` : ""}`;
 }

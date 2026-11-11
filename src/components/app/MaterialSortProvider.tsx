@@ -8,6 +8,9 @@ import {
   materialSortSettingsSchema,
   type MaterialSortSettings,
 } from "~/lib/material-sort-preferences";
+import { useMaterialSortLive } from "~/hooks/use-material-sort-live";
+import { useEmployeeSimulation } from "~/components/simulation/SimulationProvider";
+import { liveAccountScope } from "~/lib/live-protocol";
 import { NAME_KEYWORDS_KEY } from "~/lib/name-keyword-defaults";
 import { isMaterialListSort } from "~/lib/material-list-sort";
 
@@ -27,13 +30,24 @@ const fallback: State = {
 };
 function usePreferenceState(userId: string, organizationId: string) {
   const online = useOnlineStatus();
+  const simulation = useEmployeeSimulation();
   const key = `foremenhq.material-sort.v2.${organizationId}.${userId}`;
   const utils = api.useUtils();
-  const input = { expectedUserId: userId, expectedOrganizationId: organizationId };
+  const input = {
+    expectedUserId: userId,
+    expectedOrganizationId: organizationId,
+  };
   const query = api.user.getMaterialSortPreferences.useQuery(input, {
     enabled: online,
+    // This query also carries authoritative executive entitlement; realtime
+    // settings hints do not replace its session/role/subscription refresh.
     refetchInterval: 60000,
   });
+  useMaterialSortLive(
+    online,
+    liveAccountScope(organizationId, userId, simulation?.id),
+    () => query.refetch(),
+  );
   const mutation = api.user.setMaterialSortPreferences.useMutation({
     scope: { id: key },
   });
@@ -101,7 +115,10 @@ function usePreferenceState(userId: string, organizationId: string) {
       return; // A fresh or inaccessible browser must not claim the executive default.
     }
     // Stock browser defaults are not evidence of an executive customization.
-    if (JSON.stringify(settings) === JSON.stringify(defaultMaterialSortSettings)) return;
+    if (
+      JSON.stringify(settings) === JSON.stringify(defaultMaterialSortSettings)
+    )
+      return;
     void mutation
       .mutateAsync({
         ...input,

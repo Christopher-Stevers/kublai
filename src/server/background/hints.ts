@@ -3,18 +3,36 @@ import { EventEmitter } from "node:events";
 import type { Sql } from "postgres";
 import { z } from "zod";
 const identifier = z.string().min(1).max(255);
-const hintSchema = z.discriminatedUnion("topic", [
-  z.object({
-    topic: z.literal("material"),
-    materialListId: identifier,
-    organizationId: identifier.nullish(),
-    kind: z.enum(["created", "updated", "deleted"]),
-  }),
-  z.object({ topic: z.literal("poke"), organizationId: identifier }),
-  z.object({ topic: z.literal("catalogue"), organizationId: identifier }),
-  z.object({ topic: z.literal("conversation"), conversationId: identifier }),
-  z.object({ topic: z.literal("work"), feature: z.literal("packing-slips") }),
-]);
+const hintSchema = z
+  .discriminatedUnion("topic", [
+    z.object({
+      topic: z.literal("material"),
+      materialListId: identifier,
+      organizationId: identifier.nullish(),
+      kind: z.enum(["created", "updated", "deleted"]),
+    }),
+    z.object({
+      topic: z.literal("preferences"),
+      organizationId: identifier,
+      scope: z.enum(["personal", "executive"]),
+      userId: identifier.optional(),
+      eventId: z.string().uuid(),
+    }),
+    z.object({ topic: z.literal("poke"), organizationId: identifier }),
+    z.object({ topic: z.literal("catalogue"), organizationId: identifier }),
+    z.object({ topic: z.literal("conversation"), conversationId: identifier }),
+    z.object({ topic: z.literal("work"), feature: z.literal("packing-slips") }),
+  ])
+  .superRefine((hint, context) => {
+    if (
+      hint.topic === "preferences" &&
+      (hint.scope === "personal" ? !hint.userId : hint.userId !== undefined)
+    )
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid preference audience",
+      });
+  });
 export type BackgroundHint = z.infer<typeof hintSchema>;
 const envelope = z.object({ origin: z.string().uuid(), hint: hintSchema });
 type HintState = {
@@ -42,10 +60,32 @@ export function acceptBackgroundHint(payload: string) {
   if (payload.length > 4096) return;
   try {
     const parsed = envelope.parse(JSON.parse(payload));
-    if (parsed.origin !== origin) emitter.emit("hint", parsed.hint);
+    // Preference writers do not emit locally before commit. Their own LISTEN
+    // delivery is the post-commit source, including the writing web process.
+    if (parsed.origin !== origin || parsed.hint.topic === "preferences")
+      emitter.emit("hint", parsed.hint);
   } catch {
     /* invalid transport hint */
   }
+}
+/** Shared listener epoch: consumers perform authoritative catch-up after every
+ * initial LISTEN/resubscribe. The callback carries no account or private data. */
+export function onBackgroundHintReconnect(
+  listener: (revision: string) => void,
+) {
+  emitter.on("reconnected", listener);
+  return () => {
+    emitter.off("reconnected", listener);
+  };
+}
+export function transactionalBackgroundHint(hint: BackgroundHint) {
+  const parsed = hintSchema.parse(hint);
+  if (
+    parsed.topic === "preferences" &&
+    (parsed.scope === "personal" ? !parsed.userId : parsed.userId !== undefined)
+  )
+    throw Error("Invalid preference hint audience");
+  return JSON.stringify({ origin, hint: parsed });
 }
 export function startBackgroundHints() {
   if (process.env.NODE_ENV === "test" || !process.env.DATABASE_URL)
@@ -53,7 +93,13 @@ export function startBackgroundHints() {
   return (state.starting ??= (async () => {
     const { default: postgres } = await import("postgres");
     state.connection = postgres(process.env.DATABASE_URL!, { max: 1 });
-    await state.connection.listen("foremanhq_change", acceptBackgroundHint);
+    await state.connection.listen(
+      "foremanhq_change",
+      acceptBackgroundHint,
+      () => {
+        emitter.emit("reconnected", randomUUID());
+      },
+    );
   })().catch(async () => {
     const failed = state.connection;
     state.connection = undefined;

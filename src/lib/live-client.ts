@@ -5,6 +5,8 @@ import { liveHint, type LiveHint } from "./live-protocol";
 export type LiveSubscription = {
   jobIds?: readonly string[];
   conversations?: boolean;
+  preferences?: boolean;
+  expectedAccount?: string;
 };
 export type LiveCallbacks = {
   hint: (hint: LiveHint) => void;
@@ -39,7 +41,10 @@ export class LiveClient {
   }
   private active() {
     return [...this.subscribers].filter(
-      (sub) => this.account !== null && sub.account === this.account,
+      (sub) =>
+        this.account !== null &&
+        sub.account === this.account &&
+        sub.generation === this.generation,
     );
   }
   private status(connected: boolean) {
@@ -61,6 +66,7 @@ export class LiveClient {
         ...new Set(active.flatMap((sub) => sub.options.jobIds ?? [])),
       ].sort(),
       conversations: active.some((sub) => sub.options.conversations),
+      preferences: active.some((sub) => sub.options.preferences),
     };
   }
   private available() {
@@ -119,8 +125,11 @@ export class LiveClient {
           .join(","),
       );
     if (topics.conversations) query.set("conversations", "1");
+    if (topics.preferences) query.set("preferences", "1");
     if (this.cursor) query.set("after", this.cursor);
-    const source = new EventSource(`/api/live${query.size ? "?" + query : ""}`);
+    const source = new EventSource(
+      `/api/live${query.size ? "?" + query.toString() : ""}`,
+    );
     this.source = source;
     source.addEventListener("connected", () => {
       if (this.source !== source) return;
@@ -152,7 +161,9 @@ export class LiveClient {
             ? (sub.options.jobIds ?? []).includes(hint.key ?? "")
             : hint.topic === "conversations"
               ? sub.options.conversations
-              : true
+              : hint.topic === "preferences"
+                ? sub.options.preferences
+                : true
         )
           sub.callbacks.hint(hint);
     });
@@ -188,12 +199,22 @@ export class LiveClient {
     const sub = {
       options,
       callbacks,
-      account: this.account,
-      generation: this.generation,
+      account: options.expectedAccount ?? this.account,
+      // A new scoped subscriber can mount before the bootstrap effect switches
+      // the account. Reserve only that next generation; old subscribers never
+      // become active again after an account round trip.
+      generation:
+        this.generation +
+        (options.expectedAccount &&
+        this.account !== null &&
+        options.expectedAccount !== this.account
+          ? 1
+          : 0),
     };
     this.subscribers.add(sub);
     this.reconcile();
-    const connected = this.connected && this.available();
+    const connected =
+      this.active().includes(sub) && this.connected && this.available();
     callbacks.status?.(connected);
     if (connected) callbacks.catchUp?.();
     return () => {

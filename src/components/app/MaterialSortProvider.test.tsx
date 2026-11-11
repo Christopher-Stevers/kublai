@@ -11,12 +11,19 @@ import {
   useMaterialSortContext,
 } from "./MaterialSortProvider";
 import { defaultMaterialSortSettings } from "~/lib/material-sort-preferences";
-type PreferenceState = { shared: typeof defaultMaterialSortSettings; personal: typeof defaultMaterialSortSettings | null; custom: boolean; initialized: boolean; canEditExecutive: boolean };
+type PreferenceState = {
+  shared: typeof defaultMaterialSortSettings;
+  personal: typeof defaultMaterialSortSettings | null;
+  custom: boolean;
+  initialized: boolean;
+  canEditExecutive: boolean;
+};
 const mocks = vi.hoisted(() => ({
   data: undefined as PreferenceState | undefined,
   online: true,
   mutate: vi.fn(),
   setData: vi.fn(),
+  queryOptions: vi.fn(),
 }));
 vi.mock("~/hooks/use-online-status", () => ({
   useOnlineStatus: () => mocks.online,
@@ -27,7 +34,15 @@ vi.mock("~/trpc/react", () => ({
       user: { getMaterialSortPreferences: { setData: mocks.setData } },
     }),
     user: {
-      getMaterialSortPreferences: { useQuery: () => ({ data: mocks.data }) },
+      getMaterialSortPreferences: {
+        useQuery: (_input: unknown, options: unknown) => {
+          mocks.queryOptions(options);
+          return {
+            data: mocks.data,
+            refetch: vi.fn().mockResolvedValue(undefined),
+          };
+        },
+      },
       setMaterialSortPreferences: {
         useMutation: () => ({ mutateAsync: mocks.mutate }),
       },
@@ -133,7 +148,11 @@ it("keeps failed saves visible and does not overwrite the last confirmed offline
   await act(async () => vi.advanceTimersByTimeAsync(500));
   expect(screen.getByText(/Sorting could not be saved/)).toBeVisible();
   expect(
-    (JSON.parse(localStorage.getItem("foremenhq.material-sort.v2.org.crew")!) as PreferenceState).custom,
+    (
+      JSON.parse(
+        localStorage.getItem("foremenhq.material-sort.v2.org.crew")!,
+      ) as PreferenceState
+    ).custom,
   ).toBe(false);
 });
 it("does not import legacy browser preferences for employees", async () => {
@@ -177,6 +196,16 @@ it("loads only the current account's offline cache", async () => {
 it("does not replace an executive's existing device settings with defaults from a fresh browser", async () => {
   mocks.data!.initialized = false;
   mocks.data!.canEditExecutive = true;
-  await act(async () => { mount("executive-user"); });
+  await act(async () => {
+    mount("executive-user");
+  });
   expect(mocks.mutate).not.toHaveBeenCalled();
+});
+
+it("retains the 60-second authority refresh alongside realtime settings", () => {
+  mount();
+  expect(mocks.queryOptions).toHaveBeenLastCalledWith({
+    enabled: true,
+    refetchInterval: 60000,
+  });
 });

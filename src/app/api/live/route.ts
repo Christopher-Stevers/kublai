@@ -1,3 +1,4 @@
+import { subscribeMaterialSortEvents } from "~/server/live/material-sort-events";
 import { createTRPCContext } from "~/server/api/trpc";
 import { GET as materialSource } from "~/app/api/material-lists/events/route";
 import { GET as conversationSource } from "~/app/api/conversations/events/route";
@@ -14,7 +15,8 @@ const connections = new Map<string, number>();
 export async function GET(request: Request) {
   const url = new URL(request.url),
     jobs = (url.searchParams.get("jobs") ?? "").split(",").filter(Boolean),
-    includeConversations = url.searchParams.get("conversations") === "1";
+    includeConversations = url.searchParams.get("conversations") === "1",
+    includePreferences = url.searchParams.get("preferences") === "1";
   if (
     jobs.length > 20 ||
     jobs.some((value) => {
@@ -40,7 +42,11 @@ export async function GET(request: Request) {
       user.organizationAccessStatus !== "approved")
   )
     return new Response("Sign in required", { status: 401 });
-  const scope = liveAccountScope(user.organizationId, user.id, identity.simulation?.id);
+  const scope = liveAccountScope(
+    user.organizationId,
+    user.id,
+    identity.simulation?.id,
+  );
   if ((connections.get(scope) ?? 0) >= 5)
     return new Response("Too many connections", { status: 429 });
   if (request.signal.aborted) return new Response(null, { status: 499 });
@@ -108,6 +114,7 @@ export async function GET(request: Request) {
     heartbeat: ReturnType<typeof setInterval>,
     expiry: ReturnType<typeof setTimeout>;
   let unsubscribe: () => void = () => undefined;
+  let unsubscribePreferences: () => void = () => undefined;
   const readers: ReadableStreamDefaultReader<Uint8Array>[] = [];
   const cleanup = () => {
     if (closed) return;
@@ -116,6 +123,7 @@ export async function GET(request: Request) {
     clearInterval(heartbeat);
     clearTimeout(expiry);
     unsubscribe();
+    unsubscribePreferences();
     request.signal.removeEventListener("abort", abort);
     releaseConnection();
     for (const reader of readers) void reader.cancel().catch(() => undefined);
@@ -147,7 +155,9 @@ export async function GET(request: Request) {
           ? includeConversations
           : topic === "chat"
             ? jobIds.has(key)
-            : true;
+            : topic === "preferences"
+              ? includePreferences
+              : true;
       const emit = (frame: ReturnType<typeof liveHub.publish>) => {
         if (frame.scope === scope && allowed(frame.hint.topic, frame.hint.key))
           send(
@@ -155,6 +165,14 @@ export async function GET(request: Request) {
           );
       };
       unsubscribe = liveHub.subscribe(emit);
+      if (includePreferences)
+        unsubscribePreferences = subscribeMaterialSortEvents(
+          { organizationId: user.organizationId!, userId: user.id },
+          (kind, revision) => {
+            if (!closed)
+              liveHub.publish(scope, { topic: "preferences", kind }, revision);
+          },
+        );
       const resume = liveHub.resume(
         scope,
         request.headers.get("last-event-id") ?? url.searchParams.get("after"),

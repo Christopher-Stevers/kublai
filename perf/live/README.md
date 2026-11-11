@@ -82,3 +82,37 @@ The existing authorization result supplies fresh jobName/canModerate; `chatOverv
 A new overview invalidation must not reuse a message sequence/version: `live-client.ts` advances its durable job-chat cursor for every `chat` hint. An arbitrary overview comparison counter would corrupt message recovery. A separate explicitly filtered topic or distinct cursor-safe contract would be required in the protocol, source parser, account/job replay audience and client. User-specific overview differences must stay within the full account/simulation scope; no member/read/capability values should enter frames.
 
 Conclusion: there is no clearly beneficial smallest job-home conversion using the current source. It trades two 30-second browser polls for a newly requested five-second server stream poll plus overview reconciliation, while preserving outage polling. Hold this slice. A future change should first share or reduce authorized source reconciliation and show source-bound request/database evidence, or establish complete durable producers plus authoritative capability expiry handling. This is a documented gap, not a new version/permission system or a no-polls claim. No timers or runtime paths were changed by this audit.
+
+### 2026-11-11: realtime material-sort preference updates (poll retained)
+
+Preference writes now enqueue a content-free PostgreSQL notification in the same
+transaction as the preference upsert. A failed notification rolls the write back;
+an initialize-only conflict emits nothing. The shared web LISTEN bridge routes
+personal changes to the effective user (including their separately authenticated
+simulation scopes) and executive changes to the organization. `/api/live` carries
+only `preferences`/`settings` or `resync` and a broker version, never settings or
+editing capabilities. Subscribers opt in; existing child-stream access checks and
+full account/simulation scopes remain in force.
+
+The browser coalesces bursts over 100 ms, catches up on connection/visible return,
+and fences callbacks after account changes or unsubscribe. A shared LISTEN
+initialization/resubscribe epoch triggers authoritative catch-up for notification
+gaps. This remains best effort: the **existing 60-second HTTP query is retained**
+for preference recovery and editing authority. No browser poll has been removed,
+the audited poll count has not decreased, and no server reconciliation poll or
+Clerk session-validation loop has been introduced. Existing successful HTTP
+responses continue to determine executive editing; stream outage does not revoke
+it. Request-bound Clerk identity is not claimed to be fresh session validation.
+
+Validation: focused tests cover audience isolation, broker deduplication,
+content-free frames, account cleanup, coalescing, transaction failure and no-op
+writes. `bash perf/live/test-preference-transport.sh` creates a disposable Unix
+socket PostgreSQL database and verifies delivery to an independent process,
+no-op suppression, rollback of both row and notification, and recovery after
+deliberately terminating its private LISTEN backend (one expected administrator
+termination log). It creates no
+production schema, uses no production data and stops/removes its private database.
+These checks establish a functional update path, not idle-network, physical-phone
+or production performance evidence. Each actual write adds one transactional
+`pg_notify`; stream connect/resync can add one coalesced authoritative query in
+addition to the unchanged poll. No lower database-cost claim is made.

@@ -191,3 +191,42 @@ describe("single authenticated live document transport", () => {
     expect(hint).not.toHaveBeenCalled();
   });
 });
+it("opts preference delivery in, preserves chat cursors and fences an old account generation", () => {
+  manager.setAccount("org:user");
+  const prefs = vi.fn(),
+    ordinary = vi.fn();
+  manager.subscribe(
+    { preferences: true, expectedAccount: "org:user" },
+    { hint: prefs },
+  );
+  manager.subscribe({}, { hint: ordinary });
+  vi.advanceTimersByTime(0);
+  expect(Source.all[0]!.url).toContain("preferences=1");
+  Source.all[0]!.emit("live", {
+    topic: "preferences",
+    kind: "settings",
+    version: 1,
+  });
+  expect(prefs).toHaveBeenCalledOnce();
+  expect(ordinary).not.toHaveBeenCalled();
+  manager.setAccount("org:other");
+  manager.setAccount("org:user");
+  vi.advanceTimersByTime(0);
+  expect(Source.all).toHaveLength(1);
+  expect(Source.all[0]!.closed).toBe(true);
+});
+it("binds a new scoped subscriber mounted before the bootstrap account transition", () => {
+  manager.setAccount("org:old");
+  const hint = vi.fn();
+  manager.subscribe(
+    { preferences: true, expectedAccount: "org:new" },
+    { hint },
+  );
+  vi.advanceTimersByTime(0);
+  expect(Source.all).toHaveLength(0);
+  manager.setAccount("org:new");
+  vi.advanceTimersByTime(0);
+  expect(Source.all).toHaveLength(1);
+  Source.all[0]!.emit("live", { topic: "preferences", version: 1 });
+  expect(hint).toHaveBeenCalledOnce();
+});

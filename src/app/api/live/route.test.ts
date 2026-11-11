@@ -24,9 +24,17 @@ type Source = {
 let sources: Source[] = [],
   readers: ReadableStreamDefaultReader<Uint8Array>[] = [];
 function source(request: Request) {
-  const item: Source = { request, send: () => {}, closed: false };
+  const item: Source = {
+    request,
+    send: () => {
+      /* assigned by stream start */
+    },
+    closed: false,
+  };
   sources.push(item);
-  let close = () => {},
+  let close = () => {
+      /* assigned by stream start */
+    },
     timer: ReturnType<typeof setInterval>;
   const body = new ReadableStream<Uint8Array>({
     start(output) {
@@ -45,7 +53,9 @@ function source(request: Request) {
         close();
         return;
       }
-      timer = setInterval(() => {}, 5000);
+      timer = setInterval(() => {
+        /* keep fake child alive */
+      }, 5000);
     },
     cancel() {
       close();
@@ -160,15 +170,32 @@ describe("authorized compatibility live multiplexing", () => {
     }
   });
   it("isolates an employee direct session from an actor simulation of that employee", async () => {
-    const baseline = liveHub.publish("org:user", { topic: "catalogue", version: 7123 });
-    const direct = await open(); await direct.reader.read();
-    sources[0]!.send('event: material-list-updated\ndata: {"materialListId":"direct-only","type":"updated","version":7124}\n\n');
+    const baseline = liveHub.publish("org:user", {
+      topic: "catalogue",
+      version: 7123,
+    });
+    const direct = await open();
+    await direct.reader.read();
+    sources[0]!.send(
+      'event: material-list-updated\ndata: {"materialListId":"direct-only","type":"updated","version":7124}\n\n',
+    );
     expect(text(await direct.reader.read())).toContain("direct-only");
-    mocks.identity.mockResolvedValue({ user: { id: "user", organizationId: "org", organizationAccessStatus: "approved" }, simulation: { id: "sim-session" } });
-    const simulated = await open(`?after=${encodeURIComponent(baseline.id)}`); await simulated.reader.read();
-    sources[1]!.send('event: material-list-updated\ndata: {"materialListId":"simulation-only","type":"updated","version":7125}\n\n');
+    mocks.identity.mockResolvedValue({
+      user: {
+        id: "user",
+        organizationId: "org",
+        organizationAccessStatus: "approved",
+      },
+      simulation: { id: "sim-session" },
+    });
+    const simulated = await open(`?after=${encodeURIComponent(baseline.id)}`);
+    await simulated.reader.read();
+    sources[1]!.send(
+      'event: material-list-updated\ndata: {"materialListId":"simulation-only","type":"updated","version":7125}\n\n',
+    );
     const frame = text(await simulated.reader.read());
-    expect(frame).toContain("simulation-only"); expect(frame).not.toContain("direct-only");
+    expect(frame).toContain("simulation-only");
+    expect(frame).not.toContain("direct-only");
   });
   it("keeps one 25-second browser heartbeat and closes on request abort", async () => {
     const controller = new AbortController(),
@@ -185,4 +212,48 @@ describe("authorized compatibility live multiplexing", () => {
     expect(sources.every((input) => input.closed)).toBe(true);
     expect(vi.getTimerCount()).toBe(0);
   });
+});
+it("deduplicates preference source copies and sends content-free frames only to opted-in full scopes", async () => {
+  const { acceptBackgroundHint, transactionalBackgroundHint } =
+    await import("~/server/background/hints");
+  const a = await open("?preferences=1"),
+    b = await open("?preferences=1");
+  await a.reader.read();
+  await b.reader.read();
+  const observer = vi.fn(),
+    stop = liveHub.subscribe((frame) => {
+      if (frame.hint.topic === "preferences") observer(frame);
+    });
+  try {
+    acceptBackgroundHint(
+      transactionalBackgroundHint({
+        topic: "preferences",
+        organizationId: "org",
+        scope: "personal",
+        userId: "user",
+        eventId: "12345678-1234-4234-8234-123456789abc",
+      }),
+    );
+    const frame = text(await a.reader.read());
+    await b.reader.read();
+    expect(observer).toHaveBeenCalledOnce();
+    expect(frame).toContain('"topic":"preferences"');
+    expect(frame).toContain('"kind":"settings"');
+    expect(frame).not.toContain("organizationId");
+    expect(frame).not.toContain("userId");
+    expect(frame).not.toContain("canEdit");
+    await a.reader.cancel();
+    await b.reader.cancel();
+    acceptBackgroundHint(
+      transactionalBackgroundHint({
+        topic: "preferences",
+        organizationId: "org",
+        scope: "executive",
+        eventId: "12345678-1234-4234-8234-123456789abd",
+      }),
+    );
+    expect(observer).toHaveBeenCalledOnce();
+  } finally {
+    stop();
+  }
 });
