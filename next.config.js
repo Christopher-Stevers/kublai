@@ -3,14 +3,9 @@
  * for Docker builds.
  */
 import "./src/env.js";
-import { PortableModuleIdsPlugin } from "./scripts/release/portable-module-ids.mjs";
 
 /** @type {import("next").NextConfig} */
 const config = {
-  webpack(config, { dev }) {
-    if (!dev) config.plugins.push(new PortableModuleIdsPlugin(process.cwd()));
-    return config;
-  },
   generateBuildId: async () => process.env.RELEASE_BUILD_ID ?? null,
   // CI and local verification can build beside the live server instead of
   // replacing the .next directory that `next start` is currently serving.

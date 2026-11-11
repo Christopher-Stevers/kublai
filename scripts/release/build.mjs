@@ -1,12 +1,15 @@
 #!/usr/bin/env node
-import { mkdir, realpath, rename, writeFile, stat, symlink } from 'node:fs/promises';
+import { mkdir, realpath, rename, writeFile, stat, symlink, cp, rm } from 'node:fs/promises';
 import path from 'node:path';
+import { homedir } from 'node:os';
 import ts from 'typescript';
 import { createHash, randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
+import { assertDisposableWorkspace, assertInputSymlinks } from './canonical-guards.mjs';
 import { files, retainStatic, compressStatic } from './static-assets.mjs';
 
+if (process.env.RELEASE_SOURCE_DIR) process.chdir(process.env.RELEASE_SOURCE_DIR);
 const root = process.cwd();
 try { await stat('PERF_LAB_ONLY'); throw Error('Refusing release build from disposable authentication-stub lab snapshot'); }
 catch (error) { if (error.code !== 'ENOENT') throw error; }
@@ -18,7 +21,7 @@ for (const dir of [staging, destination]) {
   try { await stat(dir); throw Error(`Refusing to replace existing directory: ${dir}`); }
   catch (error) { if (error.code !== 'ENOENT') throw error; }
 }
-const keyFile = process.env.RELEASE_KEY_FILE ?? path.join(root, '.private/release/server-actions.key');
+const keyFile = process.env.RELEASE_KEY_FILE ?? path.join(homedir(), '.local/share/foremanhq-release/server-actions.key');
 let encryptionKey = process.env.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY;
 if (!encryptionKey) {
   await mkdir(path.dirname(keyFile), { recursive: true, mode: 0o700 });
@@ -26,6 +29,50 @@ if (!encryptionKey) {
   catch (error) { if (error.code !== 'EEXIST') throw error; }
   encryptionKey = (await readFile(keyFile, 'utf8')).trim();
 }
+// Generated Flight loader requests and dependency IDs contain source paths.
+// Compile every caller's source at exactly one locked filesystem location.
+const canonical = path.join(homedir(), '.cache/foremanhq-release-builder');
+if (process.env.FOREMANHQ_CANONICAL_BUILD !== '1') {
+  await assertDisposableWorkspace(canonical, { source: root, destination, active: await realpath('.next'), dependencies: await realpath('node_modules'), key: keyFile });
+  const protectedInputs = { source: root, destination, active: await realpath('.next'), dependencies: await realpath('node_modules'), key: keyFile };
+  for (const name of ['src', 'public', 'scripts', '.env', '.env.local', '.env.production', '.env.production.local']) {
+    try { protectedInputs[name] = await realpath(path.join(root, name)); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+  }
+  await assertDisposableWorkspace(canonical, protectedInputs);
+  const inputs = ['src', 'public', 'scripts', '.env', '.env.local', '.env.production', '.env.production.local'].map(name => path.join(root, name));
+  await assertInputSymlinks(canonical, inputs);
+  const lock = canonical + '.lock';
+  await mkdir(path.dirname(canonical), { recursive: true });
+  try { await mkdir(lock); } catch (error) {
+    if (error.code === 'EEXIST') throw Error('Canonical release builder is busy; wait for its current build');
+    throw error;
+  }
+  try {
+    protectedInputs.active = await realpath('.next');
+    await assertDisposableWorkspace(canonical, protectedInputs);
+    await assertInputSymlinks(canonical, inputs);
+    await rm(canonical, { recursive: true, force: true });
+    await mkdir(canonical);
+    for (const dir of ['src', 'public', 'scripts']) await cp(path.join(root, dir), path.join(canonical, dir), { recursive: true });
+    for (const name of ['next.config.js', 'postcss.config.js', 'package.json', 'pnpm-lock.yaml', 'tsconfig.json', 'next-env.d.ts']) {
+      try { await cp(path.join(root, name), path.join(canonical, name)); }
+      catch (error) { if (error.code !== 'ENOENT') throw error; }
+    }
+    for (const name of ['.env', '.env.local', '.env.production', '.env.production.local']) {
+      try { await symlink(await realpath(path.join(root, name)), path.join(canonical, name)); }
+      catch (error) { if (error.code !== 'ENOENT') throw error; }
+    }
+    await symlink(await realpath('node_modules'), path.join(canonical, 'node_modules'), 'dir');
+    await symlink(await realpath('.next'), path.join(canonical, '.next'), 'dir');
+    const child = spawnSync(process.execPath, [path.join(canonical, 'scripts/release/build.mjs'), destination], {
+      cwd: canonical, stdio: 'inherit', env: { ...process.env, FOREMANHQ_CANONICAL_BUILD: '1', RELEASE_SOURCE_DIR: canonical, NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: encryptionKey },
+    });
+    if (child.status !== 0) throw Error(`Canonical build failed (${child.status}); workspace retained at ${canonical}`);
+  } finally { await rm(lock, { recursive: true }); }
+  process.exit(0);
+}
+if (root !== canonical) throw Error('Canonical child must run in the fixed release workspace');
 const fingerprint = createHash('sha256');
 fingerprint.update(encryptionKey); // Stable private salt prevents Server Action IDs churning. 
 for (const dir of ['src', 'public', 'scripts']) {
@@ -34,9 +81,12 @@ for (const dir of ['src', 'public', 'scripts']) {
     fingerprint.update(await readFile(path.join(dir, name)));
   }
 }
-for (const name of ['next.config.js', 'package.json', 'pnpm-lock.yaml', 'tsconfig.json', '.env']) {
+for (const name of ['next.config.js', 'package.json', 'pnpm-lock.yaml', 'tsconfig.json', 'postcss.config.js', '.env', '.env.local', '.env.production', '.env.production.local']) {
   fingerprint.update(name + '\0');
   try { fingerprint.update(await readFile(name)); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+}
+for (const name of Object.keys(process.env).filter(name => (name.startsWith('NEXT_PUBLIC_') && name !== 'NEXT_PUBLIC_BUILD_ID') || ['NODE_ENV', 'BROWSERSLIST'].includes(name)).sort()) {
+  fingerprint.update(name + '\0' + process.env[name] + '\0');
 }
 const sourceHash = fingerprint.digest('hex');
 const active = await realpath('.next');
@@ -70,6 +120,21 @@ const compression = await compressStatic(path.join(staging, 'static'));
 const report = { builder: 'webpack', sourceHash, source: root, previousBuild: active, delta, currentScripts: currentNames, retainedBuilds, retained, compression };
 await writeFile(path.join(staging, 'release-assets.json'), JSON.stringify(report, null, 2) + '\n');
 await mkdir(path.dirname(destination), { recursive: true });
+// Next gets an immutable public directory as well as immutable server output.
+await mkdir(path.join(staging, 'runtime'), { recursive: true });
+await cp('public', path.join(staging, 'runtime/public'), { recursive: true });
+await mkdir(path.join(staging, 'runtime/release'), { recursive: true });
+for (const name of ['start.mjs', 'static-handler.mjs']) await cp(path.join('scripts/release', name), path.join(staging, 'runtime/release', name));
+const builtConfig = JSON.parse(await readFile(path.join(staging, 'required-server-files.json'), 'utf8')).config;
+for (const name of ['configOrigin', 'configFile', 'configFileName']) delete builtConfig[name];
+builtConfig.distDir = '..';
+delete builtConfig.experimental.trustHostHeader;
+delete builtConfig.experimental.isExperimentalCompile;
+await writeFile(path.join(staging, 'runtime/next.config.mjs'), 'const config = ' + JSON.stringify(builtConfig) + ';\nif (typeof config.htmlLimitedBots === \"string\") config.htmlLimitedBots = new RegExp(config.htmlLimitedBots);\nexport default config;\n');
+for (const name of ['.env', '.env.local', '.env.production', '.env.production.local']) {
+  try { await symlink(await realpath(name), path.join(staging, 'runtime', name)); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
+}
 // Bundled server code resolves external packages from its output directory.
 await symlink(await realpath('node_modules'), path.join(staging, 'node_modules'), 'dir');
 await rename(staging, destination);

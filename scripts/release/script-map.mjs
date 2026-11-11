@@ -38,4 +38,4 @@ for (const row of routes) {
   row.total = await size(row.files);
   row.additionalToJobsShared = await size(row.files.filter(name => !shared.includes(name)));
 }
-console.log(JSON.stringify({ build, method: 'Union of client-reference manifest JS chunks plus rootMainFiles; jobs shared is intersection across all jobs page manifests. Gzip level 9 per file. Manifest dependency map, not browser request trace; conditional references may overstate actual startup.', shared: { ...await size(shared), files: shared }, routes }, null, 2));
+console.log(JSON.stringify({ method: 'Union of client-reference manifest JS chunks plus rootMainFiles; jobs shared is intersection across all jobs page manifests. Gzip level 9 per file. Manifest dependency map, not browser request trace; conditional references may overstate actual startup.', shared: await size(shared), routes: routes.map(({ files, ...metadata }) => metadata) }, null, 2));
