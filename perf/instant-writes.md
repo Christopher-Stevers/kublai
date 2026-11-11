@@ -15,21 +15,21 @@ check the query instance and optimistic value: a newer server refresh wins, and
 an account wipe cannot be undone by a late request. Authoritative invalidation
 follows settled network requests, not preparation failures.
 
-## Applied actions
+## Applied actions — initial checkpoint
 
-| Action | Seven-day observed calls | Behavior |
-| --- | ---: | --- |
-| `catalogue.hideParts` | 117 | Preview the same hide rules as the server; reconcile final rule ids; roll back a refusal. Existing confirmation and release-click behavior remain. |
-| `catalogue.showHiddenParts` | 2 | Preview removing a rule or restoring a selection, preserving hidden siblings. |
-| `materialList.updateOrderNotes` | 1 | Update cached notes and close the editor immediately; retain text for retry if the server refuses. |
-| `materialList.updateOrderItemVerification` | 76 | Keep the existing immediate receipt controls, show a pending save, restore a refused edit and hold accepted values until the existing sync refresh arrives. |
+| Action                                     | Seven-day observed calls | Behavior                                                                                                                                                    |
+| ------------------------------------------ | -----------------------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `catalogue.hideParts`                      |                      117 | Preview the same hide rules as the server; reconcile final rule ids; roll back a refusal. Existing confirmation and release-click behavior remain.          |
+| `catalogue.showHiddenParts`                |                        2 | Preview removing a rule or restoring a selection, preserving hidden siblings.                                                                               |
+| `materialList.updateOrderNotes`            |                        1 | Update cached notes and close the editor immediately; retain text for retry if the server refuses.                                                          |
+| `materialList.updateOrderItemVerification` |                       76 | Keep the existing immediate receipt controls, show a pending save, restore a refused edit and hold accepted values until the existing sync refresh arrives. |
 
 Counts come from `observed-trpc-usage.json`, which is instrumented server journal
 traffic, possibly including QA. The first entry was conservatively marked bulk
 by the inventory script; source review established that it hides catalogue
 choices, does not delete parts, and preserves existing confirmation controls.
 
-This is **4 of the 20 observed tRPC actions**, not completion of the 20-write
+At this initial checkpoint this was **4 of the 20 observed tRPC actions**, not completion of the 20-write
 step. Material quantities already use Replicache. Drawing edits already have an
 independent queued-edits path, so they must be audited before any replacement.
 Super Label results require actual recognition; pending feedback can be instant,
@@ -89,3 +89,8 @@ locking, offline rejection, and StrictMode dispatch-once assertions. Production
 ESLint returned no errors (three existing drawing-view warnings). Whole-source
 TypeScript remains blocked by existing repository test typing errors; no changed
 production path reported an error. No release or phone-timing gate is claimed.
+
+Subsequent prepared slices, including the seventh partial photo-attachment
+slice, are tracked in [instant-writes-next.md](instant-writes-next.md) and
+[STATUS.md](STATUS.md). This historical table does not claim whole-action or
+20/20 completion, and no prepared speed candidate has been activated.

@@ -134,7 +134,8 @@ none has been activated. Cold private HTML caching remains disabled.
   row or a controlled phone benchmark. Three early INP values and two materials
   navigation marks do not establish stable percentiles.
 
-The first-20 write step currently has six converted procedure/caller actions;
+At this earlier checkpoint, the first-20 write step had six converted procedure/caller actions;
+the later R4 section records the seventh partial photo-attachment slice.
 Super Label has immediate progress/stop feedback without invented recognition
 results. The shared live stream is a compatibility stage; 29 polling declarations
 remain until producer coverage is proven. No production database change, worker
@@ -172,3 +173,13 @@ live bootstrap still has its documented sampling/late-context limits. See
 The seventh partial instant-write slice (owned-part photo attachment) is prepared, not activated. Exact R3 plus three reviewed photo production paths passed canonical webpack, production TypeScript and prerender after two narrow boundary/type fixes. Source verification and production overlay exclusion passed; all 288 current assets and ten historical URL samples matched exact bytes, manifest/health/sign-in returned 200, and unauthenticated cache binding remained 401. The proof server was stopped.
 
 All three unchanged Phase 0 byte ratchets pass: 485,120 shared, 755,310 heaviest, and 1,273,448 deploy gzip bytes. Separately, the R3→R4 photo-feature payload changes 28/283 scripts (255 reused), totaling 283,891 gzip bytes and exceeding the 100,000-byte diagnostic. The distinct controlled R2→R3 edit still passes at 22,739 bytes/five scripts. Complete measured baseline/candidate and phone gates remain unaccepted; no activation. Metadata: `perf/artifacts/phase1-photo-r4-static-2026-11-11.json`.
+
+## Accepted same-build v2 repeatability — 2026-11-11
+
+The separate sealed v2 rerun has two complete 120-sample captures, all 24 cell
+medians within the unchanged 10% band, matching source/method and zero private
+database errors. The independent pair summary retains all original values and
+stage occurrences without pooling or exclusions. Earlier four failed full
+captures remain archived and rejected. This accepts desktop-emulated same-build
+repeatability only: no candidate timing comparison, physical-phone, full Phase 0
+or activation claim. See `artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-pair-summary.json`.

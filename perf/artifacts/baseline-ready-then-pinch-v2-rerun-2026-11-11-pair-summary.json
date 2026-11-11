@@ -1,0 +1,4327 @@
+{
+  "version": 1,
+  "kind": "supplemental-pair-summary",
+  "method": "Every original sample retained. Per-cell automation wallclock median is the existing five-run gate metric. Descriptive nearest-rank stage p50/p95 use every recorded stage occurrence; missing stages are explicit, never zero-filled. No pooling of the two runs.",
+  "limitations": [
+    "Five samples do not establish a stable p95. Browser stages are paint-opportunity proxies, not physical same-frame proof.",
+    "Database observedAt is not asserted to be exact capture completion; completion stays null if unrecorded.",
+    "This summary is not activation or Phase0 acceptance. Canonical artifact binding and all other release gates remain separate."
+  ],
+  "reports": [
+    {
+      "label": "first",
+      "sha256": "c262451ec3ef1ca979585aeb29ccc6bd67444d0a323d248584ccf74bb6d9acd4",
+      "bytes": 50973,
+      "build": "cI20Tzl0OAQscfvjfmtFW",
+      "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+      "sourceFileCount": 2200,
+      "sourceBinding": {
+        "method": "frozen-release-inputs-sha256",
+        "algorithm": "foremanhq-lab-source-v1",
+        "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d"
+      },
+      "harnessFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+      "harnessFingerprintAlgorithm": "foremanhq-frozen-harness-v1",
+      "harnessFileCount": 29,
+      "harnessToolchain": {
+        "node": "v26.8.2",
+        "playwright": "1.59.1",
+        "browser": "152.0.7977.82"
+      },
+      "protocol": {
+        "id": "ready-then-pinch-v2",
+        "sheetCost": "Outer wallclock includes sheet-open click, any readiness wait, verified pinch and final PDF coverage. Browser stage marks are dispatch-to-sampled-ready measures, not same-frame proof.",
+        "coveragePollMs": 50
+      },
+      "captureStartedAt": "2026-11-11T05:05:41.392Z",
+      "databaseWindowStartedAt": "2026-11-11T05:05:41.392Z",
+      "databaseObservedAt": "2026-11-11T05:23:43.255Z",
+      "captureCompletedAt": null,
+      "sampleCount": 120,
+      "health": {
+        "preflightStatus": "passed",
+        "preflightEndpoints": 14,
+        "preflightOk": 14,
+        "databaseErrors": 0,
+        "databaseFatals": 0,
+        "fixtureTables": 113,
+        "fixtureModules": 16
+      },
+      "static": {
+        "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+        "sharedGzipBytes": 502618,
+        "screenGzipBytes": 758531,
+        "deployGzipBytes": 2734731,
+        "idlePolls": 80
+      }
+    },
+    {
+      "label": "second",
+      "sha256": "fa25762b3122cdebc609a045b084bc5322e2c061071a0eb0310842bf3f61a718",
+      "bytes": 50940,
+      "build": "cI20Tzl0OAQscfvjfmtFW",
+      "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+      "sourceFileCount": 2200,
+      "sourceBinding": {
+        "method": "frozen-release-inputs-sha256",
+        "algorithm": "foremanhq-lab-source-v1",
+        "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d"
+      },
+      "harnessFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+      "harnessFingerprintAlgorithm": "foremanhq-frozen-harness-v1",
+      "harnessFileCount": 29,
+      "harnessToolchain": {
+        "node": "v26.8.2",
+        "playwright": "1.59.1",
+        "browser": "152.0.7977.82"
+      },
+      "protocol": {
+        "id": "ready-then-pinch-v2",
+        "sheetCost": "Outer wallclock includes sheet-open click, any readiness wait, verified pinch and final PDF coverage. Browser stage marks are dispatch-to-sampled-ready measures, not same-frame proof.",
+        "coveragePollMs": 50
+      },
+      "captureStartedAt": "2026-11-11T05:23:44.675Z",
+      "databaseWindowStartedAt": "2026-11-11T05:23:44.675Z",
+      "databaseObservedAt": "2026-11-11T05:41:45.083Z",
+      "captureCompletedAt": null,
+      "sampleCount": 120,
+      "health": {
+        "preflightStatus": "passed",
+        "preflightEndpoints": 14,
+        "preflightOk": 14,
+        "databaseErrors": 0,
+        "databaseFatals": 0,
+        "fixtureTables": 113,
+        "fixtureModules": 16
+      },
+      "static": {
+        "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+        "sharedGzipBytes": 502618,
+        "screenGzipBytes": 758531,
+        "deployGzipBytes": 2734731,
+        "idlePolls": 80
+      }
+    }
+  ],
+  "repeatability": {
+    "passes": true,
+    "errors": [],
+    "noiseRatio": 0.1
+  },
+  "cells": [
+    {
+      "journey": "coldstart",
+      "link": "Basement",
+      "first": {
+        "count": 5,
+        "minMs": 20322.857350000006,
+        "medianMs": 20324.651497,
+        "p95Ms": 20333.981108,
+        "maxMs": 20333.981108,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 20333.981108
+          },
+          {
+            "run": 1,
+            "durationMs": 20323.492087
+          },
+          {
+            "run": 2,
+            "durationMs": 20327.380095999994
+          },
+          {
+            "run": 3,
+            "durationMs": 20324.651497
+          },
+          {
+            "run": 4,
+            "durationMs": 20322.857350000006
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 20322.72958,
+        "medianMs": 20324.214999,
+        "p95Ms": 20330.182096000004,
+        "maxMs": 20330.182096000004,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 20324.214999
+          },
+          {
+            "run": 1,
+            "durationMs": 20323.570620000002
+          },
+          {
+            "run": 2,
+            "durationMs": 20330.182096000004
+          },
+          {
+            "run": 3,
+            "durationMs": 20322.72958
+          },
+          {
+            "run": 4,
+            "durationMs": 20327.236023999998
+          }
+        ]
+      },
+      "deltaMs": -0.4364979999991192,
+      "deltaPercent": -0.0021476284602643648,
+      "withinNoiseBand": true,
+      "browserStages": [
+        {
+          "name": "app-start-to-last-screen",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 10706.299999713898,
+              "medianMs": 10793.700000286102,
+              "p95Ms": 10832.300000190735,
+              "maxMs": 10832.300000190735
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  10832.300000190735
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  10706.299999713898
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  10793.700000286102
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  10757.699999809265
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  10823.10000038147
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 10739.900000095367,
+              "medianMs": 10794.199999809265,
+              "p95Ms": 10839.5,
+              "maxMs": 10839.5
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  10806.599999904633
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  10739.900000095367
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  10745.900000095367
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  10839.5
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  10794.199999809265
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        }
+      ]
+    },
+    {
+      "journey": "coldstart",
+      "link": "Site",
+      "first": {
+        "count": 5,
+        "minMs": 3610.160632000072,
+        "medianMs": 3610.493581999908,
+        "p95Ms": 3623.60139299999,
+        "maxMs": 3623.60139299999,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 3610.493581999908
+          },
+          {
+            "run": 1,
+            "durationMs": 3619.202877999982
+          },
+          {
+            "run": 2,
+            "durationMs": 3623.60139299999
+          },
+          {
+            "run": 3,
+            "durationMs": 3610.160632000072
+          },
+          {
+            "run": 4,
+            "durationMs": 3610.3649130000267
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 3604.678246000083,
+        "medianMs": 3608.8092569999862,
+        "p95Ms": 3611.637647000025,
+        "maxMs": 3611.637647000025,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 3611.637647000025
+          },
+          {
+            "run": 1,
+            "durationMs": 3608.8092569999862
+          },
+          {
+            "run": 2,
+            "durationMs": 3604.678246000083
+          },
+          {
+            "run": 3,
+            "durationMs": 3609.364921999979
+          },
+          {
+            "run": 4,
+            "durationMs": 3607.426709000021
+          }
+        ]
+      },
+      "deltaMs": -1.6843249999219552,
+      "deltaPercent": -0.0466508238186365,
+      "withinNoiseBand": true,
+      "browserStages": [
+        {
+          "name": "app-start-to-last-screen",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 2359.3999996185303,
+              "medianMs": 2375.9000000953674,
+              "p95Ms": 2393,
+              "maxMs": 2393
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  2375.9000000953674
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  2384.7999997138977
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  2359.3999996185303
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  2393
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  2359.5
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 2354.5999999046326,
+              "medianMs": 2373.2999997138977,
+              "p95Ms": 2376.2000002861023,
+              "maxMs": 2376.2000002861023
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  2376.2000002861023
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  2357.4000000953674
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  2354.5999999046326
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  2374.9000000953674
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  2373.2999997138977
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        }
+      ]
+    },
+    {
+      "journey": "coldstart",
+      "link": "Office",
+      "first": {
+        "count": 5,
+        "minMs": 724.5185389999533,
+        "medianMs": 743.211593999993,
+        "p95Ms": 859.4200070000952,
+        "maxMs": 859.4200070000952,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 743.211593999993
+          },
+          {
+            "run": 1,
+            "durationMs": 753.2828630000586
+          },
+          {
+            "run": 2,
+            "durationMs": 739.1902629999677
+          },
+          {
+            "run": 3,
+            "durationMs": 859.4200070000952
+          },
+          {
+            "run": 4,
+            "durationMs": 724.5185389999533
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 723.0607000000309,
+        "medianMs": 756.6834500000114,
+        "p95Ms": 854.9507400000002,
+        "maxMs": 854.9507400000002,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 723.0607000000309
+          },
+          {
+            "run": 1,
+            "durationMs": 762.469579000026
+          },
+          {
+            "run": 2,
+            "durationMs": 756.6834500000114
+          },
+          {
+            "run": 3,
+            "durationMs": 741.0393179999664
+          },
+          {
+            "run": 4,
+            "durationMs": 854.9507400000002
+          }
+        ]
+      },
+      "deltaMs": 13.471856000018306,
+      "deltaPercent": 1.8126541766540893,
+      "withinNoiseBand": true,
+      "browserStages": [
+        {
+          "name": "app-start-to-last-screen",
+          "first": {
+            "distribution": {
+              "count": 1,
+              "minMs": 795.1999998092651,
+              "medianMs": 795.1999998092651,
+              "p95Ms": 795.1999998092651,
+              "maxMs": 795.1999998092651
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": []
+              },
+              {
+                "run": 1,
+                "durationMs": []
+              },
+              {
+                "run": 2,
+                "durationMs": []
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  795.1999998092651
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": []
+              }
+            ],
+            "missingRuns": [
+              0,
+              1,
+              2,
+              4
+            ]
+          },
+          "second": {
+            "distribution": {
+              "count": 1,
+              "minMs": 787.3000001907349,
+              "medianMs": 787.3000001907349,
+              "p95Ms": 787.3000001907349,
+              "maxMs": 787.3000001907349
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": []
+              },
+              {
+                "run": 1,
+                "durationMs": []
+              },
+              {
+                "run": 2,
+                "durationMs": []
+              },
+              {
+                "run": 3,
+                "durationMs": []
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  787.3000001907349
+                ]
+              }
+            ],
+            "missingRuns": [
+              0,
+              1,
+              2,
+              3
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "journey": "openjob",
+      "link": "Basement",
+      "first": {
+        "count": 5,
+        "minMs": 82.01696899998933,
+        "medianMs": 82.4440299999842,
+        "p95Ms": 99.33596500000567,
+        "maxMs": 99.33596500000567,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 82.62805600000138
+          },
+          {
+            "run": 1,
+            "durationMs": 82.3738810000068
+          },
+          {
+            "run": 2,
+            "durationMs": 82.4440299999842
+          },
+          {
+            "run": 3,
+            "durationMs": 99.33596500000567
+          },
+          {
+            "run": 4,
+            "durationMs": 82.01696899998933
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 81.85750799998641,
+        "medianMs": 82.64301500000875,
+        "p95Ms": 97.8590560000157,
+        "maxMs": 97.8590560000157,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 82.11865799999214
+          },
+          {
+            "run": 1,
+            "durationMs": 83.16970499997842
+          },
+          {
+            "run": 2,
+            "durationMs": 82.64301500000875
+          },
+          {
+            "run": 3,
+            "durationMs": 81.85750799998641
+          },
+          {
+            "run": 4,
+            "durationMs": 97.8590560000157
+          }
+        ]
+      },
+      "deltaMs": 0.19898500002454966,
+      "deltaPercent": 0.24135768232652843,
+      "withinNoiseBand": true,
+      "browserStages": []
+    },
+    {
+      "journey": "openjob",
+      "link": "Site",
+      "first": {
+        "count": 5,
+        "minMs": 81.72646200004965,
+        "medianMs": 82.45718499994837,
+        "p95Ms": 98.67835599998944,
+        "maxMs": 98.67835599998944,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 82.45718499994837
+          },
+          {
+            "run": 1,
+            "durationMs": 81.72646200004965
+          },
+          {
+            "run": 2,
+            "durationMs": 82.47441400005482
+          },
+          {
+            "run": 3,
+            "durationMs": 81.7580569999991
+          },
+          {
+            "run": 4,
+            "durationMs": 98.67835599998944
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 82.0991680000443,
+        "medianMs": 82.42051999992691,
+        "p95Ms": 82.68330799997784,
+        "maxMs": 82.68330799997784,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 82.14451199991163
+          },
+          {
+            "run": 1,
+            "durationMs": 82.67706299992278
+          },
+          {
+            "run": 2,
+            "durationMs": 82.42051999992691
+          },
+          {
+            "run": 3,
+            "durationMs": 82.0991680000443
+          },
+          {
+            "run": 4,
+            "durationMs": 82.68330799997784
+          }
+        ]
+      },
+      "deltaMs": -0.03666500002145767,
+      "deltaPercent": -0.04446550051578965,
+      "withinNoiseBand": true,
+      "browserStages": []
+    },
+    {
+      "journey": "openjob",
+      "link": "Office",
+      "first": {
+        "count": 5,
+        "minMs": 79.73075899994001,
+        "medianMs": 82.27076399989892,
+        "p95Ms": 83.01896100002341,
+        "maxMs": 83.01896100002341,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 82.27076399989892
+          },
+          {
+            "run": 1,
+            "durationMs": 82.67272999999113
+          },
+          {
+            "run": 2,
+            "durationMs": 83.01896100002341
+          },
+          {
+            "run": 3,
+            "durationMs": 79.73075899994001
+          },
+          {
+            "run": 4,
+            "durationMs": 81.38765300007071
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 80.38346600008663,
+        "medianMs": 81.39187300007325,
+        "p95Ms": 81.7589240000816,
+        "maxMs": 81.7589240000816,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 81.62079900002573
+          },
+          {
+            "run": 1,
+            "durationMs": 81.7589240000816
+          },
+          {
+            "run": 2,
+            "durationMs": 81.39187300007325
+          },
+          {
+            "run": 3,
+            "durationMs": 80.38346600008663
+          },
+          {
+            "run": 4,
+            "durationMs": 81.30353699997067
+          }
+        ]
+      },
+      "deltaMs": -0.8788909998256713,
+      "deltaPercent": -1.0682907962623893,
+      "withinNoiseBand": true,
+      "browserStages": []
+    },
+    {
+      "journey": "switchjobtabs",
+      "link": "Basement",
+      "first": {
+        "count": 5,
+        "minMs": 148.978444999957,
+        "medianMs": 165.57363499997882,
+        "p95Ms": 166.94873499998357,
+        "maxMs": 166.94873499998357,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 165.45369000002393
+          },
+          {
+            "run": 1,
+            "durationMs": 165.57363499997882
+          },
+          {
+            "run": 2,
+            "durationMs": 148.978444999957
+          },
+          {
+            "run": 3,
+            "durationMs": 166.20092999999179
+          },
+          {
+            "run": 4,
+            "durationMs": 166.94873499998357
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 165.10475399997085,
+        "medianMs": 166.00239300000248,
+        "p95Ms": 166.4422590000031,
+        "maxMs": 166.4422590000031,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 165.65709299998707
+          },
+          {
+            "run": 1,
+            "durationMs": 166.4422590000031
+          },
+          {
+            "run": 2,
+            "durationMs": 166.00239300000248
+          },
+          {
+            "run": 3,
+            "durationMs": 165.10475399997085
+          },
+          {
+            "run": 4,
+            "durationMs": 166.38590900000418
+          }
+        ]
+      },
+      "deltaMs": 0.42875800002366304,
+      "deltaPercent": 0.2589530634051236,
+      "withinNoiseBand": true,
+      "browserStages": [
+        {
+          "name": "tap-to-paint",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 48.40000009536743,
+              "medianMs": 50.09999990463257,
+              "p95Ms": 53.09999990463257,
+              "maxMs": 53.09999990463257
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  48.40000009536743
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  53.09999990463257
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  50.09999990463257
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  48.69999980926514
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  52.5
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 49.299999713897705,
+              "medianMs": 49.700000286102295,
+              "p95Ms": 50.80000019073486,
+              "maxMs": 50.80000019073486
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  50
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  49.299999713897705
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  49.700000286102295
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  49.40000009536743
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  50.80000019073486
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        }
+      ]
+    },
+    {
+      "journey": "switchjobtabs",
+      "link": "Site",
+      "first": {
+        "count": 5,
+        "minMs": 164.61118599993642,
+        "medianMs": 165.39708299993072,
+        "p95Ms": 165.51510099996813,
+        "maxMs": 165.51510099996813,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 165.39708299993072
+          },
+          {
+            "run": 1,
+            "durationMs": 165.50988599995617
+          },
+          {
+            "run": 2,
+            "durationMs": 165.51510099996813
+          },
+          {
+            "run": 3,
+            "durationMs": 165.39640000008512
+          },
+          {
+            "run": 4,
+            "durationMs": 164.61118599993642
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 149.36790399998426,
+        "medianMs": 165.4423390000593,
+        "p95Ms": 165.95481399993878,
+        "maxMs": 165.95481399993878,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 165.4423390000593
+          },
+          {
+            "run": 1,
+            "durationMs": 165.74690000002738
+          },
+          {
+            "run": 2,
+            "durationMs": 165.0214289999567
+          },
+          {
+            "run": 3,
+            "durationMs": 165.95481399993878
+          },
+          {
+            "run": 4,
+            "durationMs": 149.36790399998426
+          }
+        ]
+      },
+      "deltaMs": 0.04525600012857467,
+      "deltaPercent": 0.027362030398440353,
+      "withinNoiseBand": true,
+      "browserStages": [
+        {
+          "name": "tap-to-paint",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 47.69999980926514,
+              "medianMs": 47.90000009536743,
+              "p95Ms": 57.700000286102295,
+              "maxMs": 57.700000286102295
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  47.80000019073486
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  49.80000019073486
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  57.700000286102295
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  47.90000009536743
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  47.69999980926514
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 46.30000019073486,
+              "medianMs": 48.69999980926514,
+              "p95Ms": 51.69999980926514,
+              "maxMs": 51.69999980926514
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  47.5
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  46.30000019073486
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  51.69999980926514
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  49
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  48.69999980926514
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        }
+      ]
+    },
+    {
+      "journey": "switchjobtabs",
+      "link": "Office",
+      "first": {
+        "count": 5,
+        "minMs": 165.23056200006977,
+        "medianMs": 165.55675099999644,
+        "p95Ms": 165.78844299993943,
+        "maxMs": 165.78844299993943,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 165.24816200009082
+          },
+          {
+            "run": 1,
+            "durationMs": 165.78844299993943
+          },
+          {
+            "run": 2,
+            "durationMs": 165.23056200006977
+          },
+          {
+            "run": 3,
+            "durationMs": 165.5946319999639
+          },
+          {
+            "run": 4,
+            "durationMs": 165.55675099999644
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 165.19831100001466,
+        "medianMs": 165.56142899999395,
+        "p95Ms": 165.8817590000108,
+        "maxMs": 165.8817590000108,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 165.19831100001466
+          },
+          {
+            "run": 1,
+            "durationMs": 165.3857550000539
+          },
+          {
+            "run": 2,
+            "durationMs": 165.8817590000108
+          },
+          {
+            "run": 3,
+            "durationMs": 165.58520900004078
+          },
+          {
+            "run": 4,
+            "durationMs": 165.56142899999395
+          }
+        ]
+      },
+      "deltaMs": 0.004677999997511506,
+      "deltaPercent": 0.002825617179157863,
+      "withinNoiseBand": true,
+      "browserStages": [
+        {
+          "name": "tap-to-paint",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 48.19999980926514,
+              "medianMs": 49.89999961853027,
+              "p95Ms": 51.59999990463257,
+              "maxMs": 51.59999990463257
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  49.89999961853027
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  49.40000009536743
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  48.19999980926514
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  51.59999990463257
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  50.09999990463257
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 48.59999990463257,
+              "medianMs": 50.40000009536743,
+              "p95Ms": 51.80000019073486,
+              "maxMs": 51.80000019073486
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  50.40000009536743
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  48.59999990463257
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  51.80000019073486
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  49.40000009536743
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  50.69999980926514
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        }
+      ]
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Basement",
+      "first": {
+        "count": 5,
+        "minMs": 203.5006309999735,
+        "medianMs": 215.1409510000376,
+        "p95Ms": 228.92910000000848,
+        "maxMs": 228.92910000000848,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 228.92910000000848
+          },
+          {
+            "run": 1,
+            "durationMs": 203.5006309999735
+          },
+          {
+            "run": 2,
+            "durationMs": 214.94729000004008
+          },
+          {
+            "run": 3,
+            "durationMs": 228.0016520000063
+          },
+          {
+            "run": 4,
+            "durationMs": 215.1409510000376
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 205.29658900003415,
+        "medianMs": 216.5222509999876,
+        "p95Ms": 229.80790699995123,
+        "maxMs": 229.80790699995123,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 216.5222509999876
+          },
+          {
+            "run": 1,
+            "durationMs": 229.80790699995123
+          },
+          {
+            "run": 2,
+            "durationMs": 216.64353400003165
+          },
+          {
+            "run": 3,
+            "durationMs": 205.29658900003415
+          },
+          {
+            "run": 4,
+            "durationMs": 207.30060799996136
+          }
+        ]
+      },
+      "deltaMs": 1.381299999949988,
+      "deltaPercent": 0.6420442010362529,
+      "withinNoiseBand": true,
+      "browserStages": [
+        {
+          "name": "tap-to-paint",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 152.5,
+              "medianMs": 159.19999980926514,
+              "p95Ms": 162,
+              "maxMs": 162
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  158.90000009536743
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  152.5
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  162
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  159.19999980926514
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  160.5
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 153.90000009536743,
+              "medianMs": 159.80000019073486,
+              "p95Ms": 164.5,
+              "maxMs": 164.5
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  163.7000002861023
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  159.80000019073486
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  164.5
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  153.90000009536743
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  156.30000019073486
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        }
+      ]
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Site",
+      "first": {
+        "count": 5,
+        "minMs": 205.42016099998727,
+        "medianMs": 215.63234400004148,
+        "p95Ms": 228.85757299989928,
+        "maxMs": 228.85757299989928,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 206.5235719999764
+          },
+          {
+            "run": 1,
+            "durationMs": 215.63234400004148
+          },
+          {
+            "run": 2,
+            "durationMs": 228.85757299989928
+          },
+          {
+            "run": 3,
+            "durationMs": 226.58847800001968
+          },
+          {
+            "run": 4,
+            "durationMs": 205.42016099998727
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 204.65591899992432,
+        "medianMs": 206.74614399997517,
+        "p95Ms": 215.32203599996865,
+        "maxMs": 215.32203599996865,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 215.32203599996865
+          },
+          {
+            "run": 1,
+            "durationMs": 205.9543030000059
+          },
+          {
+            "run": 2,
+            "durationMs": 204.65591899992432
+          },
+          {
+            "run": 3,
+            "durationMs": 206.74614399997517
+          },
+          {
+            "run": 4,
+            "durationMs": 207.66913099994417
+          }
+        ]
+      },
+      "deltaMs": -8.88620000006631,
+      "deltaPercent": -4.1209958743780115,
+      "withinNoiseBand": true,
+      "browserStages": [
+        {
+          "name": "tap-to-paint",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 155,
+              "medianMs": 157.30000019073486,
+              "p95Ms": 161.5,
+              "maxMs": 161.5
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  155.90000009536743
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  161.5
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  159.2999997138977
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  157.30000019073486
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  155
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 153.2999997138977,
+              "medianMs": 156.09999990463257,
+              "p95Ms": 159.5,
+              "maxMs": 159.5
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  159.5
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  156.09999990463257
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  153.2999997138977
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  156
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  156.5
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        }
+      ]
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Office",
+      "first": {
+        "count": 5,
+        "minMs": 203.12852999998722,
+        "medianMs": 228.89309700008016,
+        "p95Ms": 234.4574160000775,
+        "maxMs": 234.4574160000775,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 206.051381999976
+          },
+          {
+            "run": 1,
+            "durationMs": 228.89309700008016
+          },
+          {
+            "run": 2,
+            "durationMs": 234.4574160000775
+          },
+          {
+            "run": 3,
+            "durationMs": 203.12852999998722
+          },
+          {
+            "run": 4,
+            "durationMs": 232.62364200002048
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 207.34782599995378,
+        "medianMs": 230.8027820000425,
+        "p95Ms": 233.1180470000254,
+        "maxMs": 233.1180470000254,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 231.70201100001577
+          },
+          {
+            "run": 1,
+            "durationMs": 219.67190099996515
+          },
+          {
+            "run": 2,
+            "durationMs": 207.34782599995378
+          },
+          {
+            "run": 3,
+            "durationMs": 233.1180470000254
+          },
+          {
+            "run": 4,
+            "durationMs": 230.8027820000425
+          }
+        ]
+      },
+      "deltaMs": 1.9096849999623373,
+      "deltaPercent": 0.8343130592364122,
+      "withinNoiseBand": true,
+      "browserStages": [
+        {
+          "name": "tap-to-paint",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 153.80000019073486,
+              "medianMs": 158.5,
+              "p95Ms": 161.30000019073486,
+              "maxMs": 161.30000019073486
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  155.90000009536743
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  161.30000019073486
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  158.5
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  153.80000019073486
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  158.60000038146973
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 155.5,
+              "medianMs": 156.7999997138977,
+              "p95Ms": 157.90000009536743,
+              "maxMs": 157.90000009536743
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  157.90000009536743
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  156.7999997138977
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  155.5
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  156.59999990463257
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  157.40000009536743
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        }
+      ]
+    },
+    {
+      "journey": "changeqty",
+      "link": "Basement",
+      "first": {
+        "count": 5,
+        "minMs": 95.32848500000546,
+        "medianMs": 98.41997200000333,
+        "p95Ms": 99.37625700002536,
+        "maxMs": 99.37625700002536,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 98.41997200000333
+          },
+          {
+            "run": 1,
+            "durationMs": 98.83480700000655
+          },
+          {
+            "run": 2,
+            "durationMs": 96.42287800001213
+          },
+          {
+            "run": 3,
+            "durationMs": 95.32848500000546
+          },
+          {
+            "run": 4,
+            "durationMs": 99.37625700002536
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 97.44424899999285,
+        "medianMs": 98.42504800000461,
+        "p95Ms": 99.29135600000154,
+        "maxMs": 99.29135600000154,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 99.29135600000154
+          },
+          {
+            "run": 1,
+            "durationMs": 97.84683200001018
+          },
+          {
+            "run": 2,
+            "durationMs": 98.42504800000461
+          },
+          {
+            "run": 3,
+            "durationMs": 98.52717200003099
+          },
+          {
+            "run": 4,
+            "durationMs": 97.44424899999285
+          }
+        ]
+      },
+      "deltaMs": 0.0050760000012815,
+      "deltaPercent": 0.005157489783965117,
+      "withinNoiseBand": true,
+      "browserStages": [
+        {
+          "name": "write-to-paint",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 21.40000009536743,
+              "medianMs": 24.09999990463257,
+              "p95Ms": 25.09999990463257,
+              "maxMs": 25.09999990463257
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  21.40000009536743
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  24.799999713897705
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  25.09999990463257
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  23.90000009536743
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  24.09999990463257
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 23.5,
+              "medianMs": 23.699999809265137,
+              "p95Ms": 25.800000190734863,
+              "maxMs": 25.800000190734863
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  23.699999809265137
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  23.5
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  23.59999990463257
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  25.300000190734863
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  25.800000190734863
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        }
+      ]
+    },
+    {
+      "journey": "changeqty",
+      "link": "Site",
+      "first": {
+        "count": 5,
+        "minMs": 112.00103399995714,
+        "medianMs": 115.20544599997811,
+        "p95Ms": 116.4231059999438,
+        "maxMs": 116.4231059999438,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 116.4231059999438
+          },
+          {
+            "run": 1,
+            "durationMs": 112.00103399995714
+          },
+          {
+            "run": 2,
+            "durationMs": 114.89145300001837
+          },
+          {
+            "run": 3,
+            "durationMs": 115.51973499997985
+          },
+          {
+            "run": 4,
+            "durationMs": 115.20544599997811
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 110.70945999992546,
+        "medianMs": 115.29374200000893,
+        "p95Ms": 115.5220960000297,
+        "maxMs": 115.5220960000297,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 115.46426000003703
+          },
+          {
+            "run": 1,
+            "durationMs": 115.5220960000297
+          },
+          {
+            "run": 2,
+            "durationMs": 110.70945999992546
+          },
+          {
+            "run": 3,
+            "durationMs": 115.29374200000893
+          },
+          {
+            "run": 4,
+            "durationMs": 112.80529499996919
+          }
+        ]
+      },
+      "deltaMs": 0.08829600003082305,
+      "deltaPercent": 0.0766422101528428,
+      "withinNoiseBand": true,
+      "browserStages": [
+        {
+          "name": "write-to-paint",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 21.40000009536743,
+              "medianMs": 24.699999809265137,
+              "p95Ms": 25.300000190734863,
+              "maxMs": 25.300000190734863
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  24.699999809265137
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  24.799999713897705
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  21.40000009536743
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  25.300000190734863
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  24.199999809265137
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 18.90000009536743,
+              "medianMs": 24.300000190734863,
+              "p95Ms": 26.699999809265137,
+              "maxMs": 26.699999809265137
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  26.699999809265137
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  21.600000381469727
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  18.90000009536743
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  24.300000190734863
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  26.40000009536743
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        }
+      ]
+    },
+    {
+      "journey": "changeqty",
+      "link": "Office",
+      "first": {
+        "count": 5,
+        "minMs": 109.10927999997512,
+        "medianMs": 114.14365500002168,
+        "p95Ms": 125.0508929999778,
+        "maxMs": 125.0508929999778,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 111.41382000001613
+          },
+          {
+            "run": 1,
+            "durationMs": 125.0508929999778
+          },
+          {
+            "run": 2,
+            "durationMs": 114.14365500002168
+          },
+          {
+            "run": 3,
+            "durationMs": 115.41811500000767
+          },
+          {
+            "run": 4,
+            "durationMs": 109.10927999997512
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 109.35498900001403,
+        "medianMs": 115.10305199993309,
+        "p95Ms": 123.94538399996236,
+        "maxMs": 123.94538399996236,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 123.94538399996236
+          },
+          {
+            "run": 1,
+            "durationMs": 115.10305199993309
+          },
+          {
+            "run": 2,
+            "durationMs": 114.91119100002106
+          },
+          {
+            "run": 3,
+            "durationMs": 109.35498900001403
+          },
+          {
+            "run": 4,
+            "durationMs": 118.1067289999919
+          }
+        ]
+      },
+      "deltaMs": 0.9593969999114051,
+      "deltaPercent": 0.840517153503822,
+      "withinNoiseBand": true,
+      "browserStages": [
+        {
+          "name": "write-to-paint",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 18.699999809265137,
+              "medianMs": 21.40000009536743,
+              "p95Ms": 26.5,
+              "maxMs": 26.5
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  26.5
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  21.399999618530273
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  21.40000009536743
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  21.799999713897705
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  18.699999809265137
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 16.90000009536743,
+              "medianMs": 21.40000009536743,
+              "p95Ms": 22,
+              "maxMs": 22
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  20.90000009536743
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  21.600000381469727
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  22
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  16.90000009536743
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  21.40000009536743
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        }
+      ]
+    },
+    {
+      "journey": "receiveline",
+      "link": "Basement",
+      "first": {
+        "count": 5,
+        "minMs": 431.7198410000419,
+        "medianMs": 432.41626800002996,
+        "p95Ms": 432.6389360000612,
+        "maxMs": 432.6389360000612,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 432.41626800002996
+          },
+          {
+            "run": 1,
+            "durationMs": 431.7198410000419
+          },
+          {
+            "run": 2,
+            "durationMs": 432.6389360000612
+          },
+          {
+            "run": 3,
+            "durationMs": 432.08837100001983
+          },
+          {
+            "run": 4,
+            "durationMs": 432.54048900003545
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 431.99998900003266,
+        "medianMs": 432.38843599997927,
+        "p95Ms": 433.3758200000739,
+        "maxMs": 433.3758200000739,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 432.38843599997927
+          },
+          {
+            "run": 1,
+            "durationMs": 433.3758200000739
+          },
+          {
+            "run": 2,
+            "durationMs": 431.99998900003266
+          },
+          {
+            "run": 3,
+            "durationMs": 432.54023699997924
+          },
+          {
+            "run": 4,
+            "durationMs": 432.16202000004705
+          }
+        ]
+      },
+      "deltaMs": -0.02783200005069375,
+      "deltaPercent": -0.006436390605612419,
+      "withinNoiseBand": true,
+      "browserStages": [
+        {
+          "name": "write-to-paint",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 10.5,
+              "medianMs": 12.399999618530273,
+              "p95Ms": 13.099999904632568,
+              "maxMs": 13.099999904632568
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  12.5
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  12.399999618530273
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  12.199999809265137
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  13.099999904632568
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  10.5
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 11,
+              "medianMs": 12.200000286102295,
+              "p95Ms": 14.699999809265137,
+              "maxMs": 14.699999809265137
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  12.300000190734863
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  11
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  11.900000095367432
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  14.699999809265137
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  12.200000286102295
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        }
+      ]
+    },
+    {
+      "journey": "receiveline",
+      "link": "Site",
+      "first": {
+        "count": 5,
+        "minMs": 432.34132899995893,
+        "medianMs": 432.52204100007657,
+        "p95Ms": 448.7270359999966,
+        "maxMs": 448.7270359999966,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 432.55951600009575
+          },
+          {
+            "run": 1,
+            "durationMs": 432.52204100007657
+          },
+          {
+            "run": 2,
+            "durationMs": 432.34132899995893
+          },
+          {
+            "run": 3,
+            "durationMs": 432.4760490000481
+          },
+          {
+            "run": 4,
+            "durationMs": 448.7270359999966
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 431.7840459999861,
+        "medianMs": 432.7376599999843,
+        "p95Ms": 448.25468899996486,
+        "maxMs": 448.25468899996486,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 431.7840459999861
+          },
+          {
+            "run": 1,
+            "durationMs": 448.25468899996486
+          },
+          {
+            "run": 2,
+            "durationMs": 432.24248100002296
+          },
+          {
+            "run": 3,
+            "durationMs": 432.7389790000161
+          },
+          {
+            "run": 4,
+            "durationMs": 432.7376599999843
+          }
+        ]
+      },
+      "deltaMs": 0.2156189999077469,
+      "deltaPercent": 0.04985156349701696,
+      "withinNoiseBand": true,
+      "browserStages": [
+        {
+          "name": "write-to-paint",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 10.5,
+              "medianMs": 11.899999618530273,
+              "p95Ms": 13.400000095367432,
+              "maxMs": 13.400000095367432
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  11.899999618530273
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  10.5
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  13
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  13.400000095367432
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  11.799999713897705
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 9.699999809265137,
+              "medianMs": 13.900000095367432,
+              "p95Ms": 14.299999713897705,
+              "maxMs": 14.299999713897705
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  12.699999809265137
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  14.299999713897705
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  13.900000095367432
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  9.699999809265137
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  14.199999809265137
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        }
+      ]
+    },
+    {
+      "journey": "receiveline",
+      "link": "Office",
+      "first": {
+        "count": 5,
+        "minMs": 431.7597689998802,
+        "medianMs": 432.24044399987906,
+        "p95Ms": 432.75052999984473,
+        "maxMs": 432.75052999984473,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 432.18846699991263
+          },
+          {
+            "run": 1,
+            "durationMs": 432.75052999984473
+          },
+          {
+            "run": 2,
+            "durationMs": 432.69517500000075
+          },
+          {
+            "run": 3,
+            "durationMs": 431.7597689998802
+          },
+          {
+            "run": 4,
+            "durationMs": 432.24044399987906
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 431.6119859999744,
+        "medianMs": 432.6444120001979,
+        "p95Ms": 432.7726610000245,
+        "maxMs": 432.7726610000245,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 431.6119859999744
+          },
+          {
+            "run": 1,
+            "durationMs": 432.6444120001979
+          },
+          {
+            "run": 2,
+            "durationMs": 432.0558939999901
+          },
+          {
+            "run": 3,
+            "durationMs": 432.77190199983306
+          },
+          {
+            "run": 4,
+            "durationMs": 432.7726610000245
+          }
+        ]
+      },
+      "deltaMs": 0.40396800031885505,
+      "deltaPercent": 0.09345909341120519,
+      "withinNoiseBand": true,
+      "browserStages": [
+        {
+          "name": "write-to-paint",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 11.5,
+              "medianMs": 12.400000095367432,
+              "p95Ms": 13.300000190734863,
+              "maxMs": 13.300000190734863
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  11.5
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  12.299999713897705
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  13.300000190734863
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  12.900000095367432
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  12.400000095367432
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 11.900000095367432,
+              "medianMs": 14.599999904632568,
+              "p95Ms": 15.699999809265137,
+              "maxMs": 15.699999809265137
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  15.699999809265137
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  14.599999904632568
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  14.300000190734863
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  11.900000095367432
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  14.699999809265137
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        }
+      ]
+    },
+    {
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "first": {
+        "count": 5,
+        "minMs": 1479.8624180000043,
+        "medianMs": 1504.493460000027,
+        "p95Ms": 2448.4956219999585,
+        "maxMs": 2448.4956219999585,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 2448.4956219999585
+          },
+          {
+            "run": 1,
+            "durationMs": 1479.8624180000043
+          },
+          {
+            "run": 2,
+            "durationMs": 1504.493460000027
+          },
+          {
+            "run": 3,
+            "durationMs": 1561.1811400000006
+          },
+          {
+            "run": 4,
+            "durationMs": 1498.625592000084
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 1448.5358709999127,
+        "medianMs": 1496.3232000001008,
+        "p95Ms": 1573.5705730000045,
+        "maxMs": 1573.5705730000045,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 1558.1392359999008
+          },
+          {
+            "run": 1,
+            "durationMs": 1573.5705730000045
+          },
+          {
+            "run": 2,
+            "durationMs": 1448.5358709999127
+          },
+          {
+            "run": 3,
+            "durationMs": 1496.3232000001008
+          },
+          {
+            "run": 4,
+            "durationMs": 1468.1219960000599
+          }
+        ]
+      },
+      "deltaMs": -8.170259999926202,
+      "deltaPercent": -0.5430571961360374,
+      "withinNoiseBand": true,
+      "browserStages": [
+        {
+          "name": "cached-pinch-to-sharp",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 527.0999999046326,
+              "medianMs": 552.8999996185303,
+              "p95Ms": 625.9000000953674,
+              "maxMs": 625.9000000953674
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  552.8999996185303
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  527.0999999046326
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  540.6999998092651
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  625.9000000953674
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  571.3999996185303
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 518.0999999046326,
+              "medianMs": 536.5,
+              "p95Ms": 606.7000002861023,
+              "maxMs": 606.7000002861023
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  582.8999996185303
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  606.7000002861023
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  529
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  536.5
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  518.0999999046326
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        },
+        {
+          "name": "gesture-duration",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 286.2999997138977,
+              "medianMs": 301.09999990463257,
+              "p95Ms": 307.8999996185303,
+              "maxMs": 307.8999996185303
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  303.2999997138977
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  286.2999997138977
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  296.80000019073486
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  301.09999990463257
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  307.8999996185303
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 283.09999990463257,
+              "medianMs": 286.09999990463257,
+              "p95Ms": 289.80000019073486,
+              "maxMs": 289.80000019073486
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  283.09999990463257
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  285.40000009536743
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  287.69999980926514
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  289.80000019073486
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  286.09999990463257
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 241.7000002861023,
+              "medianMs": 251.7000002861023,
+              "p95Ms": 327,
+              "maxMs": 327
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  251.7000002861023
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  241.7000002861023
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  245.19999980926514
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  327
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  265.7000002861023
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 233.7000002861023,
+              "medianMs": 254.39999961853027,
+              "p95Ms": 323,
+              "maxMs": 323
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  301.5
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  323
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  243.2000002861023
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  254.39999961853027
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  233.7000002861023
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        },
+        {
+          "name": "sheet-open-to-ready",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 859.8000001907349,
+              "medianMs": 888.2000002861023,
+              "p95Ms": 1813.1999998092651,
+              "maxMs": 1813.1999998092651
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  1813.1999998092651
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  891.1999998092651
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  888.2000002861023
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  859.8000001907349
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  877.3000001907349
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 853.9000000953674,
+              "medianMs": 894.7000002861023,
+              "p95Ms": 916.4000000953674,
+              "maxMs": 916.4000000953674
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  916.4000000953674
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  904.9000000953674
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  853.9000000953674
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  888.6999998092651
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  894.7000002861023
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 797,
+              "medianMs": 804.9000000953674,
+              "p95Ms": 1693.8000001907349,
+              "maxMs": 1693.8000001907349
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  1693.8000001907349
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  810.7999997138977
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  804.9000000953674
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  797
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  798.3999996185303
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 792.5,
+              "medianMs": 810.1000003814697,
+              "p95Ms": 815.5999999046326,
+              "maxMs": 815.5999999046326
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  810.1000003814697
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  815.5999999046326
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  792.5
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  810.2000002861023
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  809
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        }
+      ]
+    },
+    {
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "first": {
+        "count": 5,
+        "minMs": 1477.950867000036,
+        "medianMs": 1491.1436209999956,
+        "p95Ms": 1557.4696009999607,
+        "maxMs": 1557.4696009999607,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 1491.1436209999956
+          },
+          {
+            "run": 1,
+            "durationMs": 1481.1206180000445
+          },
+          {
+            "run": 2,
+            "durationMs": 1557.4696009999607
+          },
+          {
+            "run": 3,
+            "durationMs": 1477.950867000036
+          },
+          {
+            "run": 4,
+            "durationMs": 1495.3495999999577
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 1466.123554000049,
+        "medianMs": 1492.8143890000647,
+        "p95Ms": 1548.4217870000284,
+        "maxMs": 1548.4217870000284,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 1492.8143890000647
+          },
+          {
+            "run": 1,
+            "durationMs": 1548.4217870000284
+          },
+          {
+            "run": 2,
+            "durationMs": 1512.2190759999212
+          },
+          {
+            "run": 3,
+            "durationMs": 1466.123554000049
+          },
+          {
+            "run": 4,
+            "durationMs": 1481.2247130000032
+          }
+        ]
+      },
+      "deltaMs": 1.6707680000690743,
+      "deltaPercent": 0.11204608171469213,
+      "withinNoiseBand": true,
+      "browserStages": [
+        {
+          "name": "cached-pinch-to-sharp",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 532.3000001907349,
+              "medianMs": 547.9000000953674,
+              "p95Ms": 600.3000001907349,
+              "maxMs": 600.3000001907349
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  547.9000000953674
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  545.5999999046326
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  600.3000001907349
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  548.4000000953674
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  532.3000001907349
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 535.3000001907349,
+              "medianMs": 542.9000000953674,
+              "p95Ms": 597.0999999046326,
+              "maxMs": 597.0999999046326
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  539.0999999046326
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  597.0999999046326
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  542.9000000953674
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  560.4000000953674
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  535.3000001907349
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        },
+        {
+          "name": "gesture-duration",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 279.80000019073486,
+              "medianMs": 301.80000019073486,
+              "p95Ms": 310.30000019073486,
+              "maxMs": 310.30000019073486
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  310.30000019073486
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  306.69999980926514
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  279.80000019073486
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  301.80000019073486
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  298
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 293.09999990463257,
+              "medianMs": 301.30000019073486,
+              "p95Ms": 303.09999990463257,
+              "maxMs": 303.09999990463257
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  293.09999990463257
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  303.09999990463257
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  303.09999990463257
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  301.30000019073486
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  295.30000019073486
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 235.30000019073486,
+              "medianMs": 243.39999961853027,
+              "p95Ms": 322.59999990463257,
+              "maxMs": 322.59999990463257
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  243.39999961853027
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  240.40000009536743
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  322.59999990463257
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  247.7999997138977
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  235.30000019073486
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 241.30000019073486,
+              "medianMs": 246.7999997138977,
+              "p95Ms": 295.5,
+              "maxMs": 295.5
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  246.7999997138977
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  295.5
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  241.30000019073486
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  259.8999996185303
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  241.5
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        },
+        {
+          "name": "sheet-open-to-ready",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 870.7000002861023,
+              "medianMs": 889.2999997138977,
+              "p95Ms": 901.0999999046326,
+              "maxMs": 901.0999999046326
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  870.7000002861023
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  892.5999999046326
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  889.2999997138977
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  888.8000001907349
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  901.0999999046326
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 864.7999997138977,
+              "medianMs": 883.2999997138977,
+              "p95Ms": 893.3999996185303,
+              "maxMs": 893.3999996185303
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  883.2999997138977
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  879
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  893.3999996185303
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  864.7999997138977
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  891.5
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 789.8000001907349,
+              "medianMs": 795.1999998092651,
+              "p95Ms": 805.4000000953674,
+              "maxMs": 805.4000000953674
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  795.1999998092651
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  805.0999999046326
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  789.8000001907349
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  790.7999997138977
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  805.4000000953674
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 791.8000001907349,
+              "medianMs": 803.1999998092651,
+              "p95Ms": 828,
+              "maxMs": 828
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  792.8999996185303
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  816.8000001907349
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  791.8000001907349
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  803.1999998092651
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  828
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        }
+      ]
+    },
+    {
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "first": {
+        "count": 5,
+        "minMs": 1449.655784000177,
+        "medianMs": 1481.33909699996,
+        "p95Ms": 1532.311941999942,
+        "maxMs": 1532.311941999942,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 1481.33909699996
+          },
+          {
+            "run": 1,
+            "durationMs": 1449.655784000177
+          },
+          {
+            "run": 2,
+            "durationMs": 1527.729384999955
+          },
+          {
+            "run": 3,
+            "durationMs": 1532.311941999942
+          },
+          {
+            "run": 4,
+            "durationMs": 1457.855627000099
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 1448.0266849999316,
+        "medianMs": 1462.0924250001553,
+        "p95Ms": 1481.9801769999322,
+        "maxMs": 1481.9801769999322,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 1448.0266849999316
+          },
+          {
+            "run": 1,
+            "durationMs": 1481.9801769999322
+          },
+          {
+            "run": 2,
+            "durationMs": 1448.6991070001386
+          },
+          {
+            "run": 3,
+            "durationMs": 1462.0924250001553
+          },
+          {
+            "run": 4,
+            "durationMs": 1481.0543190001044
+          }
+        ]
+      },
+      "deltaMs": -19.246671999804676,
+      "deltaPercent": -1.299275232712311,
+      "withinNoiseBand": true,
+      "browserStages": [
+        {
+          "name": "cached-pinch-to-sharp",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 532.8000001907349,
+              "medianMs": 556.1999998092651,
+              "p95Ms": 563.6999998092651,
+              "maxMs": 563.6999998092651
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  561
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  534.9000000953674
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  556.1999998092651
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  563.6999998092651
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  532.8000001907349
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 530.8999996185303,
+              "medianMs": 535,
+              "p95Ms": 552,
+              "maxMs": 552
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  533.4000000953674
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  552
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  535
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  530.8999996185303
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  544.6999998092651
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        },
+        {
+          "name": "gesture-duration",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 290.80000019073486,
+              "medianMs": 296.69999980926514,
+              "p95Ms": 313.80000019073486,
+              "maxMs": 313.80000019073486
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  299.80000019073486
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  296.69999980926514
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  290.80000019073486
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  313.80000019073486
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  295.6000003814697
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 292.19999980926514,
+              "medianMs": 297.59999990463257,
+              "p95Ms": 313,
+              "maxMs": 313
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  295.80000019073486
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  313
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  292.19999980926514
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  297.59999990463257
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  305.19999980926514
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        },
+        {
+          "name": "gesture-end-to-sharp",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 238.2999997138977,
+              "medianMs": 251.39999961853027,
+              "p95Ms": 266.8999996185303,
+              "maxMs": 266.8999996185303
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  262
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  239.5
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  266.8999996185303
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  251.39999961853027
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  238.2999997138977
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 234.5,
+              "medianMs": 239.90000009536743,
+              "p95Ms": 243.80000019073486,
+              "maxMs": 243.80000019073486
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  239.19999980926514
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  239.90000009536743
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  243.80000019073486
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  234.5
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  240.7000002861023
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        },
+        {
+          "name": "sheet-open-to-ready",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 849.1000003814697,
+              "medianMs": 876,
+              "p95Ms": 903.9000000953674,
+              "maxMs": 903.9000000953674
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  855.1999998092651
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  849.1000003814697
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  903.9000000953674
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  893
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  876
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 851.1000003814697,
+              "medianMs": 859,
+              "p95Ms": 878.8000001907349,
+              "maxMs": 878.8000001907349
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  854.3000001907349
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  859
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  851.1000003814697
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  868.1999998092651
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  878.8000001907349
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        },
+        {
+          "name": "sheet-open-to-sharp",
+          "first": {
+            "distribution": {
+              "count": 5,
+              "minMs": 787,
+              "medianMs": 795.5,
+              "p95Ms": 804.1999998092651,
+              "maxMs": 804.1999998092651
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  789.4000000953674
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  787
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  804.1999998092651
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  795.5
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  796.4000000953674
+                ]
+              }
+            ],
+            "missingRuns": []
+          },
+          "second": {
+            "distribution": {
+              "count": 5,
+              "minMs": 788.8000001907349,
+              "medianMs": 793.4000000953674,
+              "p95Ms": 796,
+              "maxMs": 796
+            },
+            "byRun": [
+              {
+                "run": 0,
+                "durationMs": [
+                  793.4000000953674
+                ]
+              },
+              {
+                "run": 1,
+                "durationMs": [
+                  796
+                ]
+              },
+              {
+                "run": 2,
+                "durationMs": [
+                  788.8000001907349
+                ]
+              },
+              {
+                "run": 3,
+                "durationMs": [
+                  794.9000000953674
+                ]
+              },
+              {
+                "run": 4,
+                "durationMs": [
+                  790.9000000953674
+                ]
+              }
+            ],
+            "missingRuns": []
+          }
+        }
+      ]
+    },
+    {
+      "journey": "sendchat",
+      "link": "Basement",
+      "first": {
+        "count": 5,
+        "minMs": 214.76877700001933,
+        "medianMs": 231.5141809999477,
+        "p95Ms": 232.24858999997377,
+        "maxMs": 232.24858999997377,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 215.6854759999551
+          },
+          {
+            "run": 1,
+            "durationMs": 232.24858999997377
+          },
+          {
+            "run": 2,
+            "durationMs": 231.82098100008443
+          },
+          {
+            "run": 3,
+            "durationMs": 214.76877700001933
+          },
+          {
+            "run": 4,
+            "durationMs": 231.5141809999477
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 215.5263290000148,
+        "medianMs": 215.6753070000559,
+        "p95Ms": 232.66685300006066,
+        "maxMs": 232.66685300006066,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 215.5263290000148
+          },
+          {
+            "run": 1,
+            "durationMs": 215.62540200003423
+          },
+          {
+            "run": 2,
+            "durationMs": 215.6753070000559
+          },
+          {
+            "run": 3,
+            "durationMs": 232.66685300006066
+          },
+          {
+            "run": 4,
+            "durationMs": 232.33580600004643
+          }
+        ]
+      },
+      "deltaMs": -15.838873999891803,
+      "deltaPercent": -6.841427134822199,
+      "withinNoiseBand": true,
+      "browserStages": []
+    },
+    {
+      "journey": "sendchat",
+      "link": "Site",
+      "first": {
+        "count": 5,
+        "minMs": 231.18643699993845,
+        "medianMs": 231.81477699999232,
+        "p95Ms": 232.4171380000189,
+        "maxMs": 232.4171380000189,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 231.6604099998949
+          },
+          {
+            "run": 1,
+            "durationMs": 231.81477699999232
+          },
+          {
+            "run": 2,
+            "durationMs": 231.94472899998073
+          },
+          {
+            "run": 3,
+            "durationMs": 232.4171380000189
+          },
+          {
+            "run": 4,
+            "durationMs": 231.18643699993845
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 230.38786399993114,
+        "medianMs": 232.08983900002204,
+        "p95Ms": 232.46642099996097,
+        "maxMs": 232.46642099996097,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 232.28746300004423
+          },
+          {
+            "run": 1,
+            "durationMs": 230.38786399993114
+          },
+          {
+            "run": 2,
+            "durationMs": 231.93739500001539
+          },
+          {
+            "run": 3,
+            "durationMs": 232.46642099996097
+          },
+          {
+            "run": 4,
+            "durationMs": 232.08983900002204
+          }
+        ]
+      },
+      "deltaMs": 0.27506200002972037,
+      "deltaPercent": 0.11865593884454118,
+      "withinNoiseBand": true,
+      "browserStages": []
+    },
+    {
+      "journey": "sendchat",
+      "link": "Office",
+      "first": {
+        "count": 5,
+        "minMs": 231.65985399996862,
+        "medianMs": 232.0708399999421,
+        "p95Ms": 232.70876600011252,
+        "maxMs": 232.70876600011252,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 231.65985399996862
+          },
+          {
+            "run": 1,
+            "durationMs": 232.70876600011252
+          },
+          {
+            "run": 2,
+            "durationMs": 232.19184000021778
+          },
+          {
+            "run": 3,
+            "durationMs": 232.0708399999421
+          },
+          {
+            "run": 4,
+            "durationMs": 231.71238899999298
+          }
+        ]
+      },
+      "second": {
+        "count": 5,
+        "minMs": 215.43965999991633,
+        "medianMs": 231.57167099998333,
+        "p95Ms": 247.67664299998432,
+        "maxMs": 247.67664299998432,
+        "byRun": [
+          {
+            "run": 0,
+            "durationMs": 231.57167099998333
+          },
+          {
+            "run": 1,
+            "durationMs": 215.43965999991633
+          },
+          {
+            "run": 2,
+            "durationMs": 215.79846499999985
+          },
+          {
+            "run": 3,
+            "durationMs": 232.12735399999656
+          },
+          {
+            "run": 4,
+            "durationMs": 247.67664299998432
+          }
+        ]
+      },
+      "deltaMs": -0.4991689999587834,
+      "deltaPercent": -0.2150933740572094,
+      "withinNoiseBand": true,
+      "browserStages": []
+    }
+  ],
+  "summaryToolSha256": "4bd9ad36187a666585269e976e10705c0d28edbfd994fd5be3f185cbafbbb6c7",
+  "analysisDependencyHashes": {
+    "check.mjs": "368a3fc575a4250a5c17d877ccc33479fc5ee77571315cefec5c9d7468679259",
+    "budgets.json": "20e471f9002f9a567e2c85ac54f9ff4729c1f8a67a886b80baacf7251bda7f1e",
+    "harness-fingerprint.mjs": "8cd0a58cd234e6f47ae199f11dbb23c4b8fb8dc4bc26791cacf9bc9cbb45120f"
+  }
+}

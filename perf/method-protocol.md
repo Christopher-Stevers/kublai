@@ -37,7 +37,16 @@ methods fail validation/comparison. Activation tests also reject mismatched
 protocols and harness hashes. The frozen directory is local evidence, not a
 security boundary against its owner deliberately changing permissions.
 
-The five-Site v2 calibration is diagnostic only. No new full pair is scheduled
-until candidate build/static evidence is reviewed. Production-byte transport,
-auth startup, controlled Pixel timing and the full ten-minute idle observation
-remain separate evidence requirements.
+At the initial five-Site v2 calibration checkpoint, that diagnostic did not
+schedule another full pair before candidate build/static review. Subsequently,
+the first full v2 pair failed one material-list cell; its separate sealed rerun
+now passes all 24 cell-median repeatability checks (see the uniquely named
+`baseline-ready-then-pinch-v2-rerun-2026-11-11-*` artifacts). Both complete runs
+retain 120 samples, source/method binding and zero database errors. Earlier
+failed captures remain unchanged; no cross-protocol comparison follows.
+
+Production-byte transport, real auth startup, controlled Pixel timing, offline
+and final targets remain separate proof requirements. The fresh ten-minute
+Jobs-only idle capture records 80 query reads and one open stream, not a no-poll
+or all-screen pass. No candidate regression comparison or activation follows
+from the accepted same-build repeatability pair.
