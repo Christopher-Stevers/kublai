@@ -1,0 +1,23 @@
+{
+  "method": "part-image-component-browser-v1",
+  "resourceSeam": "scripts/fixtures/part-image/resource.js replaces ONLY ~/lib/part-image-layout-resource",
+  "limits": [
+    "Component DOM/geometry/sticky fallback/cached fixture offline reuse only",
+    "Not production chunk caching, photo fidelity or app latency"
+  ],
+  "checks": [],
+  "externalRequests": [],
+  "cleanup": {
+    "browserClosed": true,
+    "serverClosed": true,
+    "tempRemoved": true
+  },
+  "sources": {
+    "src/components/catalogue/PartImage.tsx": "ce9ede84d8e19b47178c04917c1359ba5df290e9510106372f67623913f2fedb",
+    "scripts/fixtures/part-image/app.jsx": "96a900cb96e412426ecda47f41cf95ef7c9562d48161143f8a8a678a68fe0b05",
+    "scripts/fixtures/part-image/resource.js": "1d21d8925c89420bd06277c7e93a031e904fc7841b601142c77add1f2fc16398"
+  },
+  "origin": "http://127.0.0.1:35407",
+  "status": "FAIL",
+  "error": "Error: expect(locator).toHaveAttribute(expected) failed\n\nLocator: locator('[data-case=\"fill-0\"] > svg')\nExpected: \"pending\"\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"to.have.attribute.value\" with timeout 5000ms\n  - waiting for locator('[data-case=\"fill-0\"] > svg')\n\n    at Proxy.<anonymous> (/home/tim/.openclaw/workspace/kublai/node_modules/.pnpm/playwright@1.59.1/node_modules/playwright/lib/matchers/expect.js:213:24)\n    at file:///home/tim/.openclaw/workspace/kublai/scripts/test-part-image-browser.mjs:36:22\n    at runNextTicks (node:internal/process/task_queues:65:5)\n    at process.processImmediate (node:internal/timers:541:9)"
+}

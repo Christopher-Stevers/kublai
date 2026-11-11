@@ -1,0 +1,61 @@
+{
+  "nextImageBridge": "Actual next/dist/client/image-component.js named Image re-export; standalone esbuild CJS interop only",
+  "method": "part-image-component-browser-v1",
+  "resourceSeam": "scripts/fixtures/part-image/resource.js replaces ONLY ~/lib/part-image-layout-resource",
+  "limits": [
+    "Component DOM/geometry/sticky fallback/cached fixture offline reuse only",
+    "Not production chunk caching, photo fidelity or app latency"
+  ],
+  "checks": [
+    {
+      "name": "pending-to-audited fixed/fill boxes and exact SVG geometry",
+      "pass": true,
+      "before": {
+        "fill": {
+          "x": 8,
+          "y": 8,
+          "width": 160,
+          "height": 120
+        },
+        "fixed": {
+          "x": 188,
+          "y": 8,
+          "width": 96,
+          "height": 72
+        }
+      },
+      "after": {
+        "fill": {
+          "x": 8,
+          "y": 8,
+          "width": 160,
+          "height": 120
+        },
+        "fixed": {
+          "x": 188,
+          "y": 8,
+          "width": 96,
+          "height": 72
+        }
+      }
+    }
+  ],
+  "externalRequests": [],
+  "cleanup": {
+    "browserClosed": true,
+    "serverClosed": true,
+    "tempRemoved": true
+  },
+  "sources": {
+    "src/components/catalogue/PartImage.tsx": "ce9ede84d8e19b47178c04917c1359ba5df290e9510106372f67623913f2fedb",
+    "scripts/fixtures/part-image/app.jsx": "96a900cb96e412426ecda47f41cf95ef7c9562d48161143f8a8a678a68fe0b05",
+    "scripts/fixtures/part-image/resource.js": "1d21d8925c89420bd06277c7e93a031e904fc7841b601142c77add1f2fc16398",
+    "scripts/fixtures/part-image/next-image.js": "b1b3edb858dcf18ae9b396149bbf0a7d0af283cfadbe12f227dbd678a120dcb7"
+  },
+  "origin": "http://127.0.0.1:42183",
+  "browserErrors": [
+    "ReferenceError: process is not defined"
+  ],
+  "status": "FAIL",
+  "error": "Error: expect(locator).toHaveAttribute(expected) failed\n\nLocator: locator('[data-case=\"fill-0\"] > img')\nExpected: \"/api/catalogue/images/synthetic.svg\"\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"to.have.attribute.value\" with timeout 5000ms\n  - waiting for locator('[data-case=\"fill-0\"] > img')\n\n    at Proxy.<anonymous> (/home/tim/.openclaw/workspace/kublai/node_modules/.pnpm/playwright@1.59.1/node_modules/playwright/lib/matchers/expect.js:213:24)\n    at file:///home/tim/.openclaw/workspace/kublai/scripts/test-part-image-browser.mjs:48:60"
+}
