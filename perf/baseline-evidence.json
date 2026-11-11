@@ -50,7 +50,11 @@
     "perf/artifacts/candidate-r17-ready-then-pinch-v2-attempt2-2026-11-11/assessment.json",
     "perf/artifacts/phase1-r18-build-proof-2026-11-11.json",
     "perf/artifacts/phase1-r18-http-proof-2026-11-11.json",
-    "perf/artifacts/replicache-isolated-attempt2-2026-11-11.json"
+    "perf/artifacts/replicache-isolated-attempt2-2026-11-11.json",
+    "perf/artifacts/candidate-r19-ready-then-pinch-v2-2026-11-11/assessment.json",
+    "perf/artifacts/candidate-r19-ready-then-pinch-v2-2026-11-11-root-review.json",
+    "perf/artifacts/field-review-2026-11-11-after-phone-deferred.json",
+    "perf/r18-r19-failed-cell-source-evidence-2026-11-11.json"
   ],
   "rows": [
     {
@@ -265,7 +269,7 @@
       "medianMs": 88
     }
   ],
-  "completedFullLabCaptures": 11,
+  "completedFullLabCaptures": 12,
   "reconciledAt": "2026-11-11T05:46:23.441555+00:00",
   "fieldCheckpoint": {
     "measuredAt": "2026-11-11T04:22:07.587029+00:00",
@@ -299,8 +303,8 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T16:44:28Z",
-  "completedCandidateLabCaptures": 5,
+  "updatedAt": "2026-11-11T17:13:08.478945+00:00",
+  "completedCandidateLabCaptures": 6,
   "candidateRegression": {
     "status": "failed",
     "source": "perf/artifacts/candidate-r18-ready-then-pinch-v2-2026-11-11/assessment.json",
@@ -474,7 +478,7 @@
     }
   ],
   "completedBaselineLabCaptures": 6,
-  "completedFullLabCapturesMeaning": "Six complete baseline captures (four rejected, two accepted for repeatability only), four full rejected v2 candidate captures (R6/R7/R17/R18), and one complete R17 capture rejected for incompatible protocol before timing comparison. Invalid/partial pilot runs and supplemental diagnostics excluded.",
+  "completedFullLabCapturesMeaning": "Six complete baseline captures (four rejected, two accepted for repeatability only), five full rejected v2 candidate captures (R6/R7/R17/R18/R19), and one complete R17 capture rejected for incompatible protocol before timing comparison. Invalid/partial pilot runs and supplemental diagnostics excluded.",
   "actionabilityDiagnostic": {
     "status": "supplemental-only",
     "source": "perf/artifacts/openjob-actionability-diagnostic-2026-11-11-assessment.json",
@@ -1026,7 +1030,7 @@
       "productionActivated": false
     },
     "r19Candidate": {
-      "status": "private-compile-preflight-passed-full-v2-running",
+      "status": "full-v2-failed-five-regression-cells",
       "sourceFreezeCommit": "231bb1dd",
       "source": "perf/artifacts/phase1-combined-r19-source-freeze-2026-11-11.json",
       "sourceFingerprint": "4541b37e0ff7144287d9187384eeb9ae7ebe1c9aa88e31fcaa53cee03a8b05c7",
@@ -1059,14 +1063,61 @@
       "labReadPreflightPassed": 14,
       "labCompileCleanupConfirmed": true,
       "labCompileUnexpectedDatabaseErrors": 0,
-      "fullMatrixStatus": "running-no-result",
+      "fullMatrixStatus": "rejected-no-activation",
       "fullMatrixStartedUtc": "2026-11-11T16:38:05Z",
       "fullMatrixPreparation": "perf/artifacts/candidate-r19-ready-then-pinch-v2-2026-11-11-preparation/",
       "fullMatrixSamplesPlanned": 120,
       "idleDurationMs": 600000,
       "comparisonBaseline": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
       "timingMethodUnchanged": true,
-      "v6Evidence": "Retained R18 proof only; no R19 V6 rerun or relabelling."
+      "v6Evidence": "Retained R18 proof only; no R19 V6 rerun or relabelling.",
+      "fullMatrixSamples": 120,
+      "fullMatrixPassedCells": 19,
+      "fullMatrixFailedCells": [
+        {
+          "journey": "openjob",
+          "link": "Site",
+          "baselineMedianMs": 82.45718499994837,
+          "candidateMedianMs": 98.78848099999595,
+          "changePercent": 19.805788907367884
+        },
+        {
+          "journey": "openjob",
+          "link": "Office",
+          "baselineMedianMs": 82.27076399989892,
+          "candidateMedianMs": 99.26195100008044,
+          "changePercent": 20.652764328531582
+        },
+        {
+          "journey": "openmateriallist",
+          "link": "Basement",
+          "baselineMedianMs": 215.1409510000376,
+          "candidateMedianMs": 243.24347200000193,
+          "changePercent": 13.062376488221172
+        },
+        {
+          "journey": "openmateriallist",
+          "link": "Site",
+          "baselineMedianMs": 215.63234400004148,
+          "candidateMedianMs": 242.85099700000137,
+          "changePercent": 12.622713501623227
+        },
+        {
+          "journey": "changeqty",
+          "link": "Site",
+          "baselineMedianMs": 115.20544599997811,
+          "candidateMedianMs": 130.7447229999816,
+          "changePercent": 13.488318078301997
+        }
+      ],
+      "fullMatrixProof": "perf/artifacts/candidate-r19-ready-then-pinch-v2-2026-11-11/assessment.json",
+      "fullMatrixProofCommit": "c08b4763",
+      "rootIndependentReview": "perf/artifacts/candidate-r19-ready-then-pinch-v2-2026-11-11-root-review.json",
+      "rootIndependentRejectionConfirmed": true,
+      "idleReads": 74,
+      "fullMatrixDatabaseErrors": 0,
+      "fullMatrixCleanupConfirmed": true,
+      "retryQueued": false
     },
     "protectedSnapshotPrimitive": {
       "commit": "9ace848a",
@@ -1104,6 +1155,23 @@
       "liveFilesChanged": false,
       "approximateTmpfsGiBReleased": 11,
       "readOnlyDuplicateRemovalFailureRecorded": true
+    },
+    "r19FailedCellSourceAudit": {
+      "source": "perf/r18-r19-failed-cell-source-evidence-2026-11-11.md",
+      "commit": "279b9f2f",
+      "causalAttributionEstablished": false,
+      "newRuntime": false
+    },
+    "notificationIdentitySharing": {
+      "status": "prepared-source-focused-tests-passed",
+      "commit": "1ad6447c",
+      "focusedTestsPassed": 37,
+      "newLintFindings": 0,
+      "inheritedRouterLintFindings": 17,
+      "measuredPollingReduction": false,
+      "productionTypecheck": false,
+      "activated": false,
+      "source": "perf/notification-role-identity.md"
     }
   },
   "historicalCandidateRegressions": [
@@ -1173,5 +1241,17 @@
       "activation": false,
       "previousFailedEvidenceRetained": true
     }
-  ]
+  ],
+  "latestFieldCheckpoint": {
+    "source": "perf/artifacts/field-review-2026-11-11-after-phone-deferred.json",
+    "capturedAt": "2026-11-11T17:09:04.036207+00:00",
+    "beacons": 105,
+    "metrics": 2066,
+    "additionalBeacons": 45,
+    "additionalMetrics": 638,
+    "acceptedGateEvidence": false,
+    "phoneInpSamples": 5,
+    "phoneTapToPaintSamples": 3,
+    "physicalDeviceVerifiedPerRow": false
+  }
 }

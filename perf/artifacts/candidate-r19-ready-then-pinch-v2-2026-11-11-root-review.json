@@ -1,0 +1,25 @@
+{
+  "checkedAt": "2026-11-11T17:12:11.955Z",
+  "reportErrors": [],
+  "repeatabilityErrors": [],
+  "comparisonErrors": [
+    "openjob/Site: median 98.8ms exceeds 82.5ms baseline +10%",
+    "openjob/Office: median 99.3ms exceeds 82.3ms baseline +10%",
+    "openmateriallist/Basement: median 243.2ms exceeds 215.1ms baseline +10%",
+    "openmateriallist/Site: median 242.9ms exceeds 215.6ms baseline +10%",
+    "changeqty/Site: median 130.7ms exceeds 115.2ms baseline +10%"
+  ],
+  "activationReportErrors": [
+    "openjob/Site: median 98.8ms exceeds 82.5ms baseline +10%",
+    "openjob/Office: median 99.3ms exceeds 82.3ms baseline +10%",
+    "openmateriallist/Basement: median 243.2ms exceeds 215.1ms baseline +10%",
+    "openmateriallist/Site: median 242.9ms exceeds 215.6ms baseline +10%",
+    "changeqty/Site: median 130.7ms exceeds 115.2ms baseline +10%"
+  ],
+  "activePath": "/home/tim/.openclaw/workspace/releases/speed-phase0-bootstrap-20261110/.next-canonical-a",
+  "candidateSourceBuild": "47b6e70541a3f513f852e93aef05aa4f389544f72f4626082f447f53d0956ece",
+  "candidateSourceFingerprint": "4541b37e0ff7144287d9187384eeb9ae7ebe1c9aa88e31fcaa53cee03a8b05c7",
+  "expectedRejection": true,
+  "activationAttempted": false,
+  "limitations": "Independent frozen report/comparator and activation-report validation only; does not repeat historical asset/HTTP proof or run activation."
+}

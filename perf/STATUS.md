@@ -905,3 +905,38 @@ passed before database startup and idle. The launcher differs from the executed
 R18 launcher only in R19 identities/paths, and contains no diagnostic process
 monitor. No retry, exclusion, result or activation is authorized by this start.
 All other tests/builds/app work are stopped while source reviews continue.
+
+## R19 rejected; independent Phase 1 work continues — 2026-11-11
+
+The complete original-v2 R19 run retained all 120 samples and failed five of 24
+cells: job opening on Site/Office, material-list opening on Basement/Site, and
+quantity change on Site. Nineteen cells pass. Root independently reran the frozen
+report validation, accepted baseline-pair repeatability, original comparator and
+activation-report validation: only those same five timing failures remain.
+The 74-read idle check and static ratchets pass, PostgreSQL has zero errors,
+source/method/schema bindings match, and all owned Next/PG processes were cleaned.
+No activation, retry, exclusions, alternate comparator or budget waiver. Production
+remains Phase 0. Archive: `c08b4763`; root review is in
+`artifacts/candidate-r19-ready-then-pinch-v2-2026-11-11-root-review.json`.
+
+The source/raw-only audit `279b9f2f` retains both versions' raw samples and browser
+marks for each rejected cell. R19 changes four source files relative to R18:
+job-chat badge refresh, quantity feedback, Button forwarding and usePress. The
+material-list screen/queries are unchanged, but shared primitives and bundles
+changed; this does not establish a cause or justify subtracting timer overhead.
+No further candidate or trace is queued.
+
+A separate notification identity slice (`1ad6447c`) passes 37 focused tests and has
+no new lint findings; 17 inherited router findings were reproduced against HEAD.
+It reuses only a fresh, correctly bound role response and restores standalone
+checks after expiry or lifecycle changes, without a recovery retry loop. It is
+not in R19, not activated and not a measured polling reduction. Receiving saved
+summary work remains under final functional/account-lifecycle review.
+
+Anonymous live telemetry continues without the Pixel debug connection. The
+17:09 UTC cumulative snapshot contains 105 beacons/2,066 observations, 45/638 more
+than the prior review. Phone-class startup has 24 marks (median 808.5 ms), INP has
+five (sample p75 = 104 ms), and tap-to-paint remains three (median 593 ms). These are
+uncontrolled, sampled observations with no per-row hardware or repeat-visit
+verification; they do not establish field targets or complete Phase 0. See
+`artifacts/field-review-2026-11-11-after-phone-deferred.json`.
