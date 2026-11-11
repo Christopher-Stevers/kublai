@@ -224,11 +224,33 @@ prefetch, account/denial/logout fences, asset warmup and malformed manifest
 rejection. It does not establish actual Next router/Flight compatibility, real
 authentication, automatic quiet reload/chunk recovery, cold private HTML auth,
 or performance. It does not fill the non-hex timing coverage gap by inference.
-See `artifacts/private-cache-contract-r6-2026-11-11.json`; later actual-app
-protocol preparation is not a passing result.
+See `artifacts/private-cache-contract-r6-2026-11-11.json`. Separate actual-app
+functional assertions must cite their own reports; neither protocol preparation
+nor a partial result supplies the full release gate.
 
 Controlled physical timing remains zero samples. The earlier Pixel CDP attempt
 timed out at Page.navigate before attestation; a later bounded check had no
 usable Wi-Fi ADB advertisement, so no new physical run began. Uncontrolled,
 participant-attributed field telemetry remains separate. None of this completes
 Phase 0, twenty-run stability, every-frame sharpness or the final speed targets.
+
+
+## R7 focused follow-up — 2026-11-11
+
+The same instrumented v1 protocol completed 20 alternating Phase 0/R7 samples
+with exact source/preflight identities, matching driver/preparation hashes and
+zero private DB errors. All hidden-destination and input/readiness preconditions
+passed. R7 click-to-DOM-ready medians were 8.9/9.0 ms versus baseline 9.0/9.3 ms
+(Basement/Office). Driver totals were 76.07/95.64 ms versus 75.95/86.92 ms; Office
+rAF alignment still varied. This is descriptive supplemental evidence, not
+component causality, actual first paint or a full R7 regression pass. R6's full
+gate remains failed; no reports, samples, metrics or thresholds were replaced.
+See `artifacts/openjob-phase-diagnostic-r7-2026-11-11-assessment.json`.
+
+Both private runtimes were cleaned after a bounded post-capture candidate hold.
+The separate phone-v2 LOCAL smoke completed three samples and closed its owned
+target with HTTP 200; it has `physicalPhoneEvidence: false` and is not a timing
+gate. Its exact archive is
+`artifacts/phone-v2-local-smoke-2026-11-11/report.json`. Controlled physical
+samples remain zero, and the non-hex timing-lab private SW/reload coverage gap
+is unchanged. A full R7 matrix requires separate authorization and has not run.

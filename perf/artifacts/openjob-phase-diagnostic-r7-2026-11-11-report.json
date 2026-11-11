@@ -1,0 +1,1413 @@
+{
+  "kind": "supplemental-instrumented-diagnostic",
+  "protocol": "openjob-phase-diagnostic-v1",
+  "acceptedGateEvidence": false,
+  "status": "complete",
+  "startedAt": "2026-11-11T07:14:19.784Z",
+  "driverSha256Before": "f0376e1ea12964bc018920ec1485cc00dd72ee79d9e2c0b4e327db028aa6259a",
+  "driverReadOnly": true,
+  "preparationMethodFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "order": "Per link, pairs alternate A→B then B→A; five samples per source/link,20total",
+  "sources": {
+    "baseline": {
+      "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+      "labBuild": "cI20Tzl0OAQscfvjfmtFW",
+      "preflight": {
+        "status": "passed",
+        "build": "cI20Tzl0OAQscfvjfmtFW",
+        "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+        "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+        "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+        "sourceFileCount": 2200,
+        "sourceVerification": {
+          "stage": "after-lab-transforms",
+          "unchangedFilesChecked": 2195,
+          "allowedLabTransforms": [
+            "next.config.js",
+            "tsconfig.json",
+            "src/server/db/index.ts",
+            "src/server/background/hints.ts",
+            "src/server/background/worker.ts"
+          ],
+          "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+          "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash",
+          "preTransformUnchangedFilesChecked": 2200
+        },
+        "sourceBinding": {
+          "method": "frozen-release-inputs-sha256",
+          "algorithm": "foremanhq-lab-source-v1",
+          "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+          "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+        },
+        "authentication": "stubbed-seeded-user",
+        "results": [
+          {
+            "procedure": "user.getMe",
+            "status": "ok"
+          },
+          {
+            "procedure": "notifications.identity",
+            "status": "ok"
+          },
+          {
+            "procedure": "push.identity",
+            "status": "ok"
+          },
+          {
+            "procedure": "job.getJob",
+            "status": "ok"
+          },
+          {
+            "procedure": "materialList.getMaterialList",
+            "status": "ok"
+          },
+          {
+            "procedure": "materialList.getOrderById",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawings.listSets",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawings.getSet",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawingsWorkspace.get",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawingsWorkspace.changes",
+            "status": "ok"
+          },
+          {
+            "procedure": "chat.getOverview",
+            "status": "ok"
+          },
+          {
+            "procedure": "chat.history",
+            "status": "ok"
+          },
+          {
+            "procedure": "rooms.getJobRoomCount",
+            "status": "ok"
+          },
+          {
+            "procedure": "notifications.overview",
+            "status": "ok"
+          }
+        ]
+      },
+      "healthBefore": {
+        "errors": 0,
+        "fatals": 0
+      },
+      "healthAfter": {
+        "errors": 0,
+        "fatals": 0
+      }
+    },
+    "candidate": {
+      "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+      "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+      "labBuild": "4qOIJ0ATp9DzIVGHVmxB_",
+      "preflight": {
+        "status": "passed",
+        "build": "4qOIJ0ATp9DzIVGHVmxB_",
+        "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+        "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+        "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+        "sourceFileCount": 2289,
+        "sourceVerification": {
+          "stage": "after-lab-transforms",
+          "unchangedFilesChecked": 2284,
+          "allowedLabTransforms": [
+            "next.config.js",
+            "tsconfig.json",
+            "src/server/db/index.ts",
+            "src/server/background/hints.ts",
+            "src/server/background/worker.ts"
+          ],
+          "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+          "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash",
+          "preTransformUnchangedFilesChecked": 2289
+        },
+        "sourceBinding": {
+          "method": "frozen-release-inputs-sha256",
+          "algorithm": "foremanhq-lab-source-v1",
+          "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+          "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+        },
+        "authentication": "stubbed-seeded-user",
+        "results": [
+          {
+            "procedure": "user.getMe",
+            "status": "ok"
+          },
+          {
+            "procedure": "notifications.identity",
+            "status": "ok"
+          },
+          {
+            "procedure": "push.identity",
+            "status": "ok"
+          },
+          {
+            "procedure": "job.getJob",
+            "status": "ok"
+          },
+          {
+            "procedure": "materialList.getMaterialList",
+            "status": "ok"
+          },
+          {
+            "procedure": "materialList.getOrderById",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawings.listSets",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawings.getSet",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawingsWorkspace.get",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawingsWorkspace.changes",
+            "status": "ok"
+          },
+          {
+            "procedure": "chat.getOverview",
+            "status": "ok"
+          },
+          {
+            "procedure": "chat.history",
+            "status": "ok"
+          },
+          {
+            "procedure": "rooms.getJobRoomCount",
+            "status": "ok"
+          },
+          {
+            "procedure": "notifications.overview",
+            "status": "ok"
+          }
+        ]
+      },
+      "healthBefore": {
+        "errors": 0,
+        "fatals": 0
+      },
+      "healthAfter": {
+        "errors": 0,
+        "fatals": 0
+      }
+    }
+  },
+  "samples": [
+    {
+      "role": "baseline",
+      "link": "Basement",
+      "run": 0,
+      "driver": {
+        "totalMs": 89.08704800000123,
+        "clickMs": 67.17531700000109,
+        "assertMs": 2.891243999998551,
+        "twoRafMs": 19.020487000001594
+      },
+      "browser": {
+        "installedAt": 20496.099999904633,
+        "pointerdown": [
+          {
+            "observedAt": 20540.799999713898,
+            "eventTimeStamp": 20540,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 20542.799999713898,
+            "eventTimeStamp": 20540.099999904633,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 20551.699999809265,
+        "raf": [
+          20484.866,
+          20501.4,
+          20518.1,
+          20534.8,
+          20551.5,
+          20568.1,
+          20584.8
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 20551.5,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 20568.1,
+          "second": 20584.8,
+          "resolvedAt": 20585.299999713898
+        },
+        "pointerdownToClickMs": 2,
+        "pointerdownToDomReadyMs": 10.900000095367432,
+        "clickToDomReadyMs": 8.900000095367432,
+        "domReadyToSecondExplicitRafMs": 33.100000190734136,
+        "frameGapsMs": [
+          16.53399999999965,
+          16.69999999999709,
+          16.700000000000728,
+          16.700000000000728,
+          16.599999999998545,
+          16.700000000000728
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "link": "Basement",
+      "run": 0,
+      "driver": {
+        "totalMs": 89.54690100000153,
+        "clickMs": 54.641702000000805,
+        "assertMs": 3.019839000000502,
+        "twoRafMs": 31.88536000000022
+      },
+      "browser": {
+        "installedAt": 20080.400000095367,
+        "pointerdown": [
+          {
+            "observedAt": 20108.400000095367,
+            "eventTimeStamp": 20106.799999713898,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 20112.699999809265,
+            "eventTimeStamp": 20106.799999713898,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 20121.199999809265,
+        "raf": [
+          20069.766,
+          20086.4,
+          20103,
+          20119.8,
+          20136.4,
+          20153,
+          20169.7
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 20119.8,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 20153,
+          "second": 20169.7,
+          "resolvedAt": 20170
+        },
+        "pointerdownToClickMs": 4.299999713897705,
+        "pointerdownToDomReadyMs": 12.799999713897705,
+        "clickToDomReadyMs": 8.5,
+        "domReadyToSecondExplicitRafMs": 48.50000019073559,
+        "frameGapsMs": [
+          16.634000000001834,
+          16.599999999998545,
+          16.799999999999272,
+          16.600000000002183,
+          16.599999999998545,
+          16.700000000000728
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "link": "Basement",
+      "run": 1,
+      "driver": {
+        "totalMs": 75.32560199999716,
+        "clickMs": 54.8545329999979,
+        "assertMs": 3.2374330000020564,
+        "twoRafMs": 17.233635999997205
+      },
+      "browser": {
+        "installedAt": 20076.89999961853,
+        "pointerdown": [
+          {
+            "observedAt": 20105.599999904633,
+            "eventTimeStamp": 20104.199999809265,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 20110.5,
+            "eventTimeStamp": 20104.199999809265,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 20119.39999961853,
+        "raf": [
+          20067.5,
+          20084.1,
+          20100.7,
+          20117.5,
+          20134.1,
+          20150.7
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 20117.5,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 20134.1,
+          "second": 20150.7,
+          "resolvedAt": 20151.599999904633
+        },
+        "pointerdownToClickMs": 4.900000095367432,
+        "pointerdownToDomReadyMs": 13.799999713897705,
+        "clickToDomReadyMs": 8.899999618530273,
+        "domReadyToSecondExplicitRafMs": 31.300000381470454,
+        "frameGapsMs": [
+          16.599999999998545,
+          16.600000000002183,
+          16.799999999999272,
+          16.599999999998545,
+          16.600000000002183
+        ]
+      }
+    },
+    {
+      "role": "baseline",
+      "link": "Basement",
+      "run": 1,
+      "driver": {
+        "totalMs": 88.4988880000019,
+        "clickMs": 67.3610719999997,
+        "assertMs": 2.708303999999771,
+        "twoRafMs": 18.429512000002433
+      },
+      "browser": {
+        "installedAt": 20482.099999904633,
+        "pointerdown": [
+          {
+            "observedAt": 20525.900000095367,
+            "eventTimeStamp": 20524.699999809265,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 20527.199999809265,
+            "eventTimeStamp": 20524.699999809265,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 20536.699999809265,
+        "raf": [
+          20470.1,
+          20486.8,
+          20503.4,
+          20520,
+          20536.8,
+          20553.5,
+          20570
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 20536.8,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 20553.5,
+          "second": 20570,
+          "resolvedAt": 20570.5
+        },
+        "pointerdownToClickMs": 1.299999713897705,
+        "pointerdownToDomReadyMs": 10.799999713897705,
+        "clickToDomReadyMs": 9.5,
+        "domReadyToSecondExplicitRafMs": 33.30000019073486,
+        "frameGapsMs": [
+          16.700000000000728,
+          16.600000000002183,
+          16.599999999998545,
+          16.799999999999272,
+          16.700000000000728,
+          16.5
+        ]
+      }
+    },
+    {
+      "role": "baseline",
+      "link": "Basement",
+      "run": 2,
+      "driver": {
+        "totalMs": 74.71004099999845,
+        "clickMs": 52.01789000000281,
+        "assertMs": 1.9997529999964172,
+        "twoRafMs": 20.69239799999923
+      },
+      "browser": {
+        "installedAt": 20473.900000095367,
+        "pointerdown": [
+          {
+            "observedAt": 20503.400000095367,
+            "eventTimeStamp": 20502.200000286102,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 20505,
+            "eventTimeStamp": 20502.200000286102,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 20513.5,
+        "raf": [
+          20464.9,
+          20481.6,
+          20498.2,
+          20514.9,
+          20531.5,
+          20548.3
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 20514.9,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 20531.5,
+          "second": 20548.3,
+          "resolvedAt": 20548.700000286102
+        },
+        "pointerdownToClickMs": 1.5999999046325684,
+        "pointerdownToDomReadyMs": 10.099999904632568,
+        "clickToDomReadyMs": 8.5,
+        "domReadyToSecondExplicitRafMs": 34.79999999999927,
+        "frameGapsMs": [
+          16.69999999999709,
+          16.600000000002183,
+          16.700000000000728,
+          16.599999999998545,
+          16.799999999999272
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "link": "Basement",
+      "run": 2,
+      "driver": {
+        "totalMs": 76.07367700000759,
+        "clickMs": 55.90028899999743,
+        "assertMs": 3.9707090000010794,
+        "twoRafMs": 16.202679000009084
+      },
+      "browser": {
+        "installedAt": 20064.300000190735,
+        "pointerdown": [
+          {
+            "observedAt": 20094.099999904633,
+            "eventTimeStamp": 20092.900000095367,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 20098.699999809265,
+            "eventTimeStamp": 20092.900000095367,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 20107.199999809265,
+        "raf": [
+          20056.8,
+          20073.4,
+          20090.1,
+          20106.7,
+          20123.4,
+          20140.1
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 20106.7,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 20123.4,
+          "second": 20140.1,
+          "resolvedAt": 20141.099999904633
+        },
+        "pointerdownToClickMs": 4.599999904632568,
+        "pointerdownToDomReadyMs": 13.099999904632568,
+        "clickToDomReadyMs": 8.5,
+        "domReadyToSecondExplicitRafMs": 32.90000019073341,
+        "frameGapsMs": [
+          16.600000000002183,
+          16.69999999999709,
+          16.600000000002183,
+          16.700000000000728,
+          16.69999999999709
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "link": "Basement",
+      "run": 3,
+      "driver": {
+        "totalMs": 75.70348000002559,
+        "clickMs": 54.850703000003705,
+        "assertMs": 2.5473930000152905,
+        "twoRafMs": 18.305384000006597
+      },
+      "browser": {
+        "installedAt": 20063.199999809265,
+        "pointerdown": [
+          {
+            "observedAt": 20092.599999904633,
+            "eventTimeStamp": 20091.400000095367,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 20096.5,
+            "eventTimeStamp": 20091.400000095367,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 20105.400000095367,
+        "raf": [
+          20055,
+          20071.7,
+          20088.3,
+          20105,
+          20121.7,
+          20138.4
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 20105,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 20121.7,
+          "second": 20138.4,
+          "resolvedAt": 20138.5
+        },
+        "pointerdownToClickMs": 3.9000000953674316,
+        "pointerdownToDomReadyMs": 12.800000190734863,
+        "clickToDomReadyMs": 8.900000095367432,
+        "domReadyToSecondExplicitRafMs": 32.99999990463402,
+        "frameGapsMs": [
+          16.700000000000728,
+          16.599999999998545,
+          16.700000000000728,
+          16.700000000000728,
+          16.700000000000728
+        ]
+      }
+    },
+    {
+      "role": "baseline",
+      "link": "Basement",
+      "run": 3,
+      "driver": {
+        "totalMs": 75.24544699999387,
+        "clickMs": 50.83534200000577,
+        "assertMs": 3.0509449999954086,
+        "twoRafMs": 21.3591599999927
+      },
+      "browser": {
+        "installedAt": 20479.599999904633,
+        "pointerdown": [
+          {
+            "observedAt": 20508.199999809265,
+            "eventTimeStamp": 20506.900000095367,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 20509.900000095367,
+            "eventTimeStamp": 20507.099999904633,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 20518.900000095367,
+        "raf": [
+          20470.866,
+          20487.4,
+          20504.2,
+          20520.8,
+          20537.4,
+          20554.1
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 20520.8,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 20537.4,
+          "second": 20554.1,
+          "resolvedAt": 20554.5
+        },
+        "pointerdownToClickMs": 1.700000286102295,
+        "pointerdownToDomReadyMs": 10.700000286102295,
+        "clickToDomReadyMs": 9,
+        "domReadyToSecondExplicitRafMs": 35.19999990463111,
+        "frameGapsMs": [
+          16.53399999999965,
+          16.799999999999272,
+          16.599999999998545,
+          16.600000000002183,
+          16.69999999999709
+        ]
+      }
+    },
+    {
+      "role": "baseline",
+      "link": "Basement",
+      "run": 4,
+      "driver": {
+        "totalMs": 75.9504339999985,
+        "clickMs": 51.32153300000937,
+        "assertMs": 3.4165829999838024,
+        "twoRafMs": 21.212318000005325
+      },
+      "browser": {
+        "installedAt": 20477.89999961853,
+        "pointerdown": [
+          {
+            "observedAt": 20506.599999904633,
+            "eventTimeStamp": 20505.299999713898,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 20508.099999904633,
+            "eventTimeStamp": 20505.299999713898,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 20517.599999904633,
+        "raf": [
+          20469.366,
+          20486,
+          20502.7,
+          20519.3,
+          20536,
+          20552.7
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 20519.3,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 20536,
+          "second": 20552.7,
+          "resolvedAt": 20553.199999809265
+        },
+        "pointerdownToClickMs": 1.5,
+        "pointerdownToDomReadyMs": 11,
+        "clickToDomReadyMs": 9.5,
+        "domReadyToSecondExplicitRafMs": 35.10000009536816,
+        "frameGapsMs": [
+          16.633999999998196,
+          16.700000000000728,
+          16.599999999998545,
+          16.700000000000728,
+          16.700000000000728
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "link": "Basement",
+      "run": 4,
+      "driver": {
+        "totalMs": 92.87965399998939,
+        "clickMs": 59.85395200000494,
+        "assertMs": 3.1800400000065565,
+        "twoRafMs": 29.845661999977892
+      },
+      "browser": {
+        "installedAt": 20074.599999904633,
+        "pointerdown": [
+          {
+            "observedAt": 20106,
+            "eventTimeStamp": 20104.800000190735,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 20110.199999809265,
+            "eventTimeStamp": 20104.800000190735,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 20119.400000095367,
+        "raf": [
+          20067.1,
+          20083.7,
+          20100.3,
+          20117,
+          20133.7,
+          20150.3,
+          20167.1
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 20117,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 20150.3,
+          "second": 20167.1,
+          "resolvedAt": 20167.400000095367
+        },
+        "pointerdownToClickMs": 4.199999809265137,
+        "pointerdownToDomReadyMs": 13.400000095367432,
+        "clickToDomReadyMs": 9.200000286102295,
+        "domReadyToSecondExplicitRafMs": 47.69999990463111,
+        "frameGapsMs": [
+          16.600000000002183,
+          16.599999999998545,
+          16.700000000000728,
+          16.700000000000728,
+          16.599999999998545,
+          16.799999999999272
+        ]
+      }
+    },
+    {
+      "role": "baseline",
+      "link": "Office",
+      "run": 0,
+      "driver": {
+        "totalMs": 101.5964559999993,
+        "clickMs": 66.81711699999869,
+        "assertMs": 2.9395889999868814,
+        "twoRafMs": 31.839750000013737
+      },
+      "browser": {
+        "installedAt": 956.5,
+        "pointerdown": [
+          {
+            "observedAt": 997.2000002861023,
+            "eventTimeStamp": 995.5,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 998.5999999046326,
+            "eventTimeStamp": 995.5999999046326,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 1008.3000001907349,
+        "raf": [
+          957.432,
+          957.432,
+          974.2,
+          990.8,
+          1007.4,
+          1024.1,
+          1040.8,
+          1057.4
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 1007.4,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 1040.8,
+          "second": 1057.4,
+          "resolvedAt": 1058.0999999046326
+        },
+        "pointerdownToClickMs": 1.3999996185302734,
+        "pointerdownToDomReadyMs": 11.099999904632568,
+        "clickToDomReadyMs": 9.700000286102295,
+        "domReadyToSecondExplicitRafMs": 49.09999980926523,
+        "frameGapsMs": [
+          0,
+          16.76800000000003,
+          16.59999999999991,
+          16.600000000000023,
+          16.699999999999932,
+          16.700000000000045,
+          16.600000000000136
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "link": "Office",
+      "run": 0,
+      "driver": {
+        "totalMs": 87.96490599997924,
+        "clickMs": 54.27939999999944,
+        "assertMs": 2.3246090000029653,
+        "twoRafMs": 31.36089699997683
+      },
+      "browser": {
+        "installedAt": 1013,
+        "pointerdown": [
+          {
+            "observedAt": 1038.6999998092651,
+            "eventTimeStamp": 1037.3000001907349,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 1043.4000000953674,
+            "eventTimeStamp": 1037.4000000953674,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 1052.4000000953674,
+        "raf": [
+          1000.866,
+          1017.4,
+          1034.2,
+          1050.8,
+          1067.4,
+          1084.1,
+          1100.7
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 1050.8,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 1084.1,
+          "second": 1100.7,
+          "resolvedAt": 1101.3000001907349
+        },
+        "pointerdownToClickMs": 4.700000286102295,
+        "pointerdownToDomReadyMs": 13.700000286102295,
+        "clickToDomReadyMs": 9,
+        "domReadyToSecondExplicitRafMs": 48.299999904632614,
+        "frameGapsMs": [
+          16.533999999999992,
+          16.800000000000068,
+          16.59999999999991,
+          16.600000000000136,
+          16.699999999999818,
+          16.600000000000136
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "link": "Office",
+      "run": 1,
+      "driver": {
+        "totalMs": 95.63771499998984,
+        "clickMs": 64.22490500001004,
+        "assertMs": 2.671139999991283,
+        "twoRafMs": 28.741669999988517
+      },
+      "browser": {
+        "installedAt": 908,
+        "pointerdown": [
+          {
+            "observedAt": 944.2000002861023,
+            "eventTimeStamp": 942,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 949.3000001907349,
+            "eventTimeStamp": 942.1000003814697,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 958.3000001907349,
+        "raf": [
+          920.3,
+          936.9,
+          953.6,
+          970.3,
+          987,
+          1003.6
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 953.6,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 987,
+          "second": 1003.6,
+          "resolvedAt": 1004.1000003814697
+        },
+        "pointerdownToClickMs": 5.099999904632568,
+        "pointerdownToDomReadyMs": 14.099999904632568,
+        "clickToDomReadyMs": 9,
+        "domReadyToSecondExplicitRafMs": 45.29999980926516,
+        "frameGapsMs": [
+          16.600000000000023,
+          16.700000000000045,
+          16.699999999999932,
+          16.700000000000045,
+          16.600000000000023
+        ]
+      }
+    },
+    {
+      "role": "baseline",
+      "link": "Office",
+      "run": 1,
+      "driver": {
+        "totalMs": 86.91629599998123,
+        "clickMs": 65.58223799997359,
+        "assertMs": 1.9103509999986272,
+        "twoRafMs": 19.423707000009017
+      },
+      "browser": {
+        "installedAt": 968.0999999046326,
+        "pointerdown": [
+          {
+            "observedAt": 1009.9000000953674,
+            "eventTimeStamp": 1008.0999999046326,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 1011.2999997138977,
+            "eventTimeStamp": 1008.0999999046326,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 1020.5999999046326,
+        "raf": [
+          954.1,
+          970.8,
+          987.5,
+          1004.1,
+          1020.7,
+          1037.4,
+          1054.1
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 1020.7,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 1037.4,
+          "second": 1054.1,
+          "resolvedAt": 1054.2999997138977
+        },
+        "pointerdownToClickMs": 1.3999996185302734,
+        "pointerdownToDomReadyMs": 10.699999809265137,
+        "clickToDomReadyMs": 9.300000190734863,
+        "domReadyToSecondExplicitRafMs": 33.50000009536734,
+        "frameGapsMs": [
+          16.699999999999932,
+          16.700000000000045,
+          16.600000000000023,
+          16.600000000000023,
+          16.700000000000045,
+          16.699999999999818
+        ]
+      }
+    },
+    {
+      "role": "baseline",
+      "link": "Office",
+      "run": 2,
+      "driver": {
+        "totalMs": 73.14915200002724,
+        "clickMs": 49.88603000002331,
+        "assertMs": 2.3966570000047795,
+        "twoRafMs": 20.866464999999152
+      },
+      "browser": {
+        "installedAt": 956.5999999046326,
+        "pointerdown": [
+          {
+            "observedAt": 983.1999998092651,
+            "eventTimeStamp": 981.4000000953674,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 984.5999999046326,
+            "eventTimeStamp": 981.4000000953674,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 993.6999998092651,
+        "raf": [
+          945.4,
+          962,
+          978.8,
+          995.4,
+          1012.1,
+          1028.8
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 995.4,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 1012.1,
+          "second": 1028.8,
+          "resolvedAt": 1029.0999999046326
+        },
+        "pointerdownToClickMs": 1.4000000953674316,
+        "pointerdownToDomReadyMs": 10.5,
+        "clickToDomReadyMs": 9.099999904632568,
+        "domReadyToSecondExplicitRafMs": 35.10000019073482,
+        "frameGapsMs": [
+          16.600000000000023,
+          16.799999999999955,
+          16.600000000000023,
+          16.700000000000045,
+          16.699999999999932
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "link": "Office",
+      "run": 2,
+      "driver": {
+        "totalMs": 88.66380100001697,
+        "clickMs": 55.48915199999465,
+        "assertMs": 2.4265880000020843,
+        "twoRafMs": 30.748061000020243
+      },
+      "browser": {
+        "installedAt": 938,
+        "pointerdown": [
+          {
+            "observedAt": 964.8000001907349,
+            "eventTimeStamp": 963.3000001907349,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 969,
+            "eventTimeStamp": 963.3000001907349,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 978.6000003814697,
+        "raf": [
+          926.4,
+          943,
+          959.7,
+          976.3,
+          993.1,
+          1009.7,
+          1026.4
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 976.3,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 1009.7,
+          "second": 1026.4,
+          "resolvedAt": 1026.9000000953674
+        },
+        "pointerdownToClickMs": 4.199999809265137,
+        "pointerdownToDomReadyMs": 13.800000190734863,
+        "clickToDomReadyMs": 9.600000381469727,
+        "domReadyToSecondExplicitRafMs": 47.799999618530364,
+        "frameGapsMs": [
+          16.600000000000023,
+          16.700000000000045,
+          16.59999999999991,
+          16.800000000000068,
+          16.600000000000023,
+          16.700000000000045
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "link": "Office",
+      "run": 3,
+      "driver": {
+        "totalMs": 97.8364710000169,
+        "clickMs": 64.14281300001312,
+        "assertMs": 2.2066029999987222,
+        "twoRafMs": 31.487055000005057
+      },
+      "browser": {
+        "installedAt": 958.9000000953674,
+        "pointerdown": [
+          {
+            "observedAt": 995.7000002861023,
+            "eventTimeStamp": 994.3000001907349,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 1000,
+            "eventTimeStamp": 994.3000001907349,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 1009.5,
+        "raf": [
+          973.3,
+          989.9,
+          1006.6,
+          1023.3,
+          1040,
+          1056.6
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 1006.6,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 1040,
+          "second": 1056.6,
+          "resolvedAt": 1056.9000000953674
+        },
+        "pointerdownToClickMs": 4.299999713897705,
+        "pointerdownToDomReadyMs": 13.799999713897705,
+        "clickToDomReadyMs": 9.5,
+        "domReadyToSecondExplicitRafMs": 47.09999999999991,
+        "frameGapsMs": [
+          16.600000000000023,
+          16.700000000000045,
+          16.699999999999932,
+          16.700000000000045,
+          16.59999999999991
+        ]
+      }
+    },
+    {
+      "role": "baseline",
+      "link": "Office",
+      "run": 3,
+      "driver": {
+        "totalMs": 74.35503499998595,
+        "clickMs": 51.65365500000189,
+        "assertMs": 2.099562999996124,
+        "twoRafMs": 20.601816999987932
+      },
+      "browser": {
+        "installedAt": 934,
+        "pointerdown": [
+          {
+            "observedAt": 962.6999998092651,
+            "eventTimeStamp": 961.5,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 964.5999999046326,
+            "eventTimeStamp": 961.5,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 973.5999999046326,
+        "raf": [
+          924.166,
+          940.8,
+          957.5,
+          974.1,
+          990.8,
+          1007.5
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 974.1,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 990.8,
+          "second": 1007.5,
+          "resolvedAt": 1008.2999997138977
+        },
+        "pointerdownToClickMs": 1.9000000953674316,
+        "pointerdownToDomReadyMs": 10.900000095367432,
+        "clickToDomReadyMs": 9,
+        "domReadyToSecondExplicitRafMs": 33.90000009536743,
+        "frameGapsMs": [
+          16.6339999999999,
+          16.700000000000045,
+          16.600000000000023,
+          16.699999999999932,
+          16.700000000000045
+        ]
+      }
+    },
+    {
+      "role": "baseline",
+      "link": "Office",
+      "run": 4,
+      "driver": {
+        "totalMs": 103.66929999997956,
+        "clickMs": 67.74523699999554,
+        "assertMs": 2.6659899999795016,
+        "twoRafMs": 33.258073000004515
+      },
+      "browser": {
+        "installedAt": 988.5999999046326,
+        "pointerdown": [
+          {
+            "observedAt": 1032.2999997138977,
+            "eventTimeStamp": 1029.9000000953674,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 1034.1999998092651,
+            "eventTimeStamp": 1029.9000000953674,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 1044.0999999046326,
+        "raf": [
+          975.2,
+          991.8,
+          1008.5,
+          1025.2,
+          1041.8,
+          1058.5,
+          1075.2,
+          1091.9
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 1041.8,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 1075.2,
+          "second": 1091.9,
+          "resolvedAt": 1092.2999997138977
+        },
+        "pointerdownToClickMs": 1.9000000953674316,
+        "pointerdownToDomReadyMs": 11.800000190734863,
+        "clickToDomReadyMs": 9.900000095367432,
+        "domReadyToSecondExplicitRafMs": 47.80000009536752,
+        "frameGapsMs": [
+          16.59999999999991,
+          16.700000000000045,
+          16.700000000000045,
+          16.59999999999991,
+          16.700000000000045,
+          16.700000000000045,
+          16.700000000000045
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "link": "Office",
+      "run": 4,
+      "driver": {
+        "totalMs": 102.78915200001211,
+        "clickMs": 70.46198399999412,
+        "assertMs": 2.1596750000026077,
+        "twoRafMs": 30.167493000015384
+      },
+      "browser": {
+        "installedAt": 936.0999999046326,
+        "pointerdown": [
+          {
+            "observedAt": 977.0999999046326,
+            "eventTimeStamp": 975.8999996185303,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 981.5999999046326,
+            "eventTimeStamp": 975.8999996185303,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 990.3999996185303,
+        "raf": [
+          922.2,
+          938.9,
+          955.5,
+          972.2,
+          988.8,
+          1005.5,
+          1022.2,
+          1038.8
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 988.8,
+        "longTaskSupported": true,
+        "paintFrames": {
+          "first": 1022.2,
+          "second": 1038.8,
+          "resolvedAt": 1039.1999998092651
+        },
+        "pointerdownToClickMs": 4.5,
+        "pointerdownToDomReadyMs": 13.299999713897705,
+        "clickToDomReadyMs": 8.799999713897705,
+        "domReadyToSecondExplicitRafMs": 48.40000038146968,
+        "frameGapsMs": [
+          16.699999999999932,
+          16.600000000000023,
+          16.700000000000045,
+          16.59999999999991,
+          16.700000000000045,
+          16.700000000000045,
+          16.59999999999991
+        ]
+      }
+    }
+  ],
+  "limitations": [
+    "Separate instrumented protocol; original frozen gate and failed candidate remain unchanged.",
+    "DOM visibility and rAF callbacks are readiness/paint opportunities, not physical first paint or compositor display.",
+    "MutationObserver, continuous rAF and PerformanceObserver add browser work; both sources receive identical instrumentation.",
+    "Two isolated app servers run concurrently; idle-server overhead is a supplemental diagnostic difference.",
+    "No true device/production auth/private SW/background-update/offline target proof.",
+    "Shared host production/OS activity remains uncontrolled."
+  ],
+  "browserVersion": "152.0.7977.82",
+  "endedAt": "2026-11-11T07:17:55.201Z",
+  "driverSha256After": "f0376e1ea12964bc018920ec1485cc00dd72ee79d9e2c0b4e327db028aa6259a",
+  "frozenMethodAfter": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4"
+}

@@ -14,7 +14,8 @@
     "Earlier source-only reconciliation retained four archived captures/zero accepted while the rerun was pending. Reviewed 7fd11c0d assessment now adds two complete v2 captures accepted only for same-build repeatability; all older raw artifacts stay unchanged.",
     "The full R6 candidate retains all 120 samples and fails two openjob regression cells against predeclared accepted baseline1; baseline2 remains stability evidence.",
     "The 20-sample browser-local phase diagnostic observes real input-to-DOM-ready differences without causal component attribution or a gate waiver.",
-    "Twelve private-cache functional contract assertions use synthetic endpoints; actual Next Flight, production auth, reload/recovery and performance remain separate."
+    "Twelve private-cache functional contract assertions use synthetic endpoints; actual Next Flight, production auth, reload/recovery and performance remain separate.",
+    "Separate R7 focused20-sample diagnostic is complete; original R6 full-gate failure remains unchanged, full R7matrix has not run. LOCAL phone-v2 smoke3samples is nonphysical and not gate evidence."
   ],
   "sources": [
     "perf/SPEED_PLAN.md",
@@ -34,7 +35,9 @@
     "perf/artifacts/server-reads-nonstream-2026-11-11-2.json",
     "perf/artifacts/candidate-r6-ready-then-pinch-v2-2026-11-11-assessment.json",
     "perf/artifacts/openjob-phase-diagnostic-2026-11-11-assessment.json",
-    "perf/artifacts/private-cache-contract-r6-2026-11-11.json"
+    "perf/artifacts/private-cache-contract-r6-2026-11-11.json",
+    "perf/artifacts/openjob-phase-diagnostic-r7-2026-11-11-assessment.json",
+    "perf/artifacts/phone-v2-local-smoke-2026-11-11/report.json"
   ],
   "rows": [
     {
@@ -272,7 +275,7 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T07:03:54.670566+00:00",
+  "updatedAt": "2026-11-11T07:29:10.176719+00:00",
   "completedCandidateLabCaptures": 1,
   "candidateRegression": {
     "status": "failed",
@@ -308,7 +311,40 @@
       }
     },
     "interpretation": "Real browser-local input-to-DOM-ready differences and driver/rAF variability were observed. No component cause or actual first-paint delay is established; this does not waive the failed original gate.",
-    "gateReplacement": false
+    "gateReplacement": false,
+    "r7Followup": {
+      "status": "supplemental-only",
+      "source": "perf/artifacts/openjob-phase-diagnostic-r7-2026-11-11-assessment.json",
+      "samples": 20,
+      "candidateSourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+      "candidateSourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+      "allInputAndHiddenDestinationPreconditionsPassed": true,
+      "browserClickToDomReadyMedianMs": {
+        "baseline": {
+          "Basement": 9.0,
+          "Office": 9.3
+        },
+        "candidate": {
+          "Basement": 8.9,
+          "Office": 9.0
+        }
+      },
+      "driverTotalMedianMs": {
+        "baseline": {
+          "Basement": 75.95,
+          "Office": 86.92
+        },
+        "candidate": {
+          "Basement": 76.07,
+          "Office": 95.64
+        }
+      },
+      "interpretation": "Click-to-DOM-ready is close to contemporaneous baseline in this run; pointerdown/click and Office driver/rAF timing still differ. No causal component or actual first-paint claim.",
+      "fullR7RegressionMatrix": "not yet run",
+      "gateReplacement": false,
+      "finalDatabaseErrors": 0,
+      "privateRuntimesCleaned": true
+    }
   },
   "timingLabCoverage": {
     "buildTag": "isolated-speed-baseline",
@@ -343,6 +379,13 @@
     "acceptedTargetProof": false,
     "historicalAttempt": "CDP Page.navigate timed out during synthetic app attestation; no physical samples.",
     "latestAvailability": "No usable Wi-Fi ADB advertisement at the later bounded foreground/connection check; no new physical timing run.",
-    "separateFieldEvidence": "Participant-attributed uncontrolled live telemetry remains separate and does not identify hardware per anonymous row."
+    "separateFieldEvidence": "Participant-attributed uncontrolled live telemetry remains separate and does not identify hardware per anonymous row.",
+    "latestLocalSmoke": {
+      "source": "perf/artifacts/phone-v2-local-smoke-2026-11-11/report.json",
+      "samples": 3,
+      "physicalPhoneEvidence": false,
+      "acceptedPerformanceGate": false,
+      "ownedTargetClosedHttpStatus": 200
+    }
   }
 }

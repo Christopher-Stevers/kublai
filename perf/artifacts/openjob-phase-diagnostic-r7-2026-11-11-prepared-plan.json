@@ -1,0 +1,17 @@
+{
+  "status": "prepared-not-executed",
+  "protocol": "openjob-phase-diagnostic-v1",
+  "driver": "/tmp/foremanhq-openjob-phase-method-Wfbfpu/perf/openjob-phase-diagnostic.mjs",
+  "driverSha256": "f0376e1ea12964bc018920ec1485cc00dd72ee79d9e2c0b4e327db028aa6259a",
+  "preparationMethodFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "baselineSource": "/home/tim/.openclaw/workspace/releases/speed-phase0-bootstrap-20261110",
+  "baselineCompiledSnapshot": "/tmp/foremanhq-speed-app-5h2kmq",
+  "candidateSource": "/home/tim/.openclaw/workspace/releases/speed-phase1-reviewed-r7-20261111",
+  "candidateCanonicalBuild": "/home/tim/.openclaw/workspace/releases/speed-phase1-reviewed-r7-20261111/.next-web",
+  "expectedSourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+  "expectedSourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+  "expectedSourceFileCount": 2289,
+  "samples": 20,
+  "gateReplacement": false,
+  "noBuildOrTimingBeforeClearance": true
+}

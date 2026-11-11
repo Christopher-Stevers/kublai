@@ -1,0 +1,17 @@
+{
+  "protocol": "openjob-phase-diagnostic-v1",
+  "driver": "/tmp/foremanhq-openjob-phase-method-Wfbfpu/perf/openjob-phase-diagnostic.mjs",
+  "driverSourceCommit": "554313a0",
+  "driverSha256": "f0376e1ea12964bc018920ec1485cc00dd72ee79d9e2c0b4e327db028aa6259a",
+  "sealedPreparationRoot": "/tmp/foremanhq-perf-method-f9bHR6",
+  "preparationFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "baselineSetupScript": "perf/artifacts/openjob-phase-diagnostic-r7-2026-11-11-baseline-server.sh",
+  "candidateSetupScript": "perf/artifacts/openjob-phase-diagnostic-r7-2026-11-11-candidate-server.sh",
+  "candidateSource": "/home/tim/.openclaw/workspace/releases/speed-phase1-reviewed-r7-20261111",
+  "candidateCanonicalDist": "/home/tim/.openclaw/workspace/releases/speed-phase1-reviewed-r7-20261111/.next-web",
+  "baselineSource": "/home/tim/.openclaw/workspace/releases/speed-phase0-bootstrap-20261110",
+  "baselineCanonicalDist": "/home/tim/.openclaw/workspace/releases/speed-phase0-bootstrap-20261110/.next-canonical-a",
+  "setup": "Each setup script runs under sealed perf/lab/database.sh with independently fresh synthetic database/fixtures. R7 snapshot compiled once; baseline reused verified compiled artifact. Both14-query preflights complete before timing.",
+  "capture": "Same read-only v1 driver,20samples in alternating source order,90second/sample and8minute driver bounds; config uses exact source/build/preflight plus private socket logs.",
+  "postCapture": "Final diagnostic report copied/hashed before any separate local-smoke use; both private runtimes cleaned afterward."
+}

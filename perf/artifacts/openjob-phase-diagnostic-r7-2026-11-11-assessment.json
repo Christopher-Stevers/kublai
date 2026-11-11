@@ -1,0 +1,165 @@
+{
+  "status": "complete-supplemental-only",
+  "acceptedGateEvidence": false,
+  "originalR6Gate": "Failed and unchanged; no waiver or selective replacement.",
+  "raw": {
+    "path": "perf/artifacts/openjob-phase-diagnostic-r7-2026-11-11-report.json",
+    "sha256": "a81d8bad5c4673143c38cd7b30cd7c71b33f80739ed706b3e5cf664173fc48c5"
+  },
+  "samples": 20,
+  "allDestinationHiddenBeforeInput": true,
+  "allInputAndDomReadyEventsObserved": true,
+  "driverBefore": "f0376e1ea12964bc018920ec1485cc00dd72ee79d9e2c0b4e327db028aa6259a",
+  "driverAfter": "f0376e1ea12964bc018920ec1485cc00dd72ee79d9e2c0b4e327db028aa6259a",
+  "preparationMethodBefore": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "preparationMethodAfter": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "captureWindow": {
+    "start": "2026-11-11T07:14:19.784Z",
+    "end": "2026-11-11T07:17:55.201Z"
+  },
+  "rows": [
+    {
+      "role": "baseline",
+      "link": "Basement",
+      "samples": 5,
+      "medianMs": {
+        "driverTotal": 75.9504339999985,
+        "driverClick": 52.01789000000281,
+        "driverAssert": 2.891243999998551,
+        "driverTwoRaf": 20.69239799999923,
+        "pointerdownToClick": 1.5999999046325684,
+        "pointerdownToDomReady": 10.799999713897705,
+        "clickToDomReady": 9,
+        "domReadyToSecondExplicitRaf": 34.79999999999927
+      },
+      "observedLongTasks": 0
+    },
+    {
+      "role": "baseline",
+      "link": "Office",
+      "samples": 5,
+      "medianMs": {
+        "driverTotal": 86.91629599998123,
+        "driverClick": 65.58223799997359,
+        "driverAssert": 2.3966570000047795,
+        "driverTwoRaf": 20.866464999999152,
+        "pointerdownToClick": 1.4000000953674316,
+        "pointerdownToDomReady": 10.900000095367432,
+        "clickToDomReady": 9.300000190734863,
+        "domReadyToSecondExplicitRaf": 35.10000019073482
+      },
+      "observedLongTasks": 0
+    },
+    {
+      "role": "candidate",
+      "link": "Basement",
+      "samples": 5,
+      "medianMs": {
+        "driverTotal": 76.07367700000759,
+        "driverClick": 54.8545329999979,
+        "driverAssert": 3.1800400000065565,
+        "driverTwoRaf": 18.305384000006597,
+        "pointerdownToClick": 4.299999713897705,
+        "pointerdownToDomReady": 13.099999904632568,
+        "clickToDomReady": 8.899999618530273,
+        "domReadyToSecondExplicitRaf": 32.99999990463402
+      },
+      "observedLongTasks": 0
+    },
+    {
+      "role": "candidate",
+      "link": "Office",
+      "samples": 5,
+      "medianMs": {
+        "driverTotal": 95.63771499998984,
+        "driverClick": 64.14281300001312,
+        "driverAssert": 2.3246090000029653,
+        "driverTwoRaf": 30.748061000020243,
+        "pointerdownToClick": 4.5,
+        "pointerdownToDomReady": 13.799999713897705,
+        "clickToDomReady": 9,
+        "domReadyToSecondExplicitRaf": 47.799999618530364
+      },
+      "observedLongTasks": 0
+    }
+  ],
+  "captureHealth": {
+    "baseline": {
+      "before": {
+        "errors": 0,
+        "fatals": 0
+      },
+      "after": {
+        "errors": 0,
+        "fatals": 0
+      }
+    },
+    "candidate": {
+      "before": {
+        "errors": 0,
+        "fatals": 0
+      },
+      "after": {
+        "errors": 0,
+        "fatals": 0
+      }
+    }
+  },
+  "interpretation": "In this separate R7 run, candidate click-to-DOM-ready medians 8.9\u20139.0 ms are close to contemporaneous baseline 9.0\u20139.3 ms. Pointerdown-to-click remains higher and Office driver/two-rAF phase varies. Descriptive R6 and R7 supplemental stage differences do not establish causal attribution to a component or a passing full gate.",
+  "limitations": [
+    "Separate instrumented protocol; original frozen gate and failed candidate remain unchanged.",
+    "DOM visibility and rAF callbacks are readiness/paint opportunities, not physical first paint or compositor display.",
+    "MutationObserver, continuous rAF and PerformanceObserver add browser work; both sources receive identical instrumentation.",
+    "Two isolated app servers run concurrently; idle-server overhead is a supplemental diagnostic difference.",
+    "No true device/production auth/private SW/background-update/offline target proof.",
+    "Shared host production/OS activity remains uncontrolled.",
+    "Full R7 unchanged120sample regression matrix has not run; do not accept candidate gate from this 20-sample diagnostic.",
+    "Original R6 matrix failure remains preserved and unwaived.",
+    "No controlled physical/offline/actual-first-paint proof. Desktop UA uses sentinel history, not Android CloseWatcher.",
+    "Nonhex isolated-speed-baseline build tag leaves private SW binding/reload branch coverage gap unchanged.",
+    "Candidate retained after capture solely for separate local smoke; final cleanup health is recorded separately.",
+    "Original Playwright locator.click generated mouse pointer events in all 20 samples; these are not physical finger timings."
+  ],
+  "sourcePair": {
+    "baseline": {
+      "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+      "labBuild": "cI20Tzl0OAQscfvjfmtFW",
+      "sourceFileCount": 2200
+    },
+    "candidate": {
+      "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+      "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+      "labBuild": "4qOIJ0ATp9DzIVGHVmxB_",
+      "sourceFileCount": 2289
+    }
+  },
+  "finalDatabaseHealth": {
+    "baseline": {
+      "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+      "errors": []
+    },
+    "candidate": {
+      "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+      "errors": []
+    }
+  },
+  "cleanup": {
+    "ports3482And3483NoListener": true,
+    "bothPrivateDatabaseDirectoriesRemoved": true,
+    "baselineStoppedAfterCapture": true,
+    "candidatePostCaptureHold": {
+      "startedAt": "2026-11-11T07:18:36.098Z",
+      "stopRequestedAtApprox": "2026-11-11T07:23:50Z",
+      "purpose": "Separate root-owned local phone-v2 smoke only after timing sealed; no ADB/physical performance capture",
+      "localSmoke": {
+        "samples": 3,
+        "physicalPhoneEvidence": false,
+        "ownedTargetCloseHttpStatus": 200,
+        "source": "perf/artifacts/phone-v2-local-smoke-2026-11-11/report.json",
+        "gateEvidence": false
+      }
+    }
+  },
+  "recommendation": "An unchanged full R7 120-sample regression comparison is still required before accepting a candidate gate. Supplemental click-to-ready values are close to baseline here, but Office driver/two-rAF variability and separate SW/physical/functional coverage gaps remain. No full run or activation starts automatically."
+}
