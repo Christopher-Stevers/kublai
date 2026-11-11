@@ -1,0 +1,9 @@
+node:internal/process/promises:324
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+page.evaluate: Target page, context or browser has been closed
+    at call (<repository>/perf/private-cache-contract.mjs:194:42)
+    at <repository>/perf/private-cache-contract.mjs:231:19
+
+Node.js v26.8.2

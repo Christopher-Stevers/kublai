@@ -1,0 +1,13 @@
+{
+  "protocol": "private-cache-contract-v1",
+  "status": "failed",
+  "error": "Worker did not produce a complete report",
+  "supervisor": {
+    "timedOut": false,
+    "interrupted": false,
+    "exitCode": 1,
+    "signal": null,
+    "spawnError": null,
+    "runtimeRemoved": true
+  }
+}

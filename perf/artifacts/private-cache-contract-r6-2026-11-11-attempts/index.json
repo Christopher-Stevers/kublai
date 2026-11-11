@@ -1,0 +1,48 @@
+{
+  "protocol": "private-cache-contract-v1",
+  "attempts": [
+    {
+      "attempt": 1,
+      "runnerSha256": "5bd9c2f37e1cf46b90c5b9d7493720a289f483a6f0596a4b58fcd56efdae7cbb",
+      "entrySha256": "a560b070e36aeb03af019a1f0a554f59615a10a1c13fc8b4144a0dc412eb3139",
+      "originalReportSha256": "52fe456d25d7d1517da810caf09485ab9ed8cdb5c74384d232e9a7ee8d8856f4",
+      "originalStdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "originalStderrSha256": "5e4680dcfc54be387e1f503b5d4d504c4df6c8bf987d54c1037b0903f5986504",
+      "runtimeRemoved": true,
+      "variantProvenance": "Reconstructed by reversing the controlled promise-handling edit from attempt 2; attempt 1 exited before reporting its source hash.",
+      "sanitization": [
+        "Temporary attempt path removed from report",
+        "Repository prefix replaced in stderr"
+      ]
+    },
+    {
+      "attempt": 2,
+      "runnerSha256": "2ce58857d30e7fab53618c44f2293d9044e329bbabe213a2fd74d9b9b1473395",
+      "entrySha256": "a560b070e36aeb03af019a1f0a554f59615a10a1c13fc8b4144a0dc412eb3139",
+      "originalReportSha256": "fabdb5f8244b5258ac34e776f22a8d8c4e33e056b28295a1c371892e7cbb7084",
+      "originalStdoutSha256": "10411eeef8aa765f01fa8b8770342e578981f9d20ca8c23ba9368acbbb28d6ff",
+      "originalStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "runtimeRemoved": true,
+      "variantProvenance": "Matches runner and entry hashes in the captured worker report.",
+      "sanitization": [
+        "Temporary attempt path removed from report",
+        "Repository prefix replaced in stderr"
+      ]
+    },
+    {
+      "attempt": 3,
+      "runnerSha256": "b94116efbbb0dfd304a30e64b505ecb6bc859aa35c2e72e0ca96f2ce97e8a880",
+      "entrySha256": "8cde71e65ced66b310f0c6aa7b6cea2f97556d588db16299d7f72d62bd9a7951",
+      "originalReportSha256": "b40f6cd8d522556f85257251b9f67e145b9293141f34d090a2827b52c7ef463d",
+      "originalStdoutSha256": "f9fccfa431f6e5d821fd2199c24f0583a70ffcfecc8b0c6c533606eb689ddd18",
+      "originalStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "runtimeRemoved": true,
+      "variantProvenance": "Matches runner and entry hashes in the captured worker report.",
+      "sanitization": [
+        "Temporary attempt path removed from report",
+        "Repository prefix replaced in stderr"
+      ]
+    }
+  ],
+  "limits": "Synthetic RSC contract smoke only; not actual Next/auth/performance. No production edits. Archived variant modules are evidence, not runnable entrypoints from this archive location."
+}

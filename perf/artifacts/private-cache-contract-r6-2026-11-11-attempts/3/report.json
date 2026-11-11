@@ -1,0 +1,127 @@
+{
+  "protocol": "private-cache-contract-v1",
+  "comparableTimingEvidence": false,
+  "productionAuthEvidence": false,
+  "actualNextFlightEvidence": false,
+  "sourceBuild": "c49e8cbad84665aadc57323448c013f7c2420fa9cdff3992835164913bb7f161",
+  "sourceFingerprint": "3d4e7376001274a418390701935b8f474d6973a6ae4f8976ede74fd62e7c1c0d",
+  "assertions": [
+    {
+      "name": "actual provider and server-checked worker binding",
+      "passed": true
+    },
+    {
+      "name": "private cache scope includes the compiled valid-hex fixture build",
+      "passed": true
+    },
+    {
+      "name": "visited synthetic Flight replay is tree scoped",
+      "passed": true
+    },
+    {
+      "name": "prefetch does not qualify as visited",
+      "passed": true
+    },
+    {
+      "name": "account transition purges old private scope",
+      "passed": true
+    },
+    {
+      "name": "late in-flight old-account response cannot repopulate cache",
+      "passed": true
+    },
+    {
+      "name": "terminal denial locks provider and purges current account scope",
+      "passed": true
+    },
+    {
+      "name": "authoritative denial also locks another bound tab",
+      "passed": true
+    },
+    {
+      "name": "logout cannot replay a saved private response",
+      "passed": true
+    },
+    {
+      "name": "failed changed-asset fetch does not report update ready",
+      "passed": true
+    },
+    {
+      "name": "worker warms actual emitted B bytes from B manifest",
+      "passed": true
+    },
+    {
+      "name": "cross-origin malformed manifest rejected",
+      "passed": true
+    }
+  ],
+  "unproved": [
+    "actual Next router/Flight compatibility",
+    "real authentication",
+    "performance/full release gates",
+    "automatic quiet reload and chunk-failure recovery (registration coordinator not included)",
+    "cold private HTML auth (synthetic document endpoint)"
+  ],
+  "sourceVerifiedBefore": true,
+  "variant0": {
+    "build": "6a7eb2b30bdc7bc3c16de5f11940ecd8f33624d250f0e87cbdc430b8c7f15ef6",
+    "asset": "/_next/static/contract-e46cd793704456b69a71ca83407d6bf14bc255b3f0ade37f88a2126310608c10.js",
+    "sha256": "e46cd793704456b69a71ca83407d6bf14bc255b3f0ade37f88a2126310608c10"
+  },
+  "variant1": {
+    "build": "605f7c2a1757b5fcb0238f260764422fcec0c8ce815aaa7017551a439c27c2a7",
+    "asset": "/_next/static/contract-556f5be04ca5fb48ae2707cbf8537362f75804299a8d945ad5e00cca845a8c7c.js",
+    "sha256": "556f5be04ca5fb48ae2707cbf8537362f75804299a8d945ad5e00cca845a8c7c"
+  },
+  "status": "partial-contract-smoke",
+  "browser": "152.0.7977.82",
+  "provenance": {
+    "node": "v26.8.2",
+    "driverSha256": "b94116efbbb0dfd304a30e64b505ecb6bc859aa35c2e72e0ca96f2ce97e8a880",
+    "entrySha256": "8cde71e65ced66b310f0c6aa7b6cea2f97556d588db16299d7f72d62bd9a7951",
+    "frozenInputs": {
+      "public/sw.js": "218e9a9b6ac79596d5017445c7f8bfde95e1f50ee7457ba8081fcb2679b59576",
+      "scripts/release/source-fingerprint.mjs": "896edf22bdc46654b07f9788f9594b94f07702df5e92659649265c1b9b85c5a9",
+      "src/components/jobs/DrawingAccountProvider.tsx": "4dd05812a1addc17ef46b9c500a17d57734264cde99da09989494e119641d329",
+      "src/lib/device-query-cache.ts": "b858025a7f745b634f6399cb7d795e1bac3f8f7d4daccb17865b22c5c54d3c37",
+      "src/lib/drawing-kept.ts": "3359e075ba09406115aa1fef0441e2ff3f7e45b43221de4749e4f8450b8b1273",
+      "src/lib/drawing-network.ts": "e2a5ea82b7a161350b1c5ad536eaa690cc97052deeb49e620b9f659f5fb3cf2b",
+      "src/lib/drawing-offline.ts": "be9f756eff949e8097650a0ed68ce9dd7950b57dc11596d884301efac9d7ccc1",
+      "src/lib/drawing-tiles.ts": "832261b338573ef89d216bf397feda0334d13a471200f56492628a4719c83434",
+      "src/lib/employee-simulation.ts": "c5a85bc2af777dfc0f318099f85cc9b2a9371604683947a733b70bd2b39508ed",
+      "src/lib/instant-query-update.ts": "94ede7272178551fa48c2ff86bc2a80f6b786c568740f0c8238f939a01c86ce8",
+      "src/lib/pdf-range-source.ts": "d3fa9356f148f91bdcc9e128df11fafc750e4e66e87182b6c85b115fe5c525c3",
+      "src/lib/persistent-device-storage.ts": "9cbcda1be196a3933fedb089d8598a949156f1bae92ce1ea581d24012dac1d80",
+      "src/lib/private-background-work.ts": "0fb0e01a7ce26968370d925c91295f957fe01778a1be44464814e05a9d269ad6",
+      "src/lib/release-safety.ts": "c5a2393ba409280270477c8dd8824a54a98cbd2cb1d73ac581629b89cbe6036e"
+    },
+    "substitutions": [
+      "PDF/text rendering cleanup only",
+      "synthetic HttpOnly loopback session and binding/read endpoints"
+    ],
+    "counts": {
+      "bindings": 6,
+      "privateReads": 13,
+      "assets": 4,
+      "manifests": 3
+    },
+    "fixtureBuilds": [
+      "6a7eb2b30bdc7bc3c16de5f11940ecd8f33624d250f0e87cbdc430b8c7f15ef6",
+      "605f7c2a1757b5fcb0238f260764422fcec0c8ce815aaa7017551a439c27c2a7"
+    ],
+    "toolchain": {
+      "esbuild": "0.25.12",
+      "playwright": "1.59.1",
+      "frozenLockSha256": "4e2cb09f541e6f3273cd148da0ce413ed8d33d0c989e3b2dabead9b5901c1baa"
+    },
+    "inputsUnchanged": true
+  },
+  "supervisor": {
+    "timedOut": false,
+    "interrupted": false,
+    "exitCode": 0,
+    "signal": null,
+    "spawnError": null,
+    "runtimeRemoved": true
+  }
+}
