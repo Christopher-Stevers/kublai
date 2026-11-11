@@ -44,9 +44,12 @@ function ownsTarget(event: {
 // Suppress that pointer's compatibility click at capture, even on a new target.
 // A fresh pointerdown or keyboard/assistive click is never consumed.
 function guardCompatibilityClick(pointerId: number) {
+  let timer: ReturnType<typeof setTimeout>;
   const clear = () => {
     document.removeEventListener("click", click, true);
     document.removeEventListener("pointerdown", clear, true);
+    window.removeEventListener("pointerup", released, true);
+    window.removeEventListener("pointercancel", released, true);
     clearTimeout(timer);
   };
   const click = (event: globalThis.MouseEvent) => {
@@ -61,9 +64,17 @@ function guardCompatibilityClick(pointerId: number) {
     event.stopImmediatePropagation();
     clear();
   };
+  const released = (event: globalThis.PointerEvent) => {
+    if (event.pointerId !== pointerId) return;
+    clearTimeout(timer);
+    timer = setTimeout(clear, 800);
+  };
   document.addEventListener("click", click, true);
   document.addEventListener("pointerdown", clear, true);
-  const timer = setTimeout(clear, 800);
+  window.addEventListener("pointerup", released, true);
+  window.addEventListener("pointercancel", released, true);
+  // Bound a lost pointer; ordinary long holds retain the guard through release.
+  timer = setTimeout(clear, 30_000);
 }
 
 /** Only reviewed fixed controls opt into down activation. Scroll rows prepare on
@@ -124,6 +135,7 @@ export function usePress<T extends HTMLElement>({
       return;
     detach.current();
     state.current?.controller.abort();
+    const element = event.currentTarget;
     const active = {
       pointerId: event.pointerId,
       x: event.clientX,
@@ -144,6 +156,17 @@ export function usePress<T extends HTMLElement>({
     };
     const end = (next: globalThis.PointerEvent) => {
       if (next.pointerId !== active.pointerId) return;
+      const bounds = element.getBoundingClientRect();
+      const outsideTarget =
+        next.target instanceof Node && !element.contains(next.target);
+      const outsideBounds =
+        bounds.width > 0 &&
+        bounds.height > 0 &&
+        (next.clientX < bounds.left ||
+          next.clientX > bounds.right ||
+          next.clientY < bounds.top ||
+          next.clientY > bounds.bottom);
+      if (outsideTarget || outsideBounds) cancel();
       if (
         next.type === "pointercancel" ||
         Math.hypot(next.clientX - active.x, next.clientY - active.y) >

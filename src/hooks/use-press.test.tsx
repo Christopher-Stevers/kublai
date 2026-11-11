@@ -18,7 +18,10 @@ beforeAll(() => {
   }
   vi.stubGlobal("PointerEvent", TestPointerEvent);
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 const down = (node: Element, props = {}) =>
   fireEvent.pointerDown(node, {
     pointerId: 1,
@@ -67,6 +70,47 @@ describe("reviewed press modes", () => {
     up();
     pointerClick(screen.getByText("Next"));
     expect(next).not.toHaveBeenCalled();
+  });
+  it("retains the compatibility guard through a long hold after replacement", () => {
+    vi.useFakeTimers();
+    const next = vi.fn();
+    function Changing() {
+      const [opened, setOpened] = useState(false);
+      return opened ? (
+        <Button onClick={next}>Next</Button>
+      ) : (
+        <Button press="fixed" onClick={() => setOpened(true)}>
+          Open
+        </Button>
+      );
+    }
+    render(<Changing />);
+    down(screen.getByText("Open"));
+    vi.advanceTimersByTime(5_000);
+    up();
+    vi.advanceTimersByTime(200);
+    pointerClick(screen.getByText("Next"));
+    expect(next).not.toHaveBeenCalled();
+  });
+  it("never activates a scroll row released outside its original target", () => {
+    const open = vi.fn();
+    render(
+      <>
+        <PressableCard role="button" onClick={open}>
+          Job
+        </PressableCard>
+        <div data-testid="outside">Outside</div>
+      </>,
+    );
+    const row = screen.getByRole("button");
+    down(row);
+    fireEvent.pointerUp(screen.getByTestId("outside"), {
+      pointerId: 1,
+      clientX: 10,
+      clientY: 10,
+    });
+    pointerClick(row);
+    expect(open).not.toHaveBeenCalled();
   });
   it("default and destructive writes stay on release, once per pointer activation", () => {
     const send = vi.fn(),
