@@ -103,8 +103,10 @@ vi.mock("~/trpc/react", () => {
         const client = useQueryClient();
         return useMemo(
           () => ({
+            client: {chat: {join: {mutate: state.join}}},
             chat: {
               getOverview: {
+                fetch: (input: unknown) => client.fetchQuery({queryKey:key("getOverview",input),queryFn:()=>state.overview(input),staleTime:0,retry:false}),
                 invalidate: () =>
                   client.invalidateQueries({
                     queryKey: [["chat", "getOverview"]],
@@ -666,4 +668,23 @@ it("drops restored rows and old in-flight success/denial when another account bi
   );
   expect(screen.queryByText("Saved job message")).toBeNull();
   expect(encodeDeviceQueries(app.queries)).not.toContain("Saved job message");
+});
+
+it("same-turn manual join cannot duplicate auto-join or unlock history before a real overview", async () => {
+  const request = deferred<unknown>();
+  state.join.mockReturnValue(request.promise);
+  state.overview.mockResolvedValue(overview(false));
+  const app = await fixture();
+  render(app.view());
+  await waitFor(() => expect(state.join).toHaveBeenCalledOnce());
+  const button = screen.getByRole("button", {name: "Joining…"});
+  fireEvent.click(button); fireEvent.click(button);
+  expect(state.join).toHaveBeenCalledOnce();
+  expect(state.history).not.toHaveBeenCalled();
+  const refresh = deferred<Overview>();state.overview.mockReturnValue(refresh.promise);
+  await act(async () => request.resolve({}));
+  await waitFor(() => expect(screen.getByRole("button", {name:"Join job chat"})).toBeEnabled());
+  expect(state.history).not.toHaveBeenCalled();
+  await act(async () => refresh.resolve(overview(true)));
+  await waitFor(() => expect(state.history).toHaveBeenCalled());
 });

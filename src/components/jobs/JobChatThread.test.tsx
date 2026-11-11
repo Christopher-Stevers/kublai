@@ -78,8 +78,9 @@ vi.mock("~/lib/job-chat-drafts", async (importOriginal) => ({
   saveChatDraft: mock.saveDraft,
 }));
 const utils = {
+  client: {chat: {join: {mutate: mock.join}}},
   chat: {
-    getOverview: { invalidate: mock.invalidate },
+    getOverview: { invalidate: mock.invalidate, fetch: async () => mock.overview },
     history: {
       getData: () => mock.history,
       invalidate: mock.invalidate,

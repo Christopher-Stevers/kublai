@@ -1,4 +1,5 @@
 "use client";
+import { useChatJoin } from "~/hooks/use-chat-join";
 import { subscribeLiveEvents } from "~/lib/live-client";
 import {
   isAppPageActive,
@@ -386,7 +387,14 @@ function ChatLobby({
   useLayoutEffect(() => {
     writeAllowed.current = canWrite;
   }, [canWrite]);
-  const join = api.chat.join.useMutation();
+  const join = useChatJoin({
+    identity: viewKey,
+    canStart: () => overviewConfirmed && hasFreshOverview() && online && !accessError && ownsReadAuthority(),
+    dispatch: () => utils.client.chat.join.mutate({jobId}),
+    refresh: () => utils.chat.getOverview.invalidate({jobId}),
+    readMembership: () => utils.chat.getOverview.fetch({jobId}, {staleTime: 0}),
+    onError: setError,
+  });
   const send = api.chat.send.useMutation();
   const remove = api.chat.delete.useMutation();
   const markRead = api.chat.markRead.useMutation();
@@ -513,27 +521,10 @@ function ChatLobby({
       await saveChatDraft(draftKey, null).catch(() => setStorageError(true));
   }, [draftKey, inTutorial]);
   const joinLobby = useCallback(async () => {
-    if (!overviewConfirmed || !hasFreshOverview() || !online || accessError || !ownsReadAuthority())
-      return;
     joinAttempted.current = true;
     setError("");
-    try {
-      await join.mutateAsync({ jobId });
-      if (ownsReadAuthority())
-        await utils.chat.getOverview.invalidate({ jobId });
-    } catch (reason) {
-      setError(errorText(reason));
-    }
-  }, [
-    jobId,
-    join,
-    utils,
-    overviewConfirmed,
-    hasFreshOverview,
-    online,
-    accessError,
-    ownsReadAuthority,
-  ]);
+    await join.run();
+  }, [join]);
   useEffect(() => {
     if (
       online &&
@@ -1111,8 +1102,8 @@ function ChatLobby({
         overview.data &&
         !overview.data.joined && (
           <div className="p-3">
-            <Button onClick={() => void joinLobby()} disabled={join.isPending}>
-              {join.isPending ? "Joining…" : "Join job chat"}
+            <Button onClick={() => void joinLobby()} disabled={join.pending}>
+              {join.pending ? "Joining…" : join.needsCheck ? "Check membership" : "Join job chat"}
             </Button>
           </div>
         )}
