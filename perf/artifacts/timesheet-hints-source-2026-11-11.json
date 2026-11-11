@@ -1,0 +1,49 @@
+{
+  "status": "source-prepared-outside-r12-not-built-not-activated",
+  "runtimePaths": [
+    "src/app/api/live/route.ts",
+    "src/components/timesheets/TimesheetsView.tsx",
+    "src/hooks/use-timesheet-live.ts",
+    "src/lib/live-client.ts",
+    "src/lib/live-protocol.ts",
+    "src/server/api/routers/timesheets.ts",
+    "src/server/background/hints.ts",
+    "src/server/live/timesheet-events.ts",
+    "src/server/timesheets/notify.ts"
+  ],
+  "producerMethods": [
+    "saveEntry",
+    "deleteEntry",
+    "submit",
+    "withdraw",
+    "review",
+    "settings",
+    "clockStart",
+    "clockAction"
+  ],
+  "pollsRemoved": 0,
+  "contextFallbackMs": 30000,
+  "newDomainServerPolls": 0,
+  "schemaChanges": 0,
+  "workerChanges": 0,
+  "validation": {
+    "focusedTests": 47,
+    "focusedFiles": 8,
+    "postgresTests": 13,
+    "postgresCommittedNotificationsInNewCase": 11,
+    "allEightProducerMethodsExercised": true,
+    "rollbackAfterNotifySuppressed": true,
+    "refusalNoopSuppressed": true,
+    "scopedLintFiles": 15,
+    "scopedLintErrors": 0,
+    "isolatedPostgresWrapperExitedSuccessfully": true
+  },
+  "limits": [
+    "No canonical byte or actual browser/performance evidence",
+    "No full journey or activation",
+    "Broad context poll cannot be removed using timesheet-only producers",
+    "New PostgreSQL delivery case uses separate database connections, not two running web processes"
+  ],
+  "newConnectionImplementations": 0,
+  "parallelDomainConnections": 0
+}

@@ -252,3 +252,16 @@ it("distinguishes preference topic readiness from transport and drops it on hide
   source.onerror?.();
   expect(health).toHaveBeenLastCalledWith(false);
 });
+
+it("shares one transport and filters timesheet hints to opted-in full accounts", () => {
+  manager.setAccount("org:user");
+  const timesheets = vi.fn(), ordinary = vi.fn();
+  manager.subscribe({ timesheets: true, expectedAccount: "org:user" }, { hint: timesheets });
+  manager.subscribe({}, { hint: ordinary });
+  vi.advanceTimersByTime(0);
+  expect(Source.all).toHaveLength(1); expect(Source.all[0]!.url).toContain("timesheets=1");
+  Source.all[0]!.emit("live", { topic: "timesheets", version: 1 });
+  expect(timesheets).toHaveBeenCalledOnce(); expect(ordinary).not.toHaveBeenCalled();
+  manager.setAccount("org:other"); Source.all[0]!.emit("live", { topic: "timesheets", version: 2 });
+  expect(timesheets).toHaveBeenCalledOnce(); expect(Source.all[0]!.closed).toBe(true);
+});

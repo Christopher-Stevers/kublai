@@ -22,6 +22,13 @@ const hintSchema = z
       userId: identifier.optional(),
       eventId: z.string().uuid(),
     }),
+    z.object({
+      topic: z.literal("timesheets"),
+      organizationId: identifier,
+      scope: z.enum(["personal", "organization"]),
+      userId: identifier.optional(),
+      eventId: z.string().uuid(),
+    }),
     z.object({ topic: z.literal("poke"), organizationId: identifier }),
     z.object({ topic: z.literal("catalogue"), organizationId: identifier }),
     z.object({ topic: z.literal("conversation"), conversationId: identifier }),
@@ -29,12 +36,12 @@ const hintSchema = z
   ])
   .superRefine((hint, context) => {
     if (
-      hint.topic === "preferences" &&
+      (hint.topic === "preferences" || hint.topic === "timesheets") &&
       (hint.scope === "personal" ? !hint.userId : hint.userId !== undefined)
     )
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Invalid preference audience",
+        message: "Invalid hint audience",
       });
   });
 export type BackgroundHint = z.infer<typeof hintSchema>;
@@ -66,9 +73,13 @@ export function acceptBackgroundHint(payload: string) {
   if (payload.length > 4096) return;
   try {
     const parsed = envelope.parse(JSON.parse(payload));
-    // Preference writers do not emit locally before commit. Their own LISTEN
+    // Transactional preference/timesheet writers emit only after commit. Their own LISTEN
     // delivery is the post-commit source, including the writing web process.
-    if (parsed.origin !== origin || parsed.hint.topic === "preferences")
+    if (
+      parsed.origin !== origin ||
+      parsed.hint.topic === "preferences" ||
+      parsed.hint.topic === "timesheets"
+    )
       emitter.emit("hint", parsed.hint);
   } catch {
     /* invalid transport hint */
@@ -105,7 +116,7 @@ export function transactionalBackgroundHint(hint: BackgroundHint) {
     parsed.topic === "preferences" &&
     (parsed.scope === "personal" ? !parsed.userId : parsed.userId !== undefined)
   )
-    throw Error("Invalid preference hint audience");
+    throw Error("Invalid hint audience");
   return JSON.stringify({ origin, hint: parsed });
 }
 export function startBackgroundHints() {

@@ -140,3 +140,14 @@ See [authority contract, pinned-driver upgrade guard and focused proof](material
 This is prepared/tested source with78 focused tests plus one separate private-PG
 kill/reconnect integration, not a production idle-request, byte-budget or release
 pass. No build, activation, schema migration or worker release was performed.
+
+### 2026-11-11: timesheet producer hints, context poll retained
+
+The separately prepared timesheet topic uses the existing transactional hint
+channel/shared browser stream. Eight web mutation methods funnel through the
+same durable event transaction; authorized active views invalidate reads on
+hint/reset/reconnect. Browser frames contain no employee, sheet, timer, notes,
+hours or permission data. The original 30-second context poll remains because
+it independently refreshes jobs/people, permissions and timezone-day boundaries.
+This removes **zero polls**, adds no domain server poll/schema/worker and does
+not establish the no-poll gate. See [scope and validation](timesheet-hints.md).

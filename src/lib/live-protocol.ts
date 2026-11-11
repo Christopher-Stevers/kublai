@@ -6,7 +6,8 @@ export type LiveTopic =
   | "catalogue"
   | "conversations"
   | "chat"
-  | "preferences";
+  | "preferences"
+  | "timesheets";
 export type LiveHint = {
   topic: LiveTopic;
   version: number;
@@ -25,6 +26,7 @@ export function liveHint(value: unknown): LiveHint | null {
       "conversations",
       "chat",
       "preferences",
+      "timesheets",
     ].includes(String(row.topic)) ||
     !Number.isSafeInteger(row.version) ||
     (row.version as number) < 0

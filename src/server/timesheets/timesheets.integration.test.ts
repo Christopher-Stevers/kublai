@@ -562,4 +562,128 @@ describe.skipIf(!socket)("Timesheets actual API / isolated PostgreSQL", () => {
     ).rejects.toThrow("over a month");
     expect((await caller().context()).clock?.id).toBe(second.id);
   });
+  it("publishes committed content-free hints for all eight web producers and none for refusals/rollback", async () => {
+    const { default: postgres } = await import("postgres");
+    const listener = postgres({
+      host: socket!,
+      port: 55449,
+      database: "timesheets_integration",
+      max: 1,
+    });
+    const hints: Array<{
+      scope: string;
+      userId?: string;
+      organizationId: string;
+      topic: string;
+    }> = [];
+    await listener.listen("foremanhq_change", (payload) => {
+      hints.push(
+        (JSON.parse(payload) as { hint: (typeof hints)[number] }).hint,
+      );
+    });
+    let count = 0;
+    const delivered = async (scope = "personal") => {
+      count++;
+      await vi.waitFor(() => expect(hints).toHaveLength(count), {
+        timeout: 2000,
+        interval: 10,
+      });
+      expect(hints.at(-1)).toMatchObject({
+        topic: "timesheets",
+        organizationId: org,
+        scope,
+        ...(scope === "personal" ? { userId: worker } : {}),
+      });
+    };
+    // No fake timeout clock: only Date changes so PostgreSQL/listener timers stay real.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-08T14:00:00Z"));
+    try {
+      await caller(manager).settings({
+        ...{
+          cadence: "weekly" as const,
+          weekStartsOn: 1,
+          timezone: "America/Toronto",
+        },
+        expectedRevision: 0,
+      });
+      await delivered("organization");
+      const savedEntry = entry();
+      await caller().saveEntry({ entry: savedEntry, expectedRevision: 0 });
+      await delivered();
+      let selected = await caller().period({ date: "2026-10-08" });
+      const id = selected.sheet!.id;
+      await caller().deleteEntry({
+        sheetId: id,
+        entryId: savedEntry.id,
+        expectedRevision: 1,
+      });
+      await delivered();
+      await caller().saveEntry({ entry: entry(), expectedRevision: 2 });
+      await delivered();
+      await caller().submit({ sheetId: id, expectedRevision: 3 });
+      await delivered();
+      await caller().withdraw({ sheetId: id, expectedRevision: 4 });
+      await delivered();
+      await caller().submit({ sheetId: id, expectedRevision: 5 });
+      await delivered();
+      await caller(manager).review({
+        sheetId: id,
+        expectedRevision: 6,
+        decision: "return",
+        note: "Synthetic return",
+      });
+      await delivered();
+      await caller().clockStart({ jobId: job, notes: "Synthetic clock" });
+      await delivered();
+      const clock = (await caller().context()).clock!;
+      await caller().clockAction({
+        id: clock.id,
+        expectedRevision: 0,
+        action: "pause",
+      });
+      await delivered();
+      const beforeRefusal = hints.length;
+      await expect(
+        caller().clockAction({
+          id: clock.id,
+          expectedRevision: 1,
+          action: "pause",
+        }),
+      ).rejects.toThrow("already in that mode");
+      await expect(
+        caller().saveEntry({
+          entry: entry("2026-10-08", 1100),
+          expectedRevision: 7,
+        }),
+      ).rejects.toThrow("24 hours");
+      const { notifyTimesheetChange } = await import("./notify");
+      await expect(
+        db.transaction(async (tx) => {
+          await notifyTimesheetChange(tx, org, worker);
+          throw Error("Synthetic post-notify rollback");
+        }),
+      ).rejects.toThrow("Synthetic post-notify rollback");
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      expect(hints).toHaveLength(beforeRefusal);
+      selected = await caller().period({ date: "2026-10-08" });
+      expect(selected.sheet!.revision).toBe(7);
+      await caller().clockAction({
+        id: clock.id,
+        expectedRevision: 1,
+        action: "cancel",
+      });
+      await delivered();
+      expect(
+        hints.every(
+          (hint) =>
+            !Object.keys(hint).some((key) =>
+              ["notes", "hours", "sheetId", "action", "data"].includes(key),
+            ),
+        ),
+      ).toBe(true);
+    } finally {
+      await listener.end({ timeout: 1 });
+    }
+  });
 });

@@ -1,3 +1,6 @@
+import { subscribeTimesheetEvents } from "~/server/live/timesheet-events";
+import { userCan } from "~/server/auth/permissions";
+import { devFeaturesEnabled } from "~/server/dev-features";
 import { subscribeMaterialSortEvents } from "~/server/live/material-sort-events";
 import { createTRPCContext } from "~/server/api/trpc";
 import { GET as materialSource } from "~/app/api/material-lists/events/route";
@@ -16,7 +19,8 @@ export async function GET(request: Request) {
   const url = new URL(request.url),
     jobs = (url.searchParams.get("jobs") ?? "").split(",").filter(Boolean),
     includeConversations = url.searchParams.get("conversations") === "1",
-    includePreferences = url.searchParams.get("preferences") === "1";
+    includePreferences = url.searchParams.get("preferences") === "1",
+    includeTimesheets = url.searchParams.get("timesheets") === "1";
   if (
     jobs.length > 20 ||
     jobs.some((value) => {
@@ -42,6 +46,11 @@ export async function GET(request: Request) {
       user.organizationAccessStatus !== "approved")
   )
     return new Response("Sign in required", { status: 401 });
+  if (
+    includeTimesheets &&
+    (!devFeaturesEnabled() || !userCan(user, "tab.timesheets"))
+  )
+    return new Response("Timesheets unavailable", { status: 403 });
   const scope = liveAccountScope(
     user.organizationId,
     user.id,
@@ -115,6 +124,7 @@ export async function GET(request: Request) {
     expiry: ReturnType<typeof setTimeout>;
   let unsubscribe: () => void = () => undefined;
   let unsubscribePreferences: () => void = () => undefined;
+  let unsubscribeTimesheets: () => void = () => undefined;
   const readers: ReadableStreamDefaultReader<Uint8Array>[] = [];
   const cleanup = () => {
     if (closed) return;
@@ -124,6 +134,7 @@ export async function GET(request: Request) {
     clearTimeout(expiry);
     unsubscribe();
     unsubscribePreferences();
+    unsubscribeTimesheets();
     request.signal.removeEventListener("abort", abort);
     releaseConnection();
     for (const reader of readers) void reader.cancel().catch(() => undefined);
@@ -157,7 +168,9 @@ export async function GET(request: Request) {
             ? jobIds.has(key)
             : topic === "preferences"
               ? includePreferences
-              : true;
+              : topic === "timesheets"
+                ? includeTimesheets
+                : true;
       const emit = (frame: ReturnType<typeof liveHub.publish>) => {
         if (frame.scope === scope && allowed(frame.hint.topic, frame.hint.key))
           send(
@@ -176,6 +189,18 @@ export async function GET(request: Request) {
             send(
               `event: preferences-ready\ndata: ${JSON.stringify({ ready })}\n\n`,
             ),
+        );
+      if (includeTimesheets)
+        unsubscribeTimesheets = subscribeTimesheetEvents(
+          {
+            organizationId: user.organizationId!,
+            userId: user.id,
+            canManage: userCan(user, "timesheets.manage"),
+          },
+          (kind, revision) => {
+            if (!closed)
+              liveHub.publish(scope, { topic: "timesheets", kind }, revision);
+          },
         );
       const resume = liveHub.resume(
         scope,

@@ -1,3 +1,4 @@
+import { notifyTimesheetChange } from "~/server/timesheets/notify";
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, gte, lte, ne, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -205,6 +206,7 @@ async function event(
   sheetId: string | null,
   action: string,
   data: unknown,
+  organizationWide = false,
 ) {
   await tx.insert(timeEvents).values({
     organizationId: actor.organizationId,
@@ -215,6 +217,7 @@ async function event(
     action,
     data,
   });
+  await notifyTimesheetChange(tx, actor.organizationId, userId, organizationWide);
 }
 async function bump(tx: Tx, sheet: Sheet) {
   await tx
@@ -724,6 +727,7 @@ export const timesheetsRouter = createTRPCRouter({
           null,
           "Company time settings changed",
           { before: current, after: data },
+          true,
         );
         return { ok: true };
       }),

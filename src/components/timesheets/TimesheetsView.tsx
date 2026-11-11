@@ -1,6 +1,8 @@
 "use client";
 import { setPageInterval as setInterval, clearPageInterval as clearInterval } from "~/lib/app-page-activity";
 
+import { useDrawingAccount } from "~/components/jobs/DrawingAccountProvider";
+import { useTimesheetLive } from "~/hooks/use-timesheet-live";
 import { usePageViewState } from "~/hooks/use-page-view-state";
 
 import { useEffect, useMemo, useState } from "react";
@@ -58,10 +60,18 @@ const statusClass: Record<string, string> = {
 const cap = (value: string) => value[0]!.toUpperCase() + value.slice(1);
 
 export function TimesheetsView() {
+  const account = useDrawingAccount();
+  const utils = api.useUtils();
   const online = useOnlineStatus();
   const context = api.timesheets.context.useQuery(undefined, {
     enabled: online,
     refetchInterval: online ? 30000 : false,
+  });
+  useTimesheetLive({
+    online: online && !!context.data && !context.error && context.data.me === account?.userId,
+    expectedAccount: account?.accountKey ?? "",
+    authorityScope: JSON.stringify([context.data?.me, context.data?.canEdit, context.data?.canManage, context.data?.canConfigure]),
+    refresh: () => utils.timesheets.invalidate(),
   });
   if (!context.data)
     return (

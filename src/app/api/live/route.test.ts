@@ -259,3 +259,21 @@ it("deduplicates preference source copies and sends content-free frames only to 
     stop();
   }
 });
+
+it("rejects unavailable timesheet topics before opening a source", async () => {
+  vi.stubEnv("FOREMANHQ_DEV_FEATURES", "false");
+  try {
+    expect((await GET(new Request("http://local/api/live?timesheets=1"))).status).toBe(403);
+    expect(mocks.material).not.toHaveBeenCalled();
+  } finally { vi.unstubAllEnvs(); }
+});
+it("keeps timesheet browser frames content-free and scoped, including simulation", async () => {
+  const { acceptBackgroundHint, transactionalBackgroundHint } = await import("~/server/background/hints");
+  mocks.identity.mockResolvedValue({ user: { id: "time-user", role: "admin", organizationId: "time-org", organizationAccessStatus: "approved" }, simulation: { id: "sim" } });
+  const a = await open("?timesheets=1"); expect(a.response.status).toBe(200); await a.reader.read();
+  acceptBackgroundHint(transactionalBackgroundHint({ topic: "timesheets", organizationId: "time-org", scope: "personal", userId: "time-user", eventId: "12345678-1234-4234-8234-123456789abb" }));
+  const frame = text(await a.reader.read());
+  expect(frame).toContain('"topic":"timesheets"'); expect(frame).toContain('"kind":"changed"');
+  for (const privateValue of ["organizationId", "userId", "eventId", "time-user", "time-org", "notes", "hours", "canManage"]) expect(frame).not.toContain(privateValue);
+  await a.reader.cancel();
+});

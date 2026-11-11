@@ -6,6 +6,7 @@ export type LiveSubscription = {
   jobIds?: readonly string[];
   conversations?: boolean;
   preferences?: boolean;
+  timesheets?: boolean;
   expectedAccount?: string;
 };
 export type LiveCallbacks = {
@@ -74,6 +75,7 @@ export class LiveClient {
       ].sort(),
       conversations: active.some((sub) => sub.options.conversations),
       preferences: active.some((sub) => sub.options.preferences),
+      timesheets: active.some((sub) => sub.options.timesheets),
     };
   }
   private available() {
@@ -133,6 +135,7 @@ export class LiveClient {
       );
     if (topics.conversations) query.set("conversations", "1");
     if (topics.preferences) query.set("preferences", "1");
+    if (topics.timesheets) query.set("timesheets", "1");
     if (this.cursor) query.set("after", this.cursor);
     const source = new EventSource(
       `/api/live${query.size ? "?" + query.toString() : ""}`,
@@ -190,7 +193,9 @@ export class LiveClient {
               ? sub.options.conversations
               : hint.topic === "preferences"
                 ? sub.options.preferences
-                : true
+                : hint.topic === "timesheets"
+                  ? sub.options.timesheets
+                  : true
         )
           sub.callbacks.hint(hint);
     });
