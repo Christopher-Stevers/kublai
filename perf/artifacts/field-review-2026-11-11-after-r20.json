@@ -1,0 +1,166 @@
+{
+  "source": "Anonymous live field beacons; read-only one-file cumulative snapshot",
+  "quantiles": "p75/p95 nearest-rank; median averages the middle pair",
+  "acceptedGateEvidence": false,
+  "limitations": [
+    "Viewport phone class is not per-row verified Pixel hardware; participant attribution does not identify individual records.",
+    "Field records may include QA and no controlled network profile or repeat-visit status is established.",
+    "Startup mark starts at document navigation origin and ends after startup-cover removal; it is not an OS app-icon-to-pixel measurement.",
+    "Live bootstrap sampling may drop late vital/journey observations; prepared priority sampling is not deployed.",
+    "Few INP or navigation samples do not establish stable field percentiles; callback-time screen/link attribution is not retroactively corrected."
+  ],
+  "capturedAt": "2026-11-11T23:57:12.197516+00:00",
+  "sourceSnapshotSha256": "2978c7dcafe233438aff73ed9a316e1b6f36cd67796892ad326f73b85efbb2e6",
+  "sourceSnapshotBytes": 146360,
+  "beacons": 150,
+  "metrics": 3009,
+  "groups": [
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "desktop",
+      "metric": "app-start-to-last-screen",
+      "count": 7,
+      "medianMs": 1252.0,
+      "p75Ms": 3003,
+      "p95Ms": 3579
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "desktop",
+      "metric": "inp",
+      "count": 3,
+      "medianMs": 192.0,
+      "p75Ms": 320,
+      "p95Ms": 320
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "desktop",
+      "metric": "interaction",
+      "count": 561,
+      "medianMs": 24.0,
+      "p75Ms": 32,
+      "p95Ms": 64
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "desktop",
+      "metric": "lcp",
+      "count": 2,
+      "medianMs": 732.0,
+      "p75Ms": 1172,
+      "p95Ms": 1172
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "desktop",
+      "metric": "longtask",
+      "count": 13,
+      "medianMs": 106.0,
+      "p75Ms": 111,
+      "p95Ms": 175
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "desktop",
+      "metric": "navigation",
+      "count": 11,
+      "medianMs": 0.0,
+      "p75Ms": 966,
+      "p95Ms": 1447
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "desktop",
+      "metric": "sheet-open-to-sharp",
+      "count": 14,
+      "medianMs": 2471.5,
+      "p75Ms": 6197,
+      "p95Ms": 9067
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "desktop",
+      "metric": "tap-to-paint",
+      "count": 2,
+      "medianMs": 490.5,
+      "p75Ms": 660,
+      "p95Ms": 660
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "phone",
+      "metric": "app-start-to-last-screen",
+      "count": 29,
+      "medianMs": 877.0,
+      "p75Ms": 1919,
+      "p95Ms": 3759
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "phone",
+      "metric": "inp",
+      "count": 6,
+      "medianMs": 72.0,
+      "p75Ms": 104,
+      "p95Ms": 232
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "phone",
+      "metric": "interaction",
+      "count": 2264,
+      "medianMs": 24.0,
+      "p75Ms": 32,
+      "p95Ms": 72
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "phone",
+      "metric": "lcp",
+      "count": 16,
+      "medianMs": 604.0,
+      "p75Ms": 2364,
+      "p95Ms": 5095
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "phone",
+      "metric": "longtask",
+      "count": 22,
+      "medianMs": 72.0,
+      "p75Ms": 82,
+      "p95Ms": 178
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "phone",
+      "metric": "navigation",
+      "count": 53,
+      "medianMs": 314.0,
+      "p75Ms": 674,
+      "p95Ms": 2279
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "phone",
+      "metric": "tap-to-paint",
+      "count": 5,
+      "medianMs": 593.0,
+      "p75Ms": 593,
+      "p95Ms": 880
+    },
+    {
+      "build": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "deviceClass": "tablet",
+      "metric": "sheet-open-to-sharp",
+      "count": 1,
+      "medianMs": 4234.0,
+      "p75Ms": 4234,
+      "p95Ms": 4234
+    }
+  ],
+  "previousReview": "perf/artifacts/field-review-2026-11-11-after-phone-deferred.json",
+  "previousBeacons": 105,
+  "previousMetrics": 2066
+}

@@ -1583,15 +1583,29 @@
     }
   ],
   "latestFieldCheckpoint": {
-    "source": "perf/artifacts/field-review-2026-11-11-after-phone-deferred.json",
-    "capturedAt": "2026-11-11T17:09:04.036207+00:00",
-    "beacons": 105,
-    "metrics": 2066,
+    "source": "perf/artifacts/field-review-2026-11-11-after-r20.json",
+    "capturedAt": "2026-11-11T23:57:12.197516+00:00",
+    "beacons": 150,
+    "metrics": 3009,
     "additionalBeacons": 45,
-    "additionalMetrics": 638,
+    "additionalMetrics": 943,
     "acceptedGateEvidence": false,
-    "phoneInpSamples": 5,
-    "phoneTapToPaintSamples": 3,
+    "phoneInpSamples": 6,
+    "phoneTapToPaintSamples": 5,
     "physicalDeviceVerifiedPerRow": false
-  }
+  },
+  "historicalFieldCheckpoints": [
+    {
+      "source": "perf/artifacts/field-review-2026-11-11-after-phone-deferred.json",
+      "capturedAt": "2026-11-11T17:09:04.036207+00:00",
+      "beacons": 105,
+      "metrics": 2066,
+      "additionalBeacons": 45,
+      "additionalMetrics": 638,
+      "acceptedGateEvidence": false,
+      "phoneInpSamples": 5,
+      "phoneTapToPaintSamples": 3,
+      "physicalDeviceVerifiedPerRow": false
+    }
+  ]
 }

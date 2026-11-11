@@ -1150,3 +1150,16 @@ The 21 raw failed-cell diagnostic files (34,612,701 bytes) are also retained in 
 private persistent proof directory with verified hashes. The original report,
 index and source evidence remain unchanged; the durable mapping is
 `artifacts/failed-cells-diagnostic-durable-archive-2026-11-11.json`.
+
+
+## Live telemetry follow-up after R20 — 2026-11-11
+
+A read-only cumulative snapshot now contains 150 anonymous beacons and 3,009
+metrics, up 45/943 from the 17:09 UTC review. Phone-class startup has 29 samples
+(median 877 ms); INP has six (sample p75 104 ms), and tap-to-paint has five
+(median 593 ms). These small uncontrolled counts do not prove reference-phone,
+repeat-visit, offline, launch-from-icon or stable percentile targets. They all
+belong to the unchanged Phase 0 build, not R20. The numeric-only raw snapshot is
+preserved privately and hashed; aggregate evidence is
+`artifacts/field-review-2026-11-11-after-r20.json`. The live service remains active
+on the Phase 0 canonical release. Pixel debugging remains deferred.
