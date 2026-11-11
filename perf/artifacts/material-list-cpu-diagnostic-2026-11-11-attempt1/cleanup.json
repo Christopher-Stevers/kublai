@@ -1,0 +1,9 @@
+{
+  "source": "Post-attempt local /proc/PID and private PG-directory existence checks; no extra browser/request",
+  "serverPidsAbsent": true,
+  "privatePgDirectoriesAbsent": true,
+  "browserClosedByDriverFinally": true,
+  "coordinatorExitCode": 1,
+  "captures": 0,
+  "automaticRerun": false
+}

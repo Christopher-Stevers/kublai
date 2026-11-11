@@ -1,0 +1,1 @@
+export async function GET(){return Response.json({provenance:'isolated-seeded-app',productionDatabase:false,authentication:'stubbed-seeded-user',userId:'perf-lab-user'},{headers:{'Cache-Control':'no-store'}});}

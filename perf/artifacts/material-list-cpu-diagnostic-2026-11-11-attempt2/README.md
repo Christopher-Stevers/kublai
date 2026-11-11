@@ -1,0 +1,11 @@
+# Material-list CPU diagnostic: inconclusive attempt 2
+
+Supplemental only; zero captures, no CPU/timeline profiles and no performance finding. Root explicitly authorized this single corrected attempt after attempt1's instrumentation timeout failure. The method hash changed and attempt ID records the correction. Preparation page/navigation defaults are60seconds; only the capture phase has3second defaults and an independent3second action cap. Coordinator outer bound8minutes; individual trace20MiB/CPU5MiB, total planned55MiB.
+
+Both exact source-attested baseline/R6 apps passed14-query preflight and private-process/database binding checks, using fresh separate synthetic fixtures and existing compiled lab artifacts. The frozen visited preparation completed on baseline, but the strict request guard rejected a request before Profiler/Tracing started. Driver reports failed/zero samples. Guard policy allows same-origin GET/HEAD, material-list pull POST and parsed empty Replicache pushes; it rejects other POSTs/origins. It was not weakened or retried. **The rejected-request array was serialized only with completed samples, so the exact rejected path was not retained on this pre-capture failure.** Do not invent it or infer an app defect.
+
+All archived files are direct post-attempt copies. driver.mjs is the exact read-only executed method; check/fingerprint/budget dependencies and source-evidence/fixtures/attestation source are retained. The attestation source binds synthetic perf-lab-user; the driver checked provenance/productionDatabase,14-query success and server privateDB/cwd, but did not independently compare a raw getMe identity payload. Fixture IDs/data are synthetic. No screenshots or request/response bodies are collected.
+
+Both server PIDs were gone, both private PG directories removed after coordinator exit1, and both PG error-header reports empty. Browser/context closed through driver finally. No production source edits/builds, production DB/storage access, ADB or personal browser targets. Attempt1 remains separately preserved; no further retry authorized/performed.
+
+The original full R7 acceptance result remains failed. These failures cannot confirm/refute row-receipt or shared-Button CPU hypotheses. Minified/commit-phase attribution was never attempted because no profile exists.
