@@ -456,3 +456,44 @@ Later prepared source, excluded from R11:
 Drawing-scale acknowledgement races and on-demand comparison loading are still
 being validated as later slices. Phone work stays deferred; no schema, worker,
 production data write or candidate activation occurred at this checkpoint.
+
+## R12 build and continued work without the phone — 2026-11-11
+
+The user deferred the unreliable Pixel connection. Physical measurements remain
+unproved; independent source and isolated lab work continue.
+
+R12 (`d18cbd7b…`, fingerprint `f8aea064…`) adds the seven reviewed groups to exact
+R11: ordinary-row partition, merge feedback/unmount fencing, idle snapshot
+observer, lazy comparison/shared controls, and the tested scale acknowledgement
+path. Twelve runtime files changed; all 5,456 unaffected inputs and 3,263 public
+files match. Canonical compilation, production TypeScript, prerender and source
+laws pass first try. Shared/heaviest gzip metrics are 478,116 / 640,641; receiving
+is 117,155 bytes smaller than R11 by the unchanged formal metric. All original
+Phase0 byte ratchets pass. Strict R11→R12 changed-script payload is 541,833 bytes
+(39 of 287 scripts changed), still above 100,000. The final shared/heaviest
+targets remain unmet. No timing improvement or activation follows from these
+byte results. See `artifacts/phase1-combined-r12-byte-2026-11-11.json`.
+
+The exact isolated R12 lab compile also completed. Its first supplemental
+preference-stream check stopped on a test observer defect: real tRPC JSONL
+responses carry application/json, so response content type alone selected the
+wrong decoder. No assertion passed; the private database had zero errors and
+all processes/ports were cleaned. That failed run is preserved separately. The
+observer is being corrected against the actual request protocol before another
+functional attempt. The frozen timing method and earlier failed matrices remain
+unchanged; no R12 full matrix has run at this checkpoint.
+
+Two later slices are committed and explicitly excluded from R12:
+
+- Chat join (`d434e254`): immediate pending latch, dispatch-time connectivity and
+  authority checks, no paused replay, scoped late responses, and a bounded
+  membership read after an uncertain result. Real overview authority still gates
+  history/composer. 52 focused tests pass; scoped lint adds no findings.
+- Catalogue creation (`3a814154`): one explicit request with an actor guard and
+  synchronous duplicate latch. The actual supplier-link ID travels in the create
+  response, removing a second lookup after acceptance. Drafts survive uncertain
+  outcomes; real ACK completion cannot be held by refresh or lost on a same-form
+  connectivity change. 44 focused tests pass, with existing lint unchanged.
+
+These are prepared improvements, not completed first-twenty latency, no-poll,
+offline-convergence or deployment gates. No production schema or worker release.

@@ -575,6 +575,22 @@
         "strictChangedScriptPass": false,
         "fullMatrixRun": false,
         "activated": false
+      },
+      {
+        "name": "R12",
+        "sourceFreezeCommit": "367b8dc9",
+        "proofCommit": "b7a09bcd",
+        "artifact": "perf/artifacts/phase1-combined-r12-byte-2026-11-11.json",
+        "sourceBuild": "d18cbd7b82933e2e0dc0999ccfcf2054aa7cf095946de1a379d6b0365e8b7736",
+        "sourceFingerprint": "f8aea0644b7c7471a1bdae597535001c44a6e0a337b8ef875da68e9c24327c09",
+        "sharedGzipBytes": 478116,
+        "heaviestGzipBytes": 640641,
+        "phase0RelativeDeployGzipBytes": 1316329,
+        "phase0ByteRatchetsPass": true,
+        "strictChangedScriptGzipBytes": 541833,
+        "strictChangedScriptPass": false,
+        "fullMatrixRun": false,
+        "activated": false
       }
     ],
     "otherPreparedCommits": {
@@ -594,7 +610,14 @@
         "3c322416",
         "1a1d88a4"
       ],
-      "snapshotIdleObserver": "9970d723"
+      "snapshotIdleObserver": "9970d723",
+      "comparisonBoundary": [
+        "5d2130c8",
+        "90ca286f"
+      ],
+      "scaleAcknowledgement": "0e421442",
+      "chatJoin": "d434e254",
+      "catalogueCreation": "3a814154"
     },
     "fullR7GateUnchanged": "failed4cells",
     "first20LatencyAccepted": false,
@@ -619,6 +642,14 @@
       "causeEstablished": false,
       "gateChanged": false,
       "ownedRuntimeCleaned": true
+    },
+    "r12FunctionalCheck": {
+      "status": "first-attempt-failed-observer-protocol",
+      "assertionsPassed": 0,
+      "databaseErrors": 0,
+      "cleanupConfirmed": true,
+      "appStreamResult": "not-established",
+      "timingMethodChanged": false
     }
   }
 }
