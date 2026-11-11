@@ -1,0 +1,18 @@
+{
+  "status": "authorized-starting",
+  "orchestration": "/tmp/foremanhq-r6-candidate120-ready-v2.sh",
+  "orchestrationSha256": "ba6abb0ad63ea9821ea806a3010d1ab377327edb65440dea4bb1ffbc391fc8a1",
+  "derivedFromFrozenScript": "perf/full-baseline.sh",
+  "derivation": "Exact unchanged setup/idle prefix through capture loop boundary; one full frozen driver invocation and comparison instead of two baseline captures.",
+  "timingMethodFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "protocol": "ready-then-pinch-v2",
+  "candidateSource": "/home/tim/.openclaw/workspace/releases/speed-phase1-reviewed-r6-20261111",
+  "candidateBuildDirectory": "/home/tim/.openclaw/workspace/releases/speed-phase1-reviewed-r6-20261111/.next-web",
+  "predeclaredComparisonBaseline": "/home/tim/.openclaw/workspace/kublai/perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+  "baselineStabilityReference": "/home/tim/.openclaw/workspace/kublai/perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-2.json",
+  "expectedSourceBuild": "c49e8cbad84665aadc57323448c013f7c2420fa9cdff3992835164913bb7f161",
+  "expectedSourceFingerprint": "3d4e7376001274a418390701935b8f474d6973a6ae4f8976ede74fd62e7c1c0d",
+  "expectedSourceFileCount": 2283,
+  "startedAt": "2026-11-11T06:07:47.308Z",
+  "navigationChecks": "Explicit DONE received before setup"
+}
