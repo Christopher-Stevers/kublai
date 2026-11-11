@@ -1,0 +1,1700 @@
+{
+  "kind": "supplemental-instrumented-diagnostic",
+  "protocol": "openjob-actionability-diagnostic-v1",
+  "acceptedGateEvidence": false,
+  "status": "complete",
+  "startedAt": "2026-11-11T08:20:25.017Z",
+  "driverSha256Before": "29b9f51d4ad63a2032b805a573e4979ff56306791ad11323fc7d4f910f7746f1",
+  "driverReadOnly": true,
+  "preparationMethodFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "order": "Office only: four conditions rotated across five blocks; baseline/R7 × default/force × five samples",
+  "sources": {
+    "baseline": {
+      "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+      "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+      "labBuild": "cI20Tzl0OAQscfvjfmtFW",
+      "preflight": {
+        "status": "passed",
+        "build": "cI20Tzl0OAQscfvjfmtFW",
+        "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+        "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+        "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+        "sourceFileCount": 2200,
+        "sourceVerification": {
+          "stage": "after-lab-transforms",
+          "unchangedFilesChecked": 2195,
+          "allowedLabTransforms": [
+            "next.config.js",
+            "tsconfig.json",
+            "src/server/db/index.ts",
+            "src/server/background/hints.ts",
+            "src/server/background/worker.ts"
+          ],
+          "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+          "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash",
+          "preTransformUnchangedFilesChecked": 2200
+        },
+        "sourceBinding": {
+          "method": "frozen-release-inputs-sha256",
+          "algorithm": "foremanhq-lab-source-v1",
+          "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+          "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+        },
+        "authentication": "stubbed-seeded-user",
+        "results": [
+          {
+            "procedure": "user.getMe",
+            "status": "ok"
+          },
+          {
+            "procedure": "notifications.identity",
+            "status": "ok"
+          },
+          {
+            "procedure": "push.identity",
+            "status": "ok"
+          },
+          {
+            "procedure": "job.getJob",
+            "status": "ok"
+          },
+          {
+            "procedure": "materialList.getMaterialList",
+            "status": "ok"
+          },
+          {
+            "procedure": "materialList.getOrderById",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawings.listSets",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawings.getSet",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawingsWorkspace.get",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawingsWorkspace.changes",
+            "status": "ok"
+          },
+          {
+            "procedure": "chat.getOverview",
+            "status": "ok"
+          },
+          {
+            "procedure": "chat.history",
+            "status": "ok"
+          },
+          {
+            "procedure": "rooms.getJobRoomCount",
+            "status": "ok"
+          },
+          {
+            "procedure": "notifications.overview",
+            "status": "ok"
+          }
+        ]
+      },
+      "healthBefore": {
+        "errors": 0,
+        "fatals": 0
+      },
+      "healthAfter": {
+        "errors": 0,
+        "fatals": 0
+      }
+    },
+    "candidate": {
+      "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+      "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+      "labBuild": "4qOIJ0ATp9DzIVGHVmxB_",
+      "preflight": {
+        "status": "passed",
+        "build": "4qOIJ0ATp9DzIVGHVmxB_",
+        "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+        "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+        "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+        "sourceFileCount": 2289,
+        "sourceVerification": {
+          "stage": "after-lab-transforms",
+          "unchangedFilesChecked": 2284,
+          "allowedLabTransforms": [
+            "next.config.js",
+            "tsconfig.json",
+            "src/server/db/index.ts",
+            "src/server/background/hints.ts",
+            "src/server/background/worker.ts"
+          ],
+          "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+          "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash",
+          "preTransformUnchangedFilesChecked": 2289
+        },
+        "sourceBinding": {
+          "method": "frozen-release-inputs-sha256",
+          "algorithm": "foremanhq-lab-source-v1",
+          "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+          "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+        },
+        "authentication": "stubbed-seeded-user",
+        "results": [
+          {
+            "procedure": "user.getMe",
+            "status": "ok"
+          },
+          {
+            "procedure": "notifications.identity",
+            "status": "ok"
+          },
+          {
+            "procedure": "push.identity",
+            "status": "ok"
+          },
+          {
+            "procedure": "job.getJob",
+            "status": "ok"
+          },
+          {
+            "procedure": "materialList.getMaterialList",
+            "status": "ok"
+          },
+          {
+            "procedure": "materialList.getOrderById",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawings.listSets",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawings.getSet",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawingsWorkspace.get",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawingsWorkspace.changes",
+            "status": "ok"
+          },
+          {
+            "procedure": "chat.getOverview",
+            "status": "ok"
+          },
+          {
+            "procedure": "chat.history",
+            "status": "ok"
+          },
+          {
+            "procedure": "rooms.getJobRoomCount",
+            "status": "ok"
+          },
+          {
+            "procedure": "notifications.overview",
+            "status": "ok"
+          }
+        ]
+      },
+      "healthBefore": {
+        "errors": 0,
+        "fatals": 0
+      },
+      "healthAfter": {
+        "errors": 0,
+        "fatals": 0
+      }
+    }
+  },
+  "samples": [
+    {
+      "role": "baseline",
+      "mode": "default",
+      "link": "Office",
+      "run": 0,
+      "driver": {
+        "totalMs": 96.18218300000012,
+        "clickMs": 60.393751000000066,
+        "assertMs": 2.8852569999999105,
+        "twoRafMs": 32.90317500000015
+      },
+      "browser": {
+        "installedAt": 1071.9000000953674,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 1108.6999998092651,
+            "eventTimeStamp": 1106.5999999046326,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 1110.6999998092651,
+            "eventTimeStamp": 1106.5999999046326,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 1120,
+        "raf": [
+          1085.498,
+          1102.1,
+          1118.7,
+          1135.4,
+          1152.1,
+          1168.7
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 1118.7,
+        "longTaskSupported": true,
+        "clickRequestedAt": 1073.5,
+        "paintFrames": {
+          "first": 1152.1,
+          "second": 1168.7,
+          "resolvedAt": 1169.0999999046326
+        },
+        "clickRequestedToPointerdownMs": 35.19999980926514,
+        "pointerdownToClickMs": 2,
+        "pointerdownToDomReadyMs": 11.300000190734863,
+        "clickToDomReadyMs": 9.300000190734863,
+        "domReadyToSecondExplicitRafMs": 48.700000000000045,
+        "frameGapsMs": [
+          16.60199999999986,
+          16.600000000000136,
+          16.700000000000045,
+          16.699999999999818,
+          16.600000000000136
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "mode": "default",
+      "link": "Office",
+      "run": 0,
+      "driver": {
+        "totalMs": 97.02990099999988,
+        "clickMs": 66.42482100000007,
+        "assertMs": 2.719051000000036,
+        "twoRafMs": 27.88602899999978
+      },
+      "browser": {
+        "installedAt": 1055.1999998092651,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 1092.6999998092651,
+            "eventTimeStamp": 1090.8000001907349,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 1097.4000000953674,
+            "eventTimeStamp": 1090.8000001907349,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 1107.4000000953674,
+        "raf": [
+          1069.1,
+          1085.8,
+          1102.5,
+          1119.2,
+          1135.8,
+          1152.5
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 1102.5,
+        "longTaskSupported": true,
+        "clickRequestedAt": 1056.9000000953674,
+        "paintFrames": {
+          "first": 1135.8,
+          "second": 1152.5,
+          "resolvedAt": 1153.4000000953674
+        },
+        "clickRequestedToPointerdownMs": 35.799999713897705,
+        "pointerdownToClickMs": 4.700000286102295,
+        "pointerdownToDomReadyMs": 14.700000286102295,
+        "clickToDomReadyMs": 10,
+        "domReadyToSecondExplicitRafMs": 45.09999990463257,
+        "frameGapsMs": [
+          16.700000000000045,
+          16.700000000000045,
+          16.700000000000045,
+          16.59999999999991,
+          16.700000000000045
+        ]
+      }
+    },
+    {
+      "role": "baseline",
+      "mode": "force",
+      "link": "Office",
+      "run": 0,
+      "driver": {
+        "totalMs": 54.757522999999765,
+        "clickMs": 32.34186799999998,
+        "assertMs": 2.5027439999998933,
+        "twoRafMs": 19.912910999999895
+      },
+      "browser": {
+        "installedAt": 990.3000001907349,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 999.8000001907349,
+            "eventTimeStamp": 998.4000000953674,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 1001.6000003814697,
+            "eventTimeStamp": 998.5,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 1010.7000002861023,
+        "raf": [
+          995.9,
+          1012.5,
+          1029.2,
+          1045.9
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 1012.5,
+        "longTaskSupported": true,
+        "clickRequestedAt": 992,
+        "paintFrames": {
+          "first": 1029.2,
+          "second": 1045.9,
+          "resolvedAt": 1046.4000000953674
+        },
+        "clickRequestedToPointerdownMs": 7.800000190734863,
+        "pointerdownToClickMs": 1.8000001907348633,
+        "pointerdownToDomReadyMs": 10.900000095367432,
+        "clickToDomReadyMs": 9.099999904632568,
+        "domReadyToSecondExplicitRafMs": 35.199999713897796,
+        "frameGapsMs": [
+          16.600000000000023,
+          16.700000000000045,
+          16.700000000000045
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "mode": "force",
+      "link": "Office",
+      "run": 0,
+      "driver": {
+        "totalMs": 60.4826579999999,
+        "clickMs": 36.0480349999998,
+        "assertMs": 2.366522000000259,
+        "twoRafMs": 22.068100999999842
+      },
+      "browser": {
+        "installedAt": 979.8000001907349,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 989.9000000953674,
+            "eventTimeStamp": 987.5999999046326,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 994.3000001907349,
+            "eventTimeStamp": 987.5999999046326,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 1003.5,
+        "raf": [
+          1008.064,
+          1008.064,
+          1024.7,
+          1041.4
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 1008.064,
+        "longTaskSupported": true,
+        "clickRequestedAt": 981.8000001907349,
+        "paintFrames": {
+          "first": 1024.7,
+          "second": 1041.4,
+          "resolvedAt": 1042.0999999046326
+        },
+        "clickRequestedToPointerdownMs": 8.099999904632568,
+        "pointerdownToClickMs": 4.400000095367432,
+        "pointerdownToDomReadyMs": 13.599999904632568,
+        "clickToDomReadyMs": 9.199999809265137,
+        "domReadyToSecondExplicitRafMs": 37.90000000000009,
+        "frameGapsMs": [
+          0,
+          16.63600000000008,
+          16.700000000000045
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "mode": "default",
+      "link": "Office",
+      "run": 1,
+      "driver": {
+        "totalMs": 92.24188400000003,
+        "clickMs": 59.20467500000086,
+        "assertMs": 1.4344349999992119,
+        "twoRafMs": 31.602773999999954
+      },
+      "browser": {
+        "installedAt": 946.5,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 979.4000000953674,
+            "eventTimeStamp": 977.7999997138977,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 984.2999997138977,
+            "eventTimeStamp": 977.9000000953674,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 993.5,
+        "raf": [
+          956.2,
+          972.9,
+          989.6,
+          1006.2,
+          1022.9,
+          1039.6
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 989.6,
+        "longTaskSupported": true,
+        "clickRequestedAt": 948.2999997138977,
+        "paintFrames": {
+          "first": 1022.9,
+          "second": 1039.6,
+          "resolvedAt": 1039.7999997138977
+        },
+        "clickRequestedToPointerdownMs": 31.100000381469727,
+        "pointerdownToClickMs": 4.899999618530273,
+        "pointerdownToDomReadyMs": 14.099999904632568,
+        "clickToDomReadyMs": 9.200000286102295,
+        "domReadyToSecondExplicitRafMs": 46.09999999999991,
+        "frameGapsMs": [
+          16.699999999999932,
+          16.700000000000045,
+          16.600000000000023,
+          16.699999999999932,
+          16.699999999999932
+        ]
+      }
+    },
+    {
+      "role": "baseline",
+      "mode": "force",
+      "link": "Office",
+      "run": 1,
+      "driver": {
+        "totalMs": 62.799942999999985,
+        "clickMs": 32.37575799999922,
+        "assertMs": 2.998844000000645,
+        "twoRafMs": 27.425341000000117
+      },
+      "browser": {
+        "installedAt": 939.5999999046326,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 949,
+            "eventTimeStamp": 947,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 950.6999998092651,
+            "eventTimeStamp": 947,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 959.8999996185303,
+        "raf": [
+          952.8,
+          969.4,
+          986.1,
+          1002.8
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 952.8,
+        "longTaskSupported": true,
+        "clickRequestedAt": 940.8999996185303,
+        "paintFrames": {
+          "first": 986.1,
+          "second": 1002.8,
+          "resolvedAt": 1003.2999997138977
+        },
+        "clickRequestedToPointerdownMs": 8.100000381469727,
+        "pointerdownToClickMs": 1.6999998092651367,
+        "pointerdownToDomReadyMs": 10.899999618530273,
+        "clickToDomReadyMs": 9.199999809265137,
+        "domReadyToSecondExplicitRafMs": 42.90000038146968,
+        "frameGapsMs": [
+          16.600000000000023,
+          16.700000000000045,
+          16.699999999999932
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "mode": "force",
+      "link": "Office",
+      "run": 1,
+      "driver": {
+        "totalMs": 68.6501989999997,
+        "clickMs": 35.97145099999943,
+        "assertMs": 2.6817610000007335,
+        "twoRafMs": 29.996986999999535
+      },
+      "browser": {
+        "installedAt": 947.7000002861023,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 957.4000000953674,
+            "eventTimeStamp": 956,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 962.4000000953674,
+            "eventTimeStamp": 956,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 971.5,
+        "raf": [
+          951.098,
+          967.8,
+          984.4,
+          1001.1,
+          1017.8
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 967.8,
+        "longTaskSupported": true,
+        "clickRequestedAt": 949.5999999046326,
+        "paintFrames": {
+          "first": 1001.1,
+          "second": 1017.8,
+          "resolvedAt": 1018.2000002861023
+        },
+        "clickRequestedToPointerdownMs": 7.800000190734863,
+        "pointerdownToClickMs": 5,
+        "pointerdownToDomReadyMs": 14.099999904632568,
+        "clickToDomReadyMs": 9.099999904632568,
+        "domReadyToSecondExplicitRafMs": 46.299999999999955,
+        "frameGapsMs": [
+          16.701999999999998,
+          16.600000000000023,
+          16.700000000000045,
+          16.699999999999932
+        ]
+      }
+    },
+    {
+      "role": "baseline",
+      "mode": "default",
+      "link": "Office",
+      "run": 1,
+      "driver": {
+        "totalMs": 93.14052199999969,
+        "clickMs": 56.77762199999961,
+        "assertMs": 2.2414200000002893,
+        "twoRafMs": 34.12147999999979
+      },
+      "browser": {
+        "installedAt": 956,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 989.6999998092651,
+            "eventTimeStamp": 987.9000000953674,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 991.1999998092651,
+            "eventTimeStamp": 987.9000000953674,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 1000.4000000953674,
+        "raf": [
+          967.698,
+          984.3,
+          1001.1,
+          1017.7,
+          1034.3,
+          1051.1
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 1001.1,
+        "longTaskSupported": true,
+        "clickRequestedAt": 958.0999999046326,
+        "paintFrames": {
+          "first": 1034.3,
+          "second": 1051.1,
+          "resolvedAt": 1051.3000001907349
+        },
+        "clickRequestedToPointerdownMs": 31.59999990463257,
+        "pointerdownToClickMs": 1.5,
+        "pointerdownToDomReadyMs": 10.700000286102295,
+        "clickToDomReadyMs": 9.200000286102295,
+        "domReadyToSecondExplicitRafMs": 50.69999990463248,
+        "frameGapsMs": [
+          16.601999999999975,
+          16.800000000000068,
+          16.600000000000023,
+          16.59999999999991,
+          16.799999999999955
+        ]
+      }
+    },
+    {
+      "role": "baseline",
+      "mode": "force",
+      "link": "Office",
+      "run": 2,
+      "driver": {
+        "totalMs": 50.83836499999961,
+        "clickMs": 28.59961099999964,
+        "assertMs": 2.049560000001293,
+        "twoRafMs": 20.18919399999868
+      },
+      "browser": {
+        "installedAt": 970.7999997138977,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 979.2999997138977,
+            "eventTimeStamp": 977.5,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 980.7999997138977,
+            "eventTimeStamp": 977.5,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 989.2999997138977,
+        "raf": [
+          971.832,
+          971.832,
+          988.5,
+          1005.2,
+          1021.9
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 988.5,
+        "longTaskSupported": true,
+        "clickRequestedAt": 972.5999999046326,
+        "paintFrames": {
+          "first": 1005.2,
+          "second": 1021.9,
+          "resolvedAt": 1022.5
+        },
+        "clickRequestedToPointerdownMs": 6.699999809265137,
+        "pointerdownToClickMs": 1.5,
+        "pointerdownToDomReadyMs": 10,
+        "clickToDomReadyMs": 8.5,
+        "domReadyToSecondExplicitRafMs": 32.60000028610227,
+        "frameGapsMs": [
+          0,
+          16.668000000000006,
+          16.700000000000045,
+          16.699999999999932
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "mode": "force",
+      "link": "Office",
+      "run": 2,
+      "driver": {
+        "totalMs": 61.732294999999795,
+        "clickMs": 34.647815999998784,
+        "assertMs": 2.4804860000003828,
+        "twoRafMs": 24.603993000000628
+      },
+      "browser": {
+        "installedAt": 979.6999998092651,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 989.5,
+            "eventTimeStamp": 987.5,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 993.5,
+            "eventTimeStamp": 987.5,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 1002.6999998092651,
+        "raf": [
+          1008.93,
+          1009,
+          1025.6,
+          1042.3
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 1008.93,
+        "longTaskSupported": true,
+        "clickRequestedAt": 981.1999998092651,
+        "paintFrames": {
+          "first": 1025.6,
+          "second": 1042.3,
+          "resolvedAt": 1042.5
+        },
+        "clickRequestedToPointerdownMs": 8.300000190734863,
+        "pointerdownToClickMs": 4,
+        "pointerdownToDomReadyMs": 13.199999809265137,
+        "clickToDomReadyMs": 9.199999809265137,
+        "domReadyToSecondExplicitRafMs": 39.60000019073482,
+        "frameGapsMs": [
+          0.07000000000005002,
+          16.59999999999991,
+          16.700000000000045
+        ]
+      }
+    },
+    {
+      "role": "baseline",
+      "mode": "default",
+      "link": "Office",
+      "run": 2,
+      "driver": {
+        "totalMs": 93.61189800000102,
+        "clickMs": 58.5101539999996,
+        "assertMs": 2.864790000001449,
+        "twoRafMs": 32.23695399999997
+      },
+      "browser": {
+        "installedAt": 957.1999998092651,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 990.5999999046326,
+            "eventTimeStamp": 989,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 992.5999999046326,
+            "eventTimeStamp": 989.0999999046326,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 1001.8999996185303,
+        "raf": [
+          968.7,
+          985.3,
+          1002.1,
+          1018.7,
+          1035.4,
+          1052
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 1002.1,
+        "longTaskSupported": true,
+        "clickRequestedAt": 958.8999996185303,
+        "paintFrames": {
+          "first": 1035.4,
+          "second": 1052,
+          "resolvedAt": 1052.2999997138977
+        },
+        "clickRequestedToPointerdownMs": 31.700000286102295,
+        "pointerdownToClickMs": 2,
+        "pointerdownToDomReadyMs": 11.299999713897705,
+        "clickToDomReadyMs": 9.299999713897705,
+        "domReadyToSecondExplicitRafMs": 50.10000038146973,
+        "frameGapsMs": [
+          16.59999999999991,
+          16.800000000000068,
+          16.600000000000023,
+          16.700000000000045,
+          16.59999999999991
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "mode": "default",
+      "link": "Office",
+      "run": 2,
+      "driver": {
+        "totalMs": 98.80826700000034,
+        "clickMs": 64.56007800000043,
+        "assertMs": 2.442327999999179,
+        "twoRafMs": 31.805861000000732
+      },
+      "browser": {
+        "installedAt": 942.5999999046326,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 982,
+            "eventTimeStamp": 979.9000000953674,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 986.2999997138977,
+            "eventTimeStamp": 980,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 995.5999999046326,
+        "raf": [
+          943,
+          959.7,
+          976.3,
+          993,
+          1009.6,
+          1026.2,
+          1042.9
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 993,
+        "longTaskSupported": true,
+        "clickRequestedAt": 945,
+        "paintFrames": {
+          "first": 1026.2,
+          "second": 1042.9,
+          "resolvedAt": 1043.6999998092651
+        },
+        "clickRequestedToPointerdownMs": 37,
+        "pointerdownToClickMs": 4.299999713897705,
+        "pointerdownToDomReadyMs": 13.599999904632568,
+        "clickToDomReadyMs": 9.300000190734863,
+        "domReadyToSecondExplicitRafMs": 47.30000009536752,
+        "frameGapsMs": [
+          16.700000000000045,
+          16.59999999999991,
+          16.700000000000045,
+          16.600000000000023,
+          16.600000000000023,
+          16.700000000000045
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "mode": "force",
+      "link": "Office",
+      "run": 3,
+      "driver": {
+        "totalMs": 55.97815400000036,
+        "clickMs": 34.7336090000008,
+        "assertMs": 2.8856789999990724,
+        "twoRafMs": 18.35886600000049
+      },
+      "browser": {
+        "installedAt": 946.4000000953674,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 955.2999997138977,
+            "eventTimeStamp": 953.6999998092651,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 959.7999997138977,
+            "eventTimeStamp": 953.6999998092651,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 968.7999997138977,
+        "raf": [
+          953.2,
+          969.8,
+          986.5,
+          1003.1
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 969.8,
+        "longTaskSupported": true,
+        "clickRequestedAt": 947.6999998092651,
+        "paintFrames": {
+          "first": 986.5,
+          "second": 1003.1,
+          "resolvedAt": 1003.2999997138977
+        },
+        "clickRequestedToPointerdownMs": 7.599999904632568,
+        "pointerdownToClickMs": 4.5,
+        "pointerdownToDomReadyMs": 13.5,
+        "clickToDomReadyMs": 9,
+        "domReadyToSecondExplicitRafMs": 34.30000028610232,
+        "frameGapsMs": [
+          16.59999999999991,
+          16.700000000000045,
+          16.600000000000023
+        ]
+      }
+    },
+    {
+      "role": "baseline",
+      "mode": "default",
+      "link": "Office",
+      "run": 3,
+      "driver": {
+        "totalMs": 95.34215099999892,
+        "clickMs": 58.242151999998896,
+        "assertMs": 2.433704000000944,
+        "twoRafMs": 34.66629499999908
+      },
+      "browser": {
+        "installedAt": 937,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 972.7000002861023,
+            "eventTimeStamp": 971,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 974.7000002861023,
+            "eventTimeStamp": 971.1000003814697,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 984.5,
+        "raf": [
+          950.398,
+          967,
+          983.7,
+          1000.4,
+          1017,
+          1033.7
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 983.7,
+        "longTaskSupported": true,
+        "clickRequestedAt": 939.4000000953674,
+        "paintFrames": {
+          "first": 1017,
+          "second": 1033.7,
+          "resolvedAt": 1034.4000000953674
+        },
+        "clickRequestedToPointerdownMs": 33.30000019073486,
+        "pointerdownToClickMs": 2,
+        "pointerdownToDomReadyMs": 11.799999713897705,
+        "clickToDomReadyMs": 9.799999713897705,
+        "domReadyToSecondExplicitRafMs": 49.200000000000045,
+        "frameGapsMs": [
+          16.601999999999975,
+          16.700000000000045,
+          16.699999999999932,
+          16.600000000000023,
+          16.700000000000045
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "mode": "default",
+      "link": "Office",
+      "run": 3,
+      "driver": {
+        "totalMs": 100.69556999999986,
+        "clickMs": 63.40849800000069,
+        "assertMs": 2.859357999997883,
+        "twoRafMs": 34.42771400000129
+      },
+      "browser": {
+        "installedAt": 973.6999998092651,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 1012.4000000953674,
+            "eventTimeStamp": 1011.0999999046326,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 1017,
+            "eventTimeStamp": 1011.1999998092651,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 1025.7999997138977,
+        "raf": [
+          974.832,
+          974.832,
+          991.5,
+          1008.1,
+          1024.8,
+          1041.5,
+          1058.2,
+          1074.8
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 1024.8,
+        "longTaskSupported": true,
+        "clickRequestedAt": 975.5,
+        "paintFrames": {
+          "first": 1058.2,
+          "second": 1074.8,
+          "resolvedAt": 1075.9000000953674
+        },
+        "clickRequestedToPointerdownMs": 36.90000009536743,
+        "pointerdownToClickMs": 4.599999904632568,
+        "pointerdownToDomReadyMs": 13.399999618530273,
+        "clickToDomReadyMs": 8.799999713897705,
+        "domReadyToSecondExplicitRafMs": 49.00000028610225,
+        "frameGapsMs": [
+          0,
+          16.668000000000006,
+          16.600000000000023,
+          16.699999999999932,
+          16.700000000000045,
+          16.700000000000045,
+          16.59999999999991
+        ]
+      }
+    },
+    {
+      "role": "baseline",
+      "mode": "force",
+      "link": "Office",
+      "run": 3,
+      "driver": {
+        "totalMs": 62.52688099999796,
+        "clickMs": 31.769453999997495,
+        "assertMs": 2.431728000003204,
+        "twoRafMs": 28.325698999997257
+      },
+      "browser": {
+        "installedAt": 940.5,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 950.0999999046326,
+            "eventTimeStamp": 947.9000000953674,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 951.1999998092651,
+            "eventTimeStamp": 947.9000000953674,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 961.0999999046326,
+        "raf": [
+          953.3,
+          969.9,
+          986.6,
+          1003.3
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 953.3,
+        "longTaskSupported": true,
+        "clickRequestedAt": 941.9000000953674,
+        "paintFrames": {
+          "first": 986.6,
+          "second": 1003.3,
+          "resolvedAt": 1003.5
+        },
+        "clickRequestedToPointerdownMs": 8.199999809265137,
+        "pointerdownToClickMs": 1.0999999046325684,
+        "pointerdownToDomReadyMs": 11,
+        "clickToDomReadyMs": 9.900000095367432,
+        "domReadyToSecondExplicitRafMs": 42.200000095367386,
+        "frameGapsMs": [
+          16.600000000000023,
+          16.700000000000045,
+          16.699999999999932
+        ]
+      }
+    },
+    {
+      "role": "baseline",
+      "mode": "default",
+      "link": "Office",
+      "run": 4,
+      "driver": {
+        "totalMs": 80.63767499999813,
+        "clickMs": 59.49084899999798,
+        "assertMs": 1.70923600000242,
+        "twoRafMs": 19.437589999997726
+      },
+      "browser": {
+        "installedAt": 971.8999996185303,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 1009.2999997138977,
+            "eventTimeStamp": 1007.0999999046326,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 1010.8999996185303,
+            "eventTimeStamp": 1007.1999998092651,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 1019.5,
+        "raf": [
+          987,
+          1003.6,
+          1020.3,
+          1037,
+          1053.6
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 1020.3,
+        "longTaskSupported": true,
+        "clickRequestedAt": 973.2999997138977,
+        "paintFrames": {
+          "first": 1037,
+          "second": 1053.6,
+          "resolvedAt": 1053.8999996185303
+        },
+        "clickRequestedToPointerdownMs": 36,
+        "pointerdownToClickMs": 1.5999999046325684,
+        "pointerdownToDomReadyMs": 10.200000286102295,
+        "clickToDomReadyMs": 8.600000381469727,
+        "domReadyToSecondExplicitRafMs": 34.09999999999991,
+        "frameGapsMs": [
+          16.600000000000023,
+          16.699999999999932,
+          16.700000000000045,
+          16.59999999999991
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "mode": "default",
+      "link": "Office",
+      "run": 4,
+      "driver": {
+        "totalMs": 98.29831600000034,
+        "clickMs": 68.05640400000266,
+        "assertMs": 2.620761999998649,
+        "twoRafMs": 27.621149999999034
+      },
+      "browser": {
+        "installedAt": 993.9000000953674,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 1032.4000000953674,
+            "eventTimeStamp": 1030.4000000953674,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 1037,
+            "eventTimeStamp": 1030.5,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 1047,
+        "raf": [
+          1009.6,
+          1026.3,
+          1042.9,
+          1059.6,
+          1076.3,
+          1092.9
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 1042.9,
+        "longTaskSupported": true,
+        "clickRequestedAt": 996.1999998092651,
+        "paintFrames": {
+          "first": 1076.3,
+          "second": 1092.9,
+          "resolvedAt": 1093.4000000953674
+        },
+        "clickRequestedToPointerdownMs": 36.200000286102295,
+        "pointerdownToClickMs": 4.599999904632568,
+        "pointerdownToDomReadyMs": 14.599999904632568,
+        "clickToDomReadyMs": 10,
+        "domReadyToSecondExplicitRafMs": 45.90000000000009,
+        "frameGapsMs": [
+          16.699999999999932,
+          16.600000000000136,
+          16.699999999999818,
+          16.700000000000045,
+          16.600000000000136
+        ]
+      }
+    },
+    {
+      "role": "baseline",
+      "mode": "force",
+      "link": "Office",
+      "run": 4,
+      "driver": {
+        "totalMs": 50.59090300000025,
+        "clickMs": 29.54547199999797,
+        "assertMs": 2.3734299999996438,
+        "twoRafMs": 18.672001000002638
+      },
+      "browser": {
+        "installedAt": 1010.6999998092651,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 1018.5999999046326,
+            "eventTimeStamp": 1017.4000000953674,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 1020.4000000953674,
+            "eventTimeStamp": 1017.4000000953674,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 1029.4000000953674,
+        "raf": [
+          1011.732,
+          1011.8,
+          1028.4,
+          1045.1,
+          1061.7
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 1028.4,
+        "longTaskSupported": true,
+        "clickRequestedAt": 1012,
+        "paintFrames": {
+          "first": 1045.1,
+          "second": 1061.7,
+          "resolvedAt": 1062.4000000953674
+        },
+        "clickRequestedToPointerdownMs": 6.599999904632568,
+        "pointerdownToClickMs": 1.8000001907348633,
+        "pointerdownToDomReadyMs": 10.800000190734863,
+        "clickToDomReadyMs": 9,
+        "domReadyToSecondExplicitRafMs": 32.299999904632614,
+        "frameGapsMs": [
+          0.06799999999998363,
+          16.600000000000136,
+          16.699999999999818,
+          16.600000000000136
+        ]
+      }
+    },
+    {
+      "role": "candidate",
+      "mode": "force",
+      "link": "Office",
+      "run": 4,
+      "driver": {
+        "totalMs": 60.20558600000004,
+        "clickMs": 37.005473000001075,
+        "assertMs": 2.0599829999991925,
+        "twoRafMs": 21.140129999999772
+      },
+      "browser": {
+        "installedAt": 964.5999999046326,
+        "target": {
+          "tagName": "DIV",
+          "role": null,
+          "visibleUniqueAndEnabled": true,
+          "interactiveAncestorTag": "DIV",
+          "interactiveAncestorRole": "button",
+          "originalLocatorAndClickPointUnchanged": true
+        },
+        "pointerdown": [
+          {
+            "observedAt": 975.5999999046326,
+            "eventTimeStamp": 972.8000001907349,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "click": [
+          {
+            "observedAt": 980.0999999046326,
+            "eventTimeStamp": 972.8000001907349,
+            "pointerType": "mouse",
+            "isTrusted": true
+          }
+        ],
+        "domReadyAt": 989.0999999046326,
+        "raf": [
+          992.064,
+          992.064,
+          1008.7,
+          1025.4
+        ],
+        "longTasks": [],
+        "firstRafAfterReady": 992.064,
+        "longTaskSupported": true,
+        "clickRequestedAt": 966.0999999046326,
+        "paintFrames": {
+          "first": 1008.7,
+          "second": 1025.4,
+          "resolvedAt": 1026.2000002861023
+        },
+        "clickRequestedToPointerdownMs": 9.5,
+        "pointerdownToClickMs": 4.5,
+        "pointerdownToDomReadyMs": 13.5,
+        "clickToDomReadyMs": 9,
+        "domReadyToSecondExplicitRafMs": 36.30000009536752,
+        "frameGapsMs": [
+          0,
+          16.63600000000008,
+          16.700000000000045
+        ]
+      }
+    }
+  ],
+  "limitations": [
+    "Separate instrumented protocol; original frozen gate and failed candidate remain unchanged.",
+    "DOM visibility and rAF callbacks are readiness/paint opportunities, not physical first paint or compositor display.",
+    "MutationObserver, continuous rAF and PerformanceObserver add browser work; both sources receive identical instrumentation.",
+    "Two isolated app servers run concurrently; idle-server overhead is a supplemental diagnostic difference.",
+    "No true device/production auth/private SW/background-update/offline target proof.",
+    "Shared host production/OS activity remains uncontrolled."
+  ],
+  "browserVersion": "152.0.7977.82",
+  "plannedOrder": [
+    {
+      "role": "baseline",
+      "mode": "default",
+      "run": 0,
+      "link": "Office"
+    },
+    {
+      "role": "candidate",
+      "mode": "default",
+      "run": 0,
+      "link": "Office"
+    },
+    {
+      "role": "baseline",
+      "mode": "force",
+      "run": 0,
+      "link": "Office"
+    },
+    {
+      "role": "candidate",
+      "mode": "force",
+      "run": 0,
+      "link": "Office"
+    },
+    {
+      "role": "candidate",
+      "mode": "default",
+      "run": 1,
+      "link": "Office"
+    },
+    {
+      "role": "baseline",
+      "mode": "force",
+      "run": 1,
+      "link": "Office"
+    },
+    {
+      "role": "candidate",
+      "mode": "force",
+      "run": 1,
+      "link": "Office"
+    },
+    {
+      "role": "baseline",
+      "mode": "default",
+      "run": 1,
+      "link": "Office"
+    },
+    {
+      "role": "baseline",
+      "mode": "force",
+      "run": 2,
+      "link": "Office"
+    },
+    {
+      "role": "candidate",
+      "mode": "force",
+      "run": 2,
+      "link": "Office"
+    },
+    {
+      "role": "baseline",
+      "mode": "default",
+      "run": 2,
+      "link": "Office"
+    },
+    {
+      "role": "candidate",
+      "mode": "default",
+      "run": 2,
+      "link": "Office"
+    },
+    {
+      "role": "candidate",
+      "mode": "force",
+      "run": 3,
+      "link": "Office"
+    },
+    {
+      "role": "baseline",
+      "mode": "default",
+      "run": 3,
+      "link": "Office"
+    },
+    {
+      "role": "candidate",
+      "mode": "default",
+      "run": 3,
+      "link": "Office"
+    },
+    {
+      "role": "baseline",
+      "mode": "force",
+      "run": 3,
+      "link": "Office"
+    },
+    {
+      "role": "baseline",
+      "mode": "default",
+      "run": 4,
+      "link": "Office"
+    },
+    {
+      "role": "candidate",
+      "mode": "default",
+      "run": 4,
+      "link": "Office"
+    },
+    {
+      "role": "baseline",
+      "mode": "force",
+      "run": 4,
+      "link": "Office"
+    },
+    {
+      "role": "candidate",
+      "mode": "force",
+      "run": 4,
+      "link": "Office"
+    }
+  ],
+  "forceFactor": "Skips multiple Playwright prechecks/state/hit-target checks and interceptor stop, not only stable-rAF waiting. Scrolling, point computation, actual mouse input, navigation barrier/next-task remain. A faster force mode does not invalidate default actionability or waive the full gate.",
+  "endedAt": "2026-11-11T08:20:47.467Z",
+  "driverSha256After": "29b9f51d4ad63a2032b805a573e4979ff56306791ad11323fc7d4f910f7746f1",
+  "frozenMethodAfter": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4"
+}

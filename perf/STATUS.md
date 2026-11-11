@@ -279,3 +279,25 @@ heartbeat pass. The non-hex lab private SW/reload gap and controlled physical
 zero remain unchanged. Server and private DB were cleaned with zero errors;
 no further full run or activation is queued. Raw/provenance/assessment:
 `artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-assessment.json`.
+
+
+## Supplemental actionability comparison — 2026-11-11
+
+Twenty Office samples compare baseline/R7 × default/force × five with balanced
+order, exact frozen visited preparation and the same first job-name target and
+point algorithm. Added guards verified unique visible/enabled interactive-card
+ancestry, hidden destination, and trusted target input followed by DOM readiness.
+Browser request-to-pointer medians were 33.3 → 7.8 ms for baseline and
+36.2 → 8.1 ms for R7 (default → force). Click-to-DOM-ready was 9.3 ms default and
+9.1 ms force for both sources; R7 pointerdown-to-click still exceeded baseline.
+
+Force skips several page/state/hit-target/interception checks, not just stable
+rAF waiting. Scrolling, point computation, actual input and navigation/next-task
+waits remain. Faster force mode does not invalidate default clicks, identify a
+component cause or replace the failed full gate. Additional guards/probes alter
+phase alignment, so these medians cannot substitute for frozen gate timings.
+All 20 samples, source/preflight/health and driver hashes are archived; both
+private runtimes were cleaned with zero errors. The executed driver is
+`29b9f51d…`; the earlier prepared frozen copy was never executed and is labeled
+separately. See
+`artifacts/openjob-actionability-diagnostic-2026-11-11-assessment.json`.

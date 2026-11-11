@@ -1,0 +1,37 @@
+{
+  "playwrightVersion": "1.59.1",
+  "sources": [
+    {
+      "path": "node_modules/.pnpm/playwright-core@1.59.1/node_modules/playwright-core/lib/server/dom.js",
+      "sha256": "77bad6b23ea98fa2052a076c8cd794040ba94b46a81b7db3cf3e186cb83ab885"
+    },
+    {
+      "path": "node_modules/.pnpm/playwright-core@1.59.1/node_modules/playwright-core/lib/server/page.js",
+      "sha256": "3d236ad57de9eebdf4d165e3943522c041cafb0e136d479c9c0e9aeedeb0692a"
+    },
+    {
+      "path": "node_modules/.pnpm/playwright-core@1.59.1/node_modules/playwright-core/lib/server/frames.js",
+      "sha256": "a0a5c3655b86edeb1e6acb8133d40769dda53c246340271251598dac5ff48594"
+    },
+    {
+      "path": "node_modules/.pnpm/playwright-core@1.59.1/node_modules/playwright-core/lib/server/chromium/crPage.js",
+      "sha256": "0557802a75352710c9103a1a893d8f5539af1d144c183bb427a273e9fd0790d4"
+    },
+    {
+      "path": "node_modules/.pnpm/playwright-core@1.59.1/node_modules/playwright-core/lib/generated/injectedScriptSource.js",
+      "sha256": "53aac4133e2d1bfa605c7c33590d95e4edb57078412f895d21b5a08663296975"
+    }
+  ],
+  "skips": [
+    "Page pending-navigation and locator-handler prechecks",
+    "Visible/enabled/stable checks; ChromiumstableRafCount1 requires two rAF geometry samples to establish stability",
+    "Frame hit-target check and hit-target interceptor; its post-action stop await is absent"
+  ],
+  "retains": [
+    "Locator/attachment handling",
+    "Scroll into view, clickable point and viewport logic",
+    "Actual mouse move/down/up",
+    "Input action epilogue, navigation signal barrier, next-task wait; noWaitAfter unchanged"
+  ],
+  "gateChange": false
+}

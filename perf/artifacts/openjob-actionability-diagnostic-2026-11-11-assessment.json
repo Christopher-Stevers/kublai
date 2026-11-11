@@ -1,0 +1,137 @@
+{
+  "status": "complete-supplemental-only",
+  "acceptedGateEvidence": false,
+  "originalR7Gate": "Four failed full-matrix cells preserved; no waiver, metric change or replacement.",
+  "raw": {
+    "path": "perf/artifacts/openjob-actionability-diagnostic-2026-11-11-report.json",
+    "sha256": "eb07b642bbe04da13c4d428015bd44d5089bc1ec70752faa911f40db1f593c10"
+  },
+  "protocol": "openjob-actionability-diagnostic-v1",
+  "samples": 20,
+  "rows": [
+    {
+      "role": "baseline",
+      "mode": "default",
+      "samples": 5,
+      "medianMs": {
+        "driverTotal": 93.61189800000102,
+        "driverClick": 58.5101539999996,
+        "driverAssert": 2.433704000000944,
+        "driverTwoRaf": 32.90317500000015,
+        "browserClickRequestToPointerdown": 33.30000019073486,
+        "browserPointerdownToClick": 2,
+        "browserPointerdownToDomReady": 11.299999713897705,
+        "browserClickToDomReady": 9.299999713897705,
+        "browserReadyToSecondRaf": 49.200000000000045
+      },
+      "observedLongTasks": 0
+    },
+    {
+      "role": "baseline",
+      "mode": "force",
+      "samples": 5,
+      "medianMs": {
+        "driverTotal": 54.757522999999765,
+        "driverClick": 31.769453999997495,
+        "driverAssert": 2.431728000003204,
+        "driverTwoRaf": 20.18919399999868,
+        "browserClickRequestToPointerdown": 7.800000190734863,
+        "browserPointerdownToClick": 1.6999998092651367,
+        "browserPointerdownToDomReady": 10.899999618530273,
+        "browserClickToDomReady": 9.099999904632568,
+        "browserReadyToSecondRaf": 35.199999713897796
+      },
+      "observedLongTasks": 0
+    },
+    {
+      "role": "candidate",
+      "mode": "default",
+      "samples": 5,
+      "medianMs": {
+        "driverTotal": 98.29831600000034,
+        "driverClick": 64.56007800000043,
+        "driverAssert": 2.620761999998649,
+        "driverTwoRaf": 31.602773999999954,
+        "browserClickRequestToPointerdown": 36.200000286102295,
+        "browserPointerdownToClick": 4.599999904632568,
+        "browserPointerdownToDomReady": 14.099999904632568,
+        "browserClickToDomReady": 9.300000190734863,
+        "browserReadyToSecondRaf": 46.09999999999991
+      },
+      "observedLongTasks": 0
+    },
+    {
+      "role": "candidate",
+      "mode": "force",
+      "samples": 5,
+      "medianMs": {
+        "driverTotal": 60.4826579999999,
+        "driverClick": 35.97145099999943,
+        "driverAssert": 2.4804860000003828,
+        "driverTwoRaf": 22.068100999999842,
+        "browserClickRequestToPointerdown": 8.099999904632568,
+        "browserPointerdownToClick": 4.5,
+        "browserPointerdownToDomReady": 13.5,
+        "browserClickToDomReady": 9.099999904632568,
+        "browserReadyToSecondRaf": 37.90000000000009
+      },
+      "observedLongTasks": 0
+    }
+  ],
+  "guards": "Exact frozen getByText(jobName,{exact:true}).first() target and same default point algorithm in both modes; unique visible/enabled target and visible interactive job-card ancestry; destination initially hidden; trusted target pointer/click and subsequent DOM-ready events required.",
+  "driverBefore": "29b9f51d4ad63a2032b805a573e4979ff56306791ad11323fc7d4f910f7746f1",
+  "driverAfter": "29b9f51d4ad63a2032b805a573e4979ff56306791ad11323fc7d4f910f7746f1",
+  "methodBefore": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "methodAfter": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "captureWindow": {
+    "start": "2026-11-11T08:20:25.017Z",
+    "end": "2026-11-11T08:20:47.467Z"
+  },
+  "finalDatabaseHealth": {
+    "baseline": {
+      "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+      "errors": []
+    },
+    "candidate": {
+      "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+      "errors": []
+    }
+  },
+  "cleanup": {
+    "ports3482And3483NoListener": true,
+    "bothPrivateDatabaseDirectoriesRemoved": true
+  },
+  "interpretation": "Force reduces request-to-pointer medians from 33.3→7.8 ms baseline and 36.2→8.1 ms R7, with click-to-DOM-ready 9.3 ms default/9.1 ms force in both sources. R7 pointerdown-to-click remains 4.5–4.6 ms versus 1.7–2.0 ms baseline. This demonstrates a substantial shared actionability-factor contribution in this instrumented experiment, not that default is invalid, that all original delay is Playwright, or that a specific app component caused a delay.",
+  "limitations": [
+    "Separate instrumented protocol; original frozen gate and failed candidate remain unchanged.",
+    "DOM visibility and rAF callbacks are readiness/paint opportunities, not physical first paint or compositor display.",
+    "MutationObserver, continuous rAF and PerformanceObserver add browser work; both sources receive identical instrumentation.",
+    "Two isolated app servers run concurrently; idle-server overhead is a supplemental diagnostic difference.",
+    "No true device/production auth/private SW/background-update/offline target proof.",
+    "Shared host production/OS activity remains uncontrolled.",
+    "Force skips multiple page prechecks, element states, frame hit-testing and interception/post-interception waits. It is not a stable-rAF-only factor.",
+    "Source target and default center-point algorithm are unchanged; actual sampled coordinates need not be identical if layout changes over time.",
+    "Additional target guards, browser click-request probe, rAF/DOM/longtask observers alter phase alignment. Default medians here are not comparable substitutes for original full-gate medians.",
+    "Office only, five samples per source/mode; all 20 samples retained. No actual first-paint/physical/offline/Next-privateSW/update proof.",
+    "No new app source/variant build; original failed candidate gate remains authoritative.",
+    "No declared heavy agent/ADB/phone work; production/OS activity remained uncontrolled."
+  ],
+  "driverProvenance": {
+    "executed": {
+      "sourceCommit": "5bda1b02 (on ef6cf4e0)",
+      "frozenPath": "/tmp/foremanhq-actionability-method-OBvvr0/perf/openjob-actionability-diagnostic.mjs",
+      "archivedPath": "perf/artifacts/openjob-actionability-diagnostic-2026-11-11-executed-driver.mjs",
+      "sha256AtExecutionStart": "29b9f51d4ad63a2032b805a573e4979ff56306791ad11323fc7d4f910f7746f1",
+      "sha256AtExecutionEnd": "29b9f51d4ad63a2032b805a573e4979ff56306791ad11323fc7d4f910f7746f1",
+      "sha256VerifiedAtArchive": "29b9f51d4ad63a2032b805a573e4979ff56306791ad11323fc7d4f910f7746f1",
+      "executed": true
+    },
+    "earlierPrepared": {
+      "frozenPath": "/tmp/foremanhq-actionability-method-TlPjY0/perf/openjob-actionability-diagnostic.mjs",
+      "archivedPath": "perf/artifacts/openjob-actionability-diagnostic-2026-11-11-prepared-unexecuted-driver.mjs",
+      "sha256ReadAtArchive": "b0e432a1f93da0e140479907615cb8cede1f6379043f7c07f8c955ac16e81f4d",
+      "executed": false,
+      "qualification": "Hash is an archive-time reading of retained prepared bytes, not an execution-start attestation. Never used for a timing sample."
+    }
+  }
+}

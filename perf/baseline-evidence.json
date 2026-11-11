@@ -40,7 +40,8 @@
     "perf/artifacts/openjob-phase-diagnostic-r7-2026-11-11-assessment.json",
     "perf/artifacts/phone-v2-local-smoke-2026-11-11/report.json",
     "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-assessment.json",
-    "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-static.json"
+    "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-static.json",
+    "perf/artifacts/openjob-actionability-diagnostic-2026-11-11-assessment.json"
   ],
   "rows": [
     {
@@ -289,7 +290,7 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T08:11:01.005305+00:00",
+  "updatedAt": "2026-11-11T08:24:14.777552+00:00",
   "completedCandidateLabCaptures": 2,
   "candidateRegression": {
     "status": "failed",
@@ -426,5 +427,40 @@
     }
   ],
   "completedBaselineLabCaptures": 6,
-  "completedFullLabCapturesMeaning": "Six complete baseline captures (four rejected, two accepted for repeatability only) plus two full rejected candidate captures (R6/R7). Invalid/partial pilot runs and supplemental diagnostics excluded."
+  "completedFullLabCapturesMeaning": "Six complete baseline captures (four rejected, two accepted for repeatability only) plus two full rejected candidate captures (R6/R7). Invalid/partial pilot runs and supplemental diagnostics excluded.",
+  "actionabilityDiagnostic": {
+    "status": "supplemental-only",
+    "source": "perf/artifacts/openjob-actionability-diagnostic-2026-11-11-assessment.json",
+    "samples": 20,
+    "link": "Office",
+    "conditions": "baseline/R7 \u00d7 default/force \u00d75, balanced rotated order",
+    "target": "Exact frozen first job-name locator/default point algorithm in both modes; explicit target/ancestry and input/readiness guards passed.",
+    "requestToPointerdownMedianMs": {
+      "baseline": {
+        "default": 33.3,
+        "force": 7.8
+      },
+      "candidate": {
+        "default": 36.2,
+        "force": 8.1
+      }
+    },
+    "clickToDomReadyMedianMs": {
+      "baseline": {
+        "default": 9.3,
+        "force": 9.1
+      },
+      "candidate": {
+        "default": 9.3,
+        "force": 9.1
+      }
+    },
+    "interpretation": "Shared actionability-factor cost is substantial in this instrumented experiment. Force skips multiple checks, so this is not stable-rAF-only isolation, proof default is invalid, or attribution of all original delay to Playwright.",
+    "fullR7GateUnchanged": "failed4cells",
+    "gateReplacement": false,
+    "executedDriverSha256": "29b9f51d4ad63a2032b805a573e4979ff56306791ad11323fc7d4f910f7746f1",
+    "earlierPreparedDriverExecuted": false,
+    "finalDatabaseErrors": 0,
+    "privateRuntimesCleaned": true
+  }
 }

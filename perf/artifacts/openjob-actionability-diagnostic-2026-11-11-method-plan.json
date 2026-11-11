@@ -1,0 +1,10 @@
+{
+  "protocol": "openjob-actionability-diagnostic-v1",
+  "method": "/tmp/foremanhq-actionability-method-OBvvr0",
+  "driverSha256": "29b9f51d4ad63a2032b805a573e4979ff56306791ad11323fc7d4f910f7746f1",
+  "target": "Exact frozen firstjobName locator, samebounds/clickpoint, addeduniquevisible/enabled/interactiveancestry guards",
+  "samples": 20,
+  "link": "Office",
+  "gateReplacement": false,
+  "earlierPreparedCopy": "/tmp/foremanhq-actionability-method-TlPjY0 (not executed)"
+}
