@@ -1,6 +1,8 @@
 # Speed plan execution
 
-Source plan: `/home/tim/.openclaw/worktrees/foremanhq-ui/SPEED_PLAN.md`.
+Source plan: `perf/SPEED_PLAN.md`, copied unchanged from
+`/home/tim/.openclaw/worktrees/foremanhq-ui/SPEED_PLAN.md`.
+Its original plan-only header is superseded by Tim’s subsequent authorization.
 Authorized by Tim on 2026-11-10, including Sol 6.1 delegation.
 
 ## Decisions recorded
@@ -12,6 +14,18 @@ Authorized by Tim on 2026-11-10, including Sol 6.1 delegation.
   therefore cannot meet the pre-auth private-screen target; show the neutral gate.
 - Extend existing Replicache when phase 2 is reached. Production schema changes
   are requested individually; the receiving worker release is a later decision.
+
+## Verified foundations
+
+- Server timing: 4 unit tests and 2 real PostgreSQL integration tests pass.
+- Disposable full schema plus seed successfully created and cleaned up: 2 jobs,
+  25 parts, list/order/slip, chat, and 40 rendered synthetic drawing sheets.
+- Press audit: 1,408 JSX controls, including 246 raw buttons and 7 raw navigation
+  handlers. The AST inventory uses conservative classifications, not automatic
+  conversion of Accept, Delete, or money actions.
+- Seven-day server journal inventory: 38,197 structured procedure observations.
+  Background/device writes are separated from user-facing mutation candidates;
+  QA traffic may be present.
 
 ## Current work
 
