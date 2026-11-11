@@ -26,7 +26,7 @@ export function ServiceWorkerRegistration() {
     const connection = (navigator as Navigator & {connection?: UpdateConnection}).connection;
     const editing = () => {
       if (document.querySelector('[data-unsaved-changes="true"]')) return true;
-      if ([...document.querySelectorAll('[role="dialog"], [aria-modal="true"], [aria-busy="true"], [data-app-startup-loading], [data-route-loading]')].some(element => element.getClientRects().length)) return true;
+      if ([...document.querySelectorAll('[role="dialog"], [aria-modal="true"], [aria-busy="true"], [data-app-startup-loading], [data-route-loading], [data-snapshot-ui]')].some(element => element.getClientRects().length)) return true;
       if ([...document.querySelectorAll<HTMLElement>('[contenteditable]:not([contenteditable="false"])')].some(element => element.getClientRects().length && (document.activeElement === element || !!element.textContent?.trim()))) return true;
       if ([...document.querySelectorAll<HTMLInputElement>('input[type="file"]')].some(element => element.files?.length)) return true;
       return [...document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input:not([readonly]):not([disabled]), textarea:not([readonly]):not([disabled])')].some(element =>

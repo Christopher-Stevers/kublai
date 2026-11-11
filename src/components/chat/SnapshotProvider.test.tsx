@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   invalidate: vi.fn(),
   edit: vi.fn(),
+  peopleRead: vi.fn(),
+  savedRead: vi.fn(),
   params: "",
   saved: null as null | {
     id: string;
@@ -67,9 +69,9 @@ vi.mock("~/trpc/react", () => ({
       replaceSnapshot: { useMutation: () => ({ mutateAsync: mocks.edit }) },
       snapshot: { useQuery: () => ({ data: mocks.saved }) },
       savedSnapshots: {
-        useQuery: () => ({ data: { snapshots: [], nextCursor: null } }),
+        useQuery: mocks.savedRead,
       },
-      people: { useQuery: () => ({ data: people }) },
+      people: { useQuery: mocks.peopleRead },
       list: { useQuery: () => ({ data: { conversations: [] } }) },
     },
   },
@@ -92,6 +94,8 @@ beforeEach(() => {
   mocks.saved = null;
   window.history.replaceState({}, "", "/jobs?filter=active");
   vi.clearAllMocks();
+  mocks.peopleRead.mockReturnValue({data: people});
+  mocks.savedRead.mockReturnValue({data: {snapshots: [], nextCursor: null}});
   mocks.needsScreen.mockReturnValue(false);
   mocks.capture.mockResolvedValue({
     toDataURL: () => "data:image/png;base64,a",
@@ -155,7 +159,7 @@ it("opens directly in selection mode with compact capture controls", async () =>
   expect(mocks.capture).toHaveBeenCalledOnce();
   expect(screen.queryByText("New snapshot")).toBeNull();
   expect(screen.queryByText("Drag a window around the area to share.")).toBeNull();
-  expect(screen.getByRole("button", { name: "Saved snapshots" })).toBeVisible();
+  await waitFor(() => expect(screen.getByRole("button", { name: "Saved snapshots" })).toBeEnabled());
   expect(screen.getByRole("button", { name: "Full screen snapshot" })).toBeEnabled();
   fireEvent.click(screen.getByRole("button", { name: "Saved snapshots" }));
   expect(screen.getByLabelText("Search saved snapshots")).toBeVisible();
@@ -183,13 +187,14 @@ it("opens the normal capture flow automatically and remakes a snapshot with fres
   expect(await screen.findByLabelText("Snapshot message")).toHaveValue("");
   expect(screen.queryByText("Keep image")).not.toBeInTheDocument();
   expect(screen.getByText("Send snapshot")).toBeDisabled();
-  fireEvent.click(screen.getByRole("checkbox", { name: "Test recipient" }));
+  fireEvent.click(await screen.findByRole("checkbox", { name: "Test recipient" }));
   fireEvent.change(screen.getByLabelText("Snapshot message"), {
     target: { value: "Corrected run" },
   });
   fireEvent.click(screen.getByText("Send snapshot"));
   await screen.findByText("Connection interrupted");
   expect(screen.getByLabelText("Snapshot message")).toBeDisabled();
+  expect(screen.getByLabelText("Snapshot message")).toHaveValue("Corrected run");
   fireEvent.click(screen.getByText("Retry send"));
   await waitFor(() =>
     expect(mocks.push).toHaveBeenCalledWith(
@@ -297,13 +302,14 @@ it("retries the same snapshot, upload and message identity after an uncertain se
   await screen.findByAltText("Page ready for snapshot selection");
   fireEvent.click(screen.getByRole("button", { name: "Full screen snapshot" }));
   await screen.findByAltText("Snapshot preview");
-  fireEvent.click(screen.getByRole("checkbox", { name: "Test recipient" }));
+  fireEvent.click(await screen.findByRole("checkbox", { name: "Test recipient" }));
   fireEvent.change(screen.getByLabelText("Snapshot message"), {
     target: { value: "Review this branch" },
   });
   fireEvent.click(screen.getByText("Send snapshot"));
   await screen.findByText("Connection interrupted");
   expect(screen.getByLabelText("Snapshot message")).toBeDisabled();
+  expect(screen.getByLabelText("Snapshot message")).toHaveValue("Review this branch");
   fireEvent.click(screen.getByText("Retry send"));
   await waitFor(() =>
     expect(mocks.push).toHaveBeenCalledWith(
@@ -349,4 +355,39 @@ it("requests live editor capture only after an explicit screen capture click", a
   fireEvent.click(screen.getByText("Capture screen"));
   await screen.findByAltText("Page ready for snapshot selection");
   expect(mocks.screen).toHaveBeenCalledTimes(1);
+});
+
+it("does not mount snapshot panels while idle and preserves caption focus as controls load", async () => {
+  render(<SnapshotProvider><Launcher/></SnapshotProvider>);
+  expect(mocks.savedRead).not.toHaveBeenCalled();
+  expect(mocks.peopleRead).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText("Start snapshot"));
+  await screen.findByAltText("Page ready for snapshot selection");
+  await waitFor(() => expect(mocks.savedRead).toHaveBeenCalled());
+  expect(mocks.peopleRead).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", {name: "Full screen snapshot"}));
+  const caption = await screen.findByLabelText("Snapshot message");
+  caption.focus();
+  fireEvent.change(caption, {target: {value: "Keep this caption"}});
+  await screen.findByRole("checkbox", {name: "Test recipient"});
+  expect(caption).toHaveFocus();
+  expect(caption).toHaveValue("Keep this caption");
+});
+
+it("retrying an optional panel keeps the private capture and caption mounted", async () => {
+  vi.spyOn(console,"error").mockImplementation(()=>undefined);
+  mocks.peopleRead.mockImplementation(()=>{throw new Error("Optional panel unavailable");});
+  setup();await screen.findByAltText("Page ready for snapshot selection");
+  fireEvent.click(screen.getByRole("button",{name:"Full screen snapshot"}));
+  await screen.findByText("This screen could not load. Check your connection and try again.");
+  const caption=screen.getByLabelText("Snapshot message");
+  fireEvent.change(caption,{target:{value:"Preserve this private draft"}});
+  expect(screen.queryByRole("button",{name:"Reload app"})).toBeNull();
+  mocks.peopleRead.mockReturnValue({data:people});
+  fireEvent.click(screen.getByRole("button",{name:"Try again"}));
+  await screen.findByRole("checkbox",{name:"Test recipient"});
+  expect(screen.getByLabelText("Snapshot message")).toBe(caption);
+  expect(caption).toHaveValue("Preserve this private draft");
+  expect(screen.getByAltText("Snapshot preview")).toBeVisible();
+  expect(mocks.upload).not.toHaveBeenCalled();
 });

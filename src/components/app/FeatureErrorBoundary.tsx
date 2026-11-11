@@ -1,7 +1,7 @@
 "use client";
 import { Component, type ReactNode } from "react";
 export class FeatureErrorBoundary extends Component<
-  { children: ReactNode; onRetry: () => void },
+  { children: ReactNode; onRetry: () => void; allowReload?: boolean },
   { failed: boolean }
 > {
   state = { failed: false };
@@ -25,12 +25,12 @@ export class FeatureErrorBoundary extends Component<
         >
           Try again
         </button>
-        <button
+        {this.props.allowReload !== false && <button
           className="ml-2 rounded-md border px-3 py-2"
           onClick={() => window.location.reload()}
         >
           Reload app
-        </button>
+        </button>}
       </div>
     );
   }

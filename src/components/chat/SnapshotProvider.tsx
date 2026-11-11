@@ -1,6 +1,9 @@
 "use client";
 import {
   createContext,
+  lazy,
+  Suspense,
+  type ComponentProps,
   useCallback,
   useContext,
   useEffect,
@@ -20,11 +23,10 @@ import {
   DialogDescription,
   DialogTitle,
 } from "~/components/ui/dialog";
-import {
-  RecipientChooser,
-  validChatTarget,
-  type ChatTarget,
-} from "./RecipientChooser";
+import type { RecipientChooser as RecipientChooserType } from "./RecipientChooser";
+import type { SavedSnapshotPicker as SavedSnapshotPickerType } from "./SavedSnapshotPicker";
+import { validChatTarget, type ChatTarget } from "./chat-target";
+import { FeatureErrorBoundary } from "~/components/app/FeatureErrorBoundary";
 import {
   captureVisiblePage,
   captureSharedScreen,
@@ -53,7 +55,25 @@ import {
 } from "~/lib/snapshot-source";
 import { capturePageScrolls, restorePageScrolls } from "~/lib/page-view-scroll";
 import { SNAPSHOT_EDIT_MESSAGE, SNAPSHOT_EDIT_CHAT } from "~/lib/snapshot-edit";
-import { SavedSnapshotPicker } from "./SavedSnapshotPicker";
+const loadRecipientChooser = () => import("./RecipientChooser").then(module => ({default: module.RecipientChooser}));
+const loadSavedSnapshotPicker = () => import("./SavedSnapshotPicker").then(module => ({default: module.SavedSnapshotPicker}));
+
+function RecipientChooser(props: ComponentProps<typeof RecipientChooserType>) {
+  const [Panel, setPanel] = useState(() => lazy(loadRecipientChooser));
+  return <FeatureErrorBoundary allowReload={false} onRetry={() => setPanel(() => lazy(loadRecipientChooser))}>
+    <Suspense fallback={<p role="status" className="text-muted-foreground text-sm">Loading recipients…</p>}>
+      <Panel {...props}/>
+    </Suspense>
+  </FeatureErrorBoundary>;
+}
+function SavedSnapshotPicker(props: ComponentProps<typeof SavedSnapshotPickerType>) {
+  const [Panel, setPanel] = useState(() => lazy(loadSavedSnapshotPicker));
+  return <FeatureErrorBoundary allowReload={false} onRetry={() => setPanel(() => lazy(loadSavedSnapshotPicker))}>
+    <Suspense fallback={<Button type="button" size="icon" variant="ghost" className="rounded-full" aria-label="Saved snapshots" disabled><Loader2Icon className="size-4 animate-spin"/></Button>}>
+      <Panel {...props}/>
+    </Suspense>
+  </FeatureErrorBoundary>;
+}
 const SnapshotContext = createContext<{ start: () => void } | null>(null);
 export const useSnapshot = () => useContext(SnapshotContext);
 type Capture = {
@@ -352,6 +372,8 @@ export function SnapshotProvider({ children }: { children: React.ReactNode }) {
   const beginCapture = () => {
     if (phase !== "idle") return;
     if (editing && !saved.data) return;
+    // Start loading optional controls alongside capture, never during idle app startup.
+    void Promise.all([loadRecipientChooser(), loadSavedSnapshotPicker()]).catch(() => undefined);
     if (editing) prepareEdit();
     window.dispatchEvent(new Event(SNAPSHOT_FREEZE_EVENT));
     if (needsScreenCapture()) {

@@ -3,9 +3,8 @@ import { useState } from "react";
 import { api } from "~/trpc/react";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
-export type ChatTarget =
-  | { mode: "existing"; conversationId: string }
-  | { mode: "direct" | "group"; recipientIds: string[]; name: string };
+import type { ChatTarget } from "./chat-target";
+export { validChatTarget, type ChatTarget } from "./chat-target";
 export function RecipientChooser({
   value,
   onChange,
@@ -166,12 +165,4 @@ export function RecipientChooser({
       )}
     </fieldset>
   );
-}
-export function validChatTarget(target: ChatTarget) {
-  return target.mode === "existing"
-    ? Boolean(target.conversationId)
-    : target.recipientIds.length > 0 &&
-        target.recipientIds.length <= 49 &&
-        (target.mode !== "direct" || target.recipientIds.length === 1) &&
-        (target.mode !== "group" || Boolean(target.name.trim()));
 }
