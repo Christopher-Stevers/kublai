@@ -1,0 +1,56 @@
+{
+  "inputExitCode": 1,
+  "ownerAdjustedExitCode": 1,
+  "roles": {
+    "baseline": {
+      "setupOrCleanupIncomplete": true,
+      "kind": "Error"
+    },
+    "candidate": {
+      "setupOrCleanupIncomplete": true,
+      "kind": "Error"
+    }
+  },
+  "processes": {
+    "baseline/next-processes.json": {
+      "incomplete": true,
+      "kind": "Error"
+    },
+    "baseline/pg-owner-processes.json": {
+      "status": "stopped",
+      "familyAbsent": true,
+      "ownedIdentitiesAbsent": true,
+      "allRecordedIdentitiesAbsent": true,
+      "rootExitCode": 1,
+      "timedOut": false
+    },
+    "candidate/next-processes.json": {
+      "incomplete": true,
+      "kind": "Error"
+    },
+    "candidate/pg-owner-processes.json": {
+      "status": "stopped",
+      "familyAbsent": true,
+      "ownedIdentitiesAbsent": true,
+      "allRecordedIdentitiesAbsent": true,
+      "rootExitCode": 1,
+      "timedOut": false
+    },
+    "driver-processes.json": {
+      "incomplete": true,
+      "kind": "Error"
+    }
+  },
+  "methodAfter": {
+    "perf/quantity-office-diagnostic.mjs": "d66edeef57b7a95d9c22b1d6c4672783bdadf0b284b2e4f875b695b4b1325564",
+    "perf/quantity-office-observation.mjs": "bfb497edfed1794a1631da5b3e7ca61bc1bd474062a5ef36463bdb26144bbe80",
+    "perf/lab/quantity-item-preflight.mjs": "224b78a2cb38076f8bdec4100653ca0ca6e7362824fcedaa3a2a8ab4b46f4512",
+    "perf/lab/quantity-office-reuse.mjs": "f322da5f0447c4bebcad76941f31c6d9298dd908f2f7d273b77c18d54f1c204e",
+    "perf/lab/quantity-office-server.sh": "13d546c2900f3a4e63417bc7213dafac4ab4655b1ef321136428dd53ee19554c",
+    "perf/lab/quantity-office-setup.sh": "b4dd0f36a7e56a5ec5b5f1b804e91befcaa944142389d838b3cbd1b7f774383b",
+    "perf/lab/quantity-office-finalize.mjs": "5ae45482007810645e2406ee4c43b8d19ce0fd481610913d97a9c6ade6e587fc",
+    "perf/lab/owned-process-supervisor.py": "90dab4db0710cad855bbef4243e1e3bd2b55f28bfe2538dd4f4c0c344c08de67"
+  },
+  "capturedAt": "2026-11-11T16:23:05.447Z",
+  "cleanupPassed": false
+}

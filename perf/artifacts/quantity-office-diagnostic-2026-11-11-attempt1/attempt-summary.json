@@ -1,0 +1,126 @@
+{
+  "status": "setup-failed-zero-captures",
+  "acceptedGateEvidence": false,
+  "origin": "external setup supervisor; driver never started",
+  "failure": {
+    "phase": "frozen synthetic fixture seed before server callback",
+    "errno": 122,
+    "systemMeaning": "Disk quota exceeded",
+    "operation": "copying existing synthetic tile assets",
+    "baselineSuffix": "tiles/15/4/5_6.webp",
+    "candidateSuffix": "tiles/16/2/6_3.webp"
+  },
+  "driverStarted": false,
+  "appsStarted": false,
+  "captures": 0,
+  "noRetry": true,
+  "noAppSnapshotRefreshReached": true,
+  "ownedProcessCleanup": {
+    "outer": {
+      "status": "stopped",
+      "rootExitCode": 1,
+      "timedOut": false,
+      "familyAbsent": true,
+      "ownedIdentitiesAbsent": true,
+      "remaining": [],
+      "recordedOwnedProcessCount": 58,
+      "allRecordedPidsAbsent": true
+    },
+    "baseline": {
+      "status": "stopped",
+      "rootExitCode": 1,
+      "timedOut": false,
+      "familyAbsent": true,
+      "ownedIdentitiesAbsent": true,
+      "remaining": [],
+      "recordedOwnedProcessCount": 23,
+      "allRecordedPidsAbsent": true
+    },
+    "candidate": {
+      "status": "stopped",
+      "rootExitCode": 1,
+      "timedOut": false,
+      "familyAbsent": true,
+      "ownedIdentitiesAbsent": true,
+      "remaining": [],
+      "recordedOwnedProcessCount": 24,
+      "allRecordedPidsAbsent": true
+    }
+  },
+  "ownedPorts3485And3486Closed": true,
+  "ownedPrivateSocketDirectoriesRemoved": true,
+  "pgErrorSummaries": {
+    "baseline": {
+      "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+      "errors": []
+    },
+    "candidate": {
+      "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+      "errors": []
+    }
+  },
+  "schemaAndRawPgLog": "Seeding failed before server callback could copy schema or final PG log. Frozen database.sh already cleaned those directories. Source setup logs report113tables/16modules; no standalone actual inventory or raw PG log is substituted/recreated.",
+  "fixtureItemProofCreated": false,
+  "readEndpointPreflightRan": false,
+  "driverReportCreated": false,
+  "quietReleased": true,
+  "noProductionWritesOrActivation": true,
+  "methodManifestSha256": "aa00864e73ccd86f9b7cfd83442bf8ee7e01388bd9571bf61ce834fb439e20e0",
+  "privateRawArtifacts": [
+    {
+      "path": "/tmp/foremanhq-quantity-office-v1-attempt1-outer.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/foremanhq-quantity-office-v1-attempt1-outer-processes.json",
+      "bytes": 8207,
+      "sha256": "2ef11c2ebe54b6506ca15ab14a27edec1b7f627dbbb570d6ad0f6da82f3e1e3d"
+    },
+    {
+      "path": "/tmp/foremanhq-quantity-office-v1-attempt1/final-cleanup.json",
+      "bytes": 1990,
+      "sha256": "c45cc2bab770b90d16b3fba3535f651ffc546a6232554851e00fb3b96e912d4a"
+    },
+    {
+      "path": "/tmp/foremanhq-quantity-office-v1-attempt1/owner-cleanup.jsonl",
+      "bytes": 90,
+      "sha256": "baa893fdba6a0c7153c731f35eeca3d5f084d8bf7d639043a04217b50ea13dcd"
+    },
+    {
+      "path": "/tmp/foremanhq-quantity-office-v1-attempt1/baseline/setup.log",
+      "bytes": 1921,
+      "sha256": "556af92c047eb975004d3f7ad6e315a32a8decb22b6d0cb85c31992833d3cbb5"
+    },
+    {
+      "path": "/tmp/foremanhq-quantity-office-v1-attempt1/baseline/pg-owner-processes.json",
+      "bytes": 3587,
+      "sha256": "b3c61930b6eddfaef0c0802f2612d9fd31dd99fe5a2884eb8cedf87025ff5dac"
+    },
+    {
+      "path": "/tmp/foremanhq-quantity-office-v1-attempt1/baseline/pg-errors.json",
+      "bytes": 131,
+      "sha256": "470dfefd48ef342e60336095df57aab1b7a53b893d368919ab12a94c037eec07"
+    },
+    {
+      "path": "/tmp/foremanhq-quantity-office-v1-attempt1/candidate/setup.log",
+      "bytes": 1921,
+      "sha256": "0c64997c3d8a9fb24d743e85e640c5033553c68485fede4e137c054253428f65"
+    },
+    {
+      "path": "/tmp/foremanhq-quantity-office-v1-attempt1/candidate/pg-owner-processes.json",
+      "bytes": 3719,
+      "sha256": "d503647872fd67778b65269451ab824389ca9fcb0873145634f31ec4859ab5ca"
+    },
+    {
+      "path": "/tmp/foremanhq-quantity-office-v1-attempt1/candidate/pg-errors.json",
+      "bytes": 131,
+      "sha256": "470dfefd48ef342e60336095df57aab1b7a53b893d368919ab12a94c037eec07"
+    }
+  ],
+  "notes": [
+    "No app/browser/CPU/timeline measurement exists, so no latency diagnosis or comparison follows.",
+    "Finalizer correctly records setup incomplete, not a successful diagnostic. Separate post-cleanup verification establishes process/socket/port absence.",
+    "R17/R18 full failed gates, source snapshots and prior evidence remain unchanged."
+  ]
+}
