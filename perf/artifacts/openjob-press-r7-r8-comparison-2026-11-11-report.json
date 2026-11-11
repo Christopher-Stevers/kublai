@@ -1,0 +1,751 @@
+{
+  "kind": "supplemental-controlled-source-comparison",
+  "protocol": "openjob-default-press-comparison-v1",
+  "status": "complete",
+  "acceptedGateEvidence": false,
+  "startedAt": "2026-11-11T08:43:57.009Z",
+  "coordinatorBefore": "39908d855fc2f57866faeb76a00e00ebcfdf368b800727d057355280c13eaf6c",
+  "frozenMethodBefore": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "roles": [
+    "r7",
+    "r8"
+  ],
+  "blocks": [
+    "r7",
+    "r8",
+    "r8",
+    "r7",
+    "r7",
+    "r8",
+    "r8",
+    "r7"
+  ],
+  "samplesPerBlock": 5,
+  "samplesPerSource": 20,
+  "link": "Office",
+  "sources": {
+    "r7": {
+      "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+      "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+      "labBuild": "4qOIJ0ATp9DzIVGHVmxB_",
+      "preflight": {
+        "status": "passed",
+        "build": "4qOIJ0ATp9DzIVGHVmxB_",
+        "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+        "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+        "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+        "sourceFileCount": 2289,
+        "sourceVerification": {
+          "stage": "after-lab-transforms",
+          "unchangedFilesChecked": 2284,
+          "allowedLabTransforms": [
+            "next.config.js",
+            "tsconfig.json",
+            "src/server/db/index.ts",
+            "src/server/background/hints.ts",
+            "src/server/background/worker.ts"
+          ],
+          "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+          "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash",
+          "preTransformUnchangedFilesChecked": 2289
+        },
+        "sourceBinding": {
+          "method": "frozen-release-inputs-sha256",
+          "algorithm": "foremanhq-lab-source-v1",
+          "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+          "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+        },
+        "authentication": "stubbed-seeded-user",
+        "results": [
+          {
+            "procedure": "user.getMe",
+            "status": "ok"
+          },
+          {
+            "procedure": "notifications.identity",
+            "status": "ok"
+          },
+          {
+            "procedure": "push.identity",
+            "status": "ok"
+          },
+          {
+            "procedure": "job.getJob",
+            "status": "ok"
+          },
+          {
+            "procedure": "materialList.getMaterialList",
+            "status": "ok"
+          },
+          {
+            "procedure": "materialList.getOrderById",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawings.listSets",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawings.getSet",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawingsWorkspace.get",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawingsWorkspace.changes",
+            "status": "ok"
+          },
+          {
+            "procedure": "chat.getOverview",
+            "status": "ok"
+          },
+          {
+            "procedure": "chat.history",
+            "status": "ok"
+          },
+          {
+            "procedure": "rooms.getJobRoomCount",
+            "status": "ok"
+          },
+          {
+            "procedure": "notifications.overview",
+            "status": "ok"
+          }
+        ]
+      },
+      "healthBefore": {
+        "errors": 0,
+        "fatals": 0
+      },
+      "healthAfter": {
+        "errors": 0,
+        "fatals": 0
+      }
+    },
+    "r8": {
+      "sourceBuild": "abb000ebe9cd91803e0ffea2c230d2cbf87536800cb4bb894c74f3e4583adf86",
+      "sourceFingerprint": "b4b219989f49b7d9d8bc1d70a5b613d9d8aa0285dff98a65bdc85c959fce637c",
+      "labBuild": "gh_ec2w197-0zQ2FMaGtM",
+      "preflight": {
+        "status": "passed",
+        "build": "gh_ec2w197-0zQ2FMaGtM",
+        "sourceBuild": "abb000ebe9cd91803e0ffea2c230d2cbf87536800cb4bb894c74f3e4583adf86",
+        "sourceFingerprint": "b4b219989f49b7d9d8bc1d70a5b613d9d8aa0285dff98a65bdc85c959fce637c",
+        "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+        "sourceFileCount": 2289,
+        "sourceVerification": {
+          "stage": "after-lab-transforms",
+          "unchangedFilesChecked": 2284,
+          "allowedLabTransforms": [
+            "next.config.js",
+            "tsconfig.json",
+            "src/server/db/index.ts",
+            "src/server/background/hints.ts",
+            "src/server/background/worker.ts"
+          ],
+          "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+          "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash",
+          "preTransformUnchangedFilesChecked": 2289
+        },
+        "sourceBinding": {
+          "method": "frozen-release-inputs-sha256",
+          "algorithm": "foremanhq-lab-source-v1",
+          "sourceBuild": "abb000ebe9cd91803e0ffea2c230d2cbf87536800cb4bb894c74f3e4583adf86",
+          "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+        },
+        "authentication": "stubbed-seeded-user",
+        "results": [
+          {
+            "procedure": "user.getMe",
+            "status": "ok"
+          },
+          {
+            "procedure": "notifications.identity",
+            "status": "ok"
+          },
+          {
+            "procedure": "push.identity",
+            "status": "ok"
+          },
+          {
+            "procedure": "job.getJob",
+            "status": "ok"
+          },
+          {
+            "procedure": "materialList.getMaterialList",
+            "status": "ok"
+          },
+          {
+            "procedure": "materialList.getOrderById",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawings.listSets",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawings.getSet",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawingsWorkspace.get",
+            "status": "ok"
+          },
+          {
+            "procedure": "drawingsWorkspace.changes",
+            "status": "ok"
+          },
+          {
+            "procedure": "chat.getOverview",
+            "status": "ok"
+          },
+          {
+            "procedure": "chat.history",
+            "status": "ok"
+          },
+          {
+            "procedure": "rooms.getJobRoomCount",
+            "status": "ok"
+          },
+          {
+            "procedure": "notifications.overview",
+            "status": "ok"
+          }
+        ]
+      },
+      "healthBefore": {
+        "errors": 0,
+        "fatals": 0
+      },
+      "healthAfter": {
+        "errors": 0,
+        "fatals": 0
+      }
+    }
+  },
+  "fragments": [
+    {
+      "block": 1,
+      "role": "r7",
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "path": "/tmp/foremanhq-press-comparison-fragments/1-r7.json",
+      "sha256": "33d5a743fcb76716aa265c271d982e1f03a5aa8b053b293f4ef9fd4fe8011c26",
+      "samples": 5,
+      "status": "complete"
+    },
+    {
+      "block": 2,
+      "role": "r8",
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "path": "/tmp/foremanhq-press-comparison-fragments/2-r8.json",
+      "sha256": "66fa60b9705ce04b55bffd9107d89d4bdd8e7020a1d86f5a09e97d6ac976587d",
+      "samples": 5,
+      "status": "complete"
+    },
+    {
+      "block": 3,
+      "role": "r8",
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "path": "/tmp/foremanhq-press-comparison-fragments/3-r8.json",
+      "sha256": "a2ddbc5020e939deb65ea3224a8c2b47e5013cf8181907ac45c2e9d0a6496989",
+      "samples": 5,
+      "status": "complete"
+    },
+    {
+      "block": 4,
+      "role": "r7",
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "path": "/tmp/foremanhq-press-comparison-fragments/4-r7.json",
+      "sha256": "a6a99cf775b005dace2e4486dcaef506fee4af7e9972828952433bb04b26657b",
+      "samples": 5,
+      "status": "complete"
+    },
+    {
+      "block": 5,
+      "role": "r7",
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "path": "/tmp/foremanhq-press-comparison-fragments/5-r7.json",
+      "sha256": "1a9b0c12fbbaae73916a3aaece7fc0fe0205a7b42bacb3bc3470a4139acbee36",
+      "samples": 5,
+      "status": "complete"
+    },
+    {
+      "block": 6,
+      "role": "r8",
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "path": "/tmp/foremanhq-press-comparison-fragments/6-r8.json",
+      "sha256": "6e0960fe2382ed30d6707df2169e95f73e34c19fa39d116d92ac24a90233e18f",
+      "samples": 5,
+      "status": "complete"
+    },
+    {
+      "block": 7,
+      "role": "r8",
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "path": "/tmp/foremanhq-press-comparison-fragments/7-r8.json",
+      "sha256": "1f05086fbe0325eb6edfcb719f1089ab738c79e80797ceebcd85cbf507ba5ba9",
+      "samples": 5,
+      "status": "complete"
+    },
+    {
+      "block": 8,
+      "role": "r7",
+      "result": {
+        "code": 0,
+        "signal": null
+      },
+      "path": "/tmp/foremanhq-press-comparison-fragments/8-r7.json",
+      "sha256": "8d572e65f491bb15e6b82971339a74766893e77b31542552e5a7a92cebd7b2b9",
+      "samples": 5,
+      "status": "complete"
+    }
+  ],
+  "samples": [
+    {
+      "role": "r7",
+      "block": 1,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 90.89988599999992,
+      "variant": "visited"
+    },
+    {
+      "role": "r7",
+      "block": 1,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 99.73228499999959,
+      "variant": "visited"
+    },
+    {
+      "role": "r7",
+      "block": 1,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 91.20918799999981,
+      "variant": "visited"
+    },
+    {
+      "role": "r7",
+      "block": 1,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 84.53583700000036,
+      "variant": "visited"
+    },
+    {
+      "role": "r7",
+      "block": 1,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 93.83498400000008,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 2,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 85.21283099999982,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 2,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 91.97135100000014,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 2,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 83.58004299999993,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 2,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 90.06368199999997,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 2,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 86.06110999999964,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 3,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 98.02974700000004,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 3,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 98.61570400000028,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 3,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 88.14608700000008,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 3,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 87.06509099999948,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 3,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 91.91302899999937,
+      "variant": "visited"
+    },
+    {
+      "role": "r7",
+      "block": 4,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 98.85733099999993,
+      "variant": "visited"
+    },
+    {
+      "role": "r7",
+      "block": 4,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 97.99338699999998,
+      "variant": "visited"
+    },
+    {
+      "role": "r7",
+      "block": 4,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 82.49179000000004,
+      "variant": "visited"
+    },
+    {
+      "role": "r7",
+      "block": 4,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 88.57379299999957,
+      "variant": "visited"
+    },
+    {
+      "role": "r7",
+      "block": 4,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 82.25594600000022,
+      "variant": "visited"
+    },
+    {
+      "role": "r7",
+      "block": 5,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 92.99192399999993,
+      "variant": "visited"
+    },
+    {
+      "role": "r7",
+      "block": 5,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 94.63903900000014,
+      "variant": "visited"
+    },
+    {
+      "role": "r7",
+      "block": 5,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 93.014498,
+      "variant": "visited"
+    },
+    {
+      "role": "r7",
+      "block": 5,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 98.67393100000027,
+      "variant": "visited"
+    },
+    {
+      "role": "r7",
+      "block": 5,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 97.48138699999981,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 6,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 98.38694899999996,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 6,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 90.720507,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 6,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 92.33082900000045,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 6,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 98.88670900000034,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 6,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 94.91635399999996,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 7,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 81.64112099999988,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 7,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 95.28033099999993,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 7,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 81.15964299999996,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 7,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 87.09540800000013,
+      "variant": "visited"
+    },
+    {
+      "role": "r8",
+      "block": 7,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 99.03393899999992,
+      "variant": "visited"
+    },
+    {
+      "role": "r7",
+      "block": 8,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 97.50560599999994,
+      "variant": "visited"
+    },
+    {
+      "role": "r7",
+      "block": 8,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 95.87888299999986,
+      "variant": "visited"
+    },
+    {
+      "role": "r7",
+      "block": 8,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 98.42524400000002,
+      "variant": "visited"
+    },
+    {
+      "role": "r7",
+      "block": 8,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 90.57571600000028,
+      "variant": "visited"
+    },
+    {
+      "role": "r7",
+      "block": 8,
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 83.23089299999992,
+      "variant": "visited"
+    }
+  ],
+  "limitations": [
+    "Original sealed run.mjs and journeys.mjs execute each five-sample block unchanged; default exact first job-name click, destination assertion and two-rAF completion remain intact.",
+    "No continuous rAF/MutationObserver, force option, added browser timing probe or app-source instrumentation.",
+    "One new browser per five-sample block is untimed and differs from a full-matrix single browser lifetime. Each context remains fresh as in the original method.",
+    "Two synthetic app servers run concurrently; shared production/OS background activity remains uncontrolled.",
+    "Office only; descriptive source/block/paired distributions, not a full gate, physical pixels, statistical p95 or component-cause proof.",
+    "R7 full-matrix failures and all prior evidence remain unchanged; no acceptance threshold is introduced."
+  ],
+  "controlledSourceDifference": {
+    "changed": [
+      "src/app/jobs/JobsClient.tsx",
+      "src/components/ui/pressable-card.tsx",
+      "src/hooks/use-press.ts"
+    ],
+    "sourceFileCounts": {
+      "r7": 2289,
+      "r8": 2289
+    },
+    "scope": "Frozen source-fingerprint inputs; separate canonical proof covers all unaffected public files."
+  },
+  "coordinatorAfter": "39908d855fc2f57866faeb76a00e00ebcfdf368b800727d057355280c13eaf6c",
+  "frozenMethodAfter": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "endedAt": "2026-11-11T08:44:43.190Z"
+}

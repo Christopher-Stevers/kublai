@@ -41,7 +41,8 @@
     "perf/artifacts/phone-v2-local-smoke-2026-11-11/report.json",
     "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-assessment.json",
     "perf/artifacts/candidate-r7-ready-then-pinch-v2-2026-11-11-static.json",
-    "perf/artifacts/openjob-actionability-diagnostic-2026-11-11-assessment.json"
+    "perf/artifacts/openjob-actionability-diagnostic-2026-11-11-assessment.json",
+    "perf/artifacts/openjob-press-r7-r8-comparison-2026-11-11-assessment.json"
   ],
   "rows": [
     {
@@ -290,7 +291,7 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T08:24:14.777552+00:00",
+  "updatedAt": "2026-11-11T08:52:00.407052+00:00",
   "completedCandidateLabCaptures": 2,
   "candidateRegression": {
     "status": "failed",
@@ -461,6 +462,48 @@
     "executedDriverSha256": "29b9f51d4ad63a2032b805a573e4979ff56306791ad11323fc7d4f910f7746f1",
     "earlierPreparedDriverExecuted": false,
     "finalDatabaseErrors": 0,
+    "privateRuntimesCleaned": true
+  },
+  "pressAttributeComparison": {
+    "status": "supplemental-mixed-result",
+    "source": "perf/artifacts/openjob-press-r7-r8-comparison-2026-11-11-assessment.json",
+    "samples": 40,
+    "samplesPerSource": 20,
+    "link": "Office",
+    "sourceR7": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+    "sourceR8": "abb000ebe9cd91803e0ffea2c230d2cbf87536800cb4bb894c74f3e4583adf86",
+    "sourceR8Fingerprint": "b4b219989f49b7d9d8bc1d70a5b613d9d8aa0285dff98a65bdc85c959fce637c",
+    "changedProductionPaths": [
+      "src/app/jobs/JobsClient.tsx",
+      "src/components/ui/pressable-card.tsx",
+      "src/hooks/use-press.ts"
+    ],
+    "method": "Unmodified frozen default-click driver25dfa8 in eight balanced five-sample blocks; no extra observers/probes/force.",
+    "nearestRankMedianMs": {
+      "r7": 93.01,
+      "r8": 90.72
+    },
+    "iqrMs": {
+      "r7": [
+        88.57,
+        97.51
+      ],
+      "r8": [
+        86.06,
+        95.28
+      ]
+    },
+    "pairedBlockMedianDeltasR8MinusR7Ms": [
+      -5.15,
+      3.34,
+      0.28,
+      -8.78
+    ],
+    "interpretation": "Overlapping distributions and mixed paired-block direction do not show a consistent one-frame benefit or justify a full R8 matrix/performance claim. No component cause or physical frame inference.",
+    "acceptedGateEvidence": false,
+    "fullR8MatrixRun": false,
+    "originalR7FailureUnchanged": true,
+    "databaseErrors": 0,
     "privateRuntimesCleaned": true
   }
 }

@@ -1,0 +1,265 @@
+{
+  "version": 1,
+  "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+  "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+  "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+  "sourceFileCount": 2289,
+  "sourceVerification": {
+    "stage": "after-lab-transforms",
+    "unchangedFilesChecked": 2284,
+    "allowedLabTransforms": [
+      "next.config.js",
+      "tsconfig.json",
+      "src/server/db/index.ts",
+      "src/server/background/hints.ts",
+      "src/server/background/worker.ts"
+    ],
+    "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+    "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash",
+    "preTransformUnchangedFilesChecked": 2289
+  },
+  "sourceBinding": {
+    "method": "frozen-release-inputs-sha256",
+    "algorithm": "foremanhq-lab-source-v1",
+    "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+    "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+  },
+  "authentication": "stubbed-seeded-user",
+  "harnessFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "harnessFingerprintAlgorithm": "foremanhq-frozen-harness-v1",
+  "harnessFileCount": 29,
+  "harnessToolchain": {
+    "node": "v26.8.2",
+    "playwright": "1.59.1",
+    "browser": "152.0.7977.82"
+  },
+  "harnessVerification": {
+    "before": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+    "after": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+    "immutable": true
+  },
+  "provenance": "isolated-seeded-app",
+  "cpuSlowdown": 4,
+  "build": "4qOIJ0ATp9DzIVGHVmxB_",
+  "timestamp": "2026-11-11T08:44:37.652Z",
+  "status": "complete",
+  "protocol": {
+    "id": "ready-then-pinch-v2",
+    "sheetCost": "Outer wallclock includes sheet-open click, any readiness wait, verified pinch and final PDF coverage. Browser stage marks are dispatch-to-sampled-ready measures, not same-frame proof.",
+    "coveragePollMs": 50
+  },
+  "device": {
+    "kind": "desktop-chromium-mobile-emulation",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "deviceScaleFactor": 3,
+    "physicalPixelMeasured": false
+  },
+  "samples": [
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 97.50560599999994,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 95.87888299999986,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 98.42524400000002,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 90.57571600000028,
+      "variant": "visited"
+    },
+    {
+      "browserMeasures": [],
+      "journey": "openjob",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 83.23089299999992,
+      "variant": "visited"
+    }
+  ],
+  "health": {
+    "preflight": {
+      "status": "passed",
+      "build": "4qOIJ0ATp9DzIVGHVmxB_",
+      "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+      "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+      "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+      "sourceFileCount": 2289,
+      "sourceVerification": {
+        "stage": "after-lab-transforms",
+        "unchangedFilesChecked": 2284,
+        "allowedLabTransforms": [
+          "next.config.js",
+          "tsconfig.json",
+          "src/server/db/index.ts",
+          "src/server/background/hints.ts",
+          "src/server/background/worker.ts"
+        ],
+        "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+        "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash",
+        "preTransformUnchangedFilesChecked": 2289
+      },
+      "sourceBinding": {
+        "method": "frozen-release-inputs-sha256",
+        "algorithm": "foremanhq-lab-source-v1",
+        "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+        "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+      },
+      "authentication": "stubbed-seeded-user",
+      "results": [
+        {
+          "procedure": "user.getMe",
+          "status": "ok"
+        },
+        {
+          "procedure": "notifications.identity",
+          "status": "ok"
+        },
+        {
+          "procedure": "push.identity",
+          "status": "ok"
+        },
+        {
+          "procedure": "job.getJob",
+          "status": "ok"
+        },
+        {
+          "procedure": "materialList.getMaterialList",
+          "status": "ok"
+        },
+        {
+          "procedure": "materialList.getOrderById",
+          "status": "ok"
+        },
+        {
+          "procedure": "drawings.listSets",
+          "status": "ok"
+        },
+        {
+          "procedure": "drawings.getSet",
+          "status": "ok"
+        },
+        {
+          "procedure": "drawingsWorkspace.get",
+          "status": "ok"
+        },
+        {
+          "procedure": "drawingsWorkspace.changes",
+          "status": "ok"
+        },
+        {
+          "procedure": "chat.getOverview",
+          "status": "ok"
+        },
+        {
+          "procedure": "chat.history",
+          "status": "ok"
+        },
+        {
+          "procedure": "rooms.getJobRoomCount",
+          "status": "ok"
+        },
+        {
+          "procedure": "notifications.overview",
+          "status": "ok"
+        }
+      ]
+    },
+    "fixtureSchema": {
+      "status": "source-declared-schemas-created",
+      "sourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+      "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+      "moduleCount": 16,
+      "tableCount": 113,
+      "coverage": "Source-declared tables only; migration-only functions/settings require endpoint preflight. Not a claim that unexercised features are complete."
+    },
+    "database": {
+      "count": 0,
+      "fatalCount": 0,
+      "windowStartedAt": "2026-11-11T08:44:37.652Z",
+      "observedAt": "2026-11-11T08:44:43.144Z",
+      "source": "private PostgreSQL ERROR/FATAL headers; no SQL or parameters"
+    }
+  },
+  "labStatic": {
+    "build": "4qOIJ0ATp9DzIVGHVmxB_",
+    "sharedGzipBytes": 427695,
+    "screenGzipBytes": 699917,
+    "deployGzipBytes": 2752969,
+    "screenGzipByRoute": {
+      "/_global-error/page": 248623,
+      "/_not-found/page": 248623,
+      "/admin/page": 248623,
+      "/jobs/[jobId]/chat/page": 453491,
+      "/jobs/[jobId]/documents/page": 452819,
+      "/jobs/[jobId]/drawings/page": 452838,
+      "/jobs/[jobId]/material-lists/page": 454341,
+      "/jobs/[jobId]/models/page": 452378,
+      "/jobs/[jobId]/page": 449268,
+      "/jobs/[jobId]/pricing/page": 460127,
+      "/jobs/[jobId]/receiving/page": 699917,
+      "/jobs/[jobId]/rooms/page": 454821,
+      "/jobs/[jobId]/systems/page": 453661,
+      "/jobs/[jobId]/tool-requests/page": 449268,
+      "/jobs/account/page": 438114,
+      "/jobs/account/settings/page": 452504,
+      "/jobs/assets/activity/page": 442744,
+      "/jobs/assets/counts/[countId]/page": 446469,
+      "/jobs/assets/counts/page": 446164,
+      "/jobs/assets/labels/page": 454341,
+      "/jobs/assets/page": 440856,
+      "/jobs/assets/requests/[orderId]/page": 448232,
+      "/jobs/assets/requests/page": 442752,
+      "/jobs/assets/scan/[tag]/page": 504998,
+      "/jobs/assets/tools/[id]/page": 510449,
+      "/jobs/assets/tools/page": 453073,
+      "/jobs/assets/types/page": 478250,
+      "/jobs/assets/where/[type]/[id]/page": 460682,
+      "/jobs/assets/where/page": 449176,
+      "/jobs/assist/page": 427695,
+      "/jobs/catalogue/page": 466074,
+      "/jobs/chat/page": 460418,
+      "/jobs/draws/[jobId]/page": 442705,
+      "/jobs/draws/page": 432473,
+      "/jobs/estimating/[id]/page": 468339,
+      "/jobs/estimating/page": 450855,
+      "/jobs/material-lists/[id]/page": 537590,
+      "/jobs/orders/page": 445381,
+      "/jobs/organization/page": 472565,
+      "/jobs/page": 427695,
+      "/jobs/quotes/page": 436384,
+      "/jobs/suppliers/page": 444533,
+      "/jobs/timesheets/page": 443672,
+      "/licenses/page": 248789,
+      "/onboarding/page": 252680,
+      "/page": 248623,
+      "/pending-approval/page": 248623,
+      "/pricing/page": 252953,
+      "/sign-in/[[...sign-in]]/page": 249222,
+      "/sign-up/[[...sign-up]]/page": 249222
+    },
+    "method": "Union of client-reference manifest JS chunks plus rootMainFiles; jobs shared is intersection across all jobs page manifests. Gzip level 9 per file. Manifest dependency map, not browser request trace; conditional references may overstate actual startup."
+  }
+}

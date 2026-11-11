@@ -301,3 +301,22 @@ private runtimes were cleaned with zero errors. The executed driver is
 `29b9f51d…`; the earlier prepared frozen copy was never executed and is labeled
 separately. See
 `artifacts/openjob-actionability-diagnostic-2026-11-11-assessment.json`.
+
+
+## Controlled R7/R8 press comparison — 2026-11-11
+
+The exact three-file attribute-feedback patch was compared in 40 Office samples
+(20 per source), using eight balanced five-sample blocks through the original
+sealed default-click driver. No continuous observers, forced clicks or added
+in-timer probes were used. Both source/preflight identities, the three changed
+production paths, coordinator/method hashes and zero private DB errors passed;
+all raw fragments remain intact and both private runtimes were cleaned.
+
+Nearest-rank medians were R7 93.01 ms and R8 90.72 ms, with overlapping IQRs
+[88.57, 97.51] and [86.06, 95.28]. Paired-block R8-minus-R7 median differences
+were −5.15, +3.34, +0.28 and −8.78 ms: two lower and two higher. This mixed,
+roughly 2 ms result does not show a consistent one-frame benefit or establish a
+component cause. A fresh browser per block is an untimed supplemental difference
+from the full matrix. No R8 full matrix is approved or queued; the unchanged R7
+four-cell failure remains authoritative. See
+`artifacts/openjob-press-r7-r8-comparison-2026-11-11-assessment.json`.

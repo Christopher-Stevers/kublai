@@ -1,0 +1,348 @@
+{
+  "status": "complete-supplemental-only",
+  "acceptedGateEvidence": false,
+  "raw": {
+    "path": "perf/artifacts/openjob-press-r7-r8-comparison-2026-11-11-report.json",
+    "sha256": "e49b1333482abac5f41bbdef7b4532b9a5d0e74eed6e65be778c7feaa3cf9a09"
+  },
+  "protocol": "openjob-default-press-comparison-v1",
+  "sourceSummary": {
+    "r7": {
+      "samples": 20,
+      "nearestRankMedianMs": 93.014498,
+      "midpointMedianMs": 93.42474100000004,
+      "q1Ms": 88.57379299999957,
+      "q3Ms": 97.50560599999994,
+      "minMs": 82.25594600000022,
+      "maxMs": 99.73228499999959
+    },
+    "r8": {
+      "samples": 20,
+      "nearestRankMedianMs": 90.720507,
+      "midpointMedianMs": 91.31676799999968,
+      "q1Ms": 86.06110999999964,
+      "q3Ms": 95.28033099999993,
+      "minMs": 81.15964299999996,
+      "maxMs": 99.03393899999992
+    }
+  },
+  "blocks": [
+    {
+      "block": 1,
+      "role": "r7",
+      "samples": 5,
+      "medianMs": 91.20918799999981,
+      "archivedPath": "perf/artifacts/openjob-press-r7-r8-comparison-2026-11-11-fragments/1-r7.json",
+      "sha256": "33d5a743fcb76716aa265c271d982e1f03a5aa8b053b293f4ef9fd4fe8011c26"
+    },
+    {
+      "block": 2,
+      "role": "r8",
+      "samples": 5,
+      "medianMs": 86.06110999999964,
+      "archivedPath": "perf/artifacts/openjob-press-r7-r8-comparison-2026-11-11-fragments/2-r8.json",
+      "sha256": "66fa60b9705ce04b55bffd9107d89d4bdd8e7020a1d86f5a09e97d6ac976587d"
+    },
+    {
+      "block": 3,
+      "role": "r8",
+      "samples": 5,
+      "medianMs": 91.91302899999937,
+      "archivedPath": "perf/artifacts/openjob-press-r7-r8-comparison-2026-11-11-fragments/3-r8.json",
+      "sha256": "a2ddbc5020e939deb65ea3224a8c2b47e5013cf8181907ac45c2e9d0a6496989"
+    },
+    {
+      "block": 4,
+      "role": "r7",
+      "samples": 5,
+      "medianMs": 88.57379299999957,
+      "archivedPath": "perf/artifacts/openjob-press-r7-r8-comparison-2026-11-11-fragments/4-r7.json",
+      "sha256": "a6a99cf775b005dace2e4486dcaef506fee4af7e9972828952433bb04b26657b"
+    },
+    {
+      "block": 5,
+      "role": "r7",
+      "samples": 5,
+      "medianMs": 94.63903900000014,
+      "archivedPath": "perf/artifacts/openjob-press-r7-r8-comparison-2026-11-11-fragments/5-r7.json",
+      "sha256": "1a9b0c12fbbaae73916a3aaece7fc0fe0205a7b42bacb3bc3470a4139acbee36"
+    },
+    {
+      "block": 6,
+      "role": "r8",
+      "samples": 5,
+      "medianMs": 94.91635399999996,
+      "archivedPath": "perf/artifacts/openjob-press-r7-r8-comparison-2026-11-11-fragments/6-r8.json",
+      "sha256": "6e0960fe2382ed30d6707df2169e95f73e34c19fa39d116d92ac24a90233e18f"
+    },
+    {
+      "block": 7,
+      "role": "r8",
+      "samples": 5,
+      "medianMs": 87.09540800000013,
+      "archivedPath": "perf/artifacts/openjob-press-r7-r8-comparison-2026-11-11-fragments/7-r8.json",
+      "sha256": "1f05086fbe0325eb6edfcb719f1089ab738c79e80797ceebcd85cbf507ba5ba9"
+    },
+    {
+      "block": 8,
+      "role": "r7",
+      "samples": 5,
+      "medianMs": 95.87888299999986,
+      "archivedPath": "perf/artifacts/openjob-press-r7-r8-comparison-2026-11-11-fragments/8-r7.json",
+      "sha256": "8d572e65f491bb15e6b82971339a74766893e77b31542552e5a7a92cebd7b2b9"
+    }
+  ],
+  "pairedBlockMedianDifferences": [
+    {
+      "pair": 1,
+      "order": [
+        "r7",
+        "r8"
+      ],
+      "r7MedianMs": 91.20918799999981,
+      "r8MedianMs": 86.06110999999964,
+      "deltaR8MinusR7Ms": -5.148078000000169
+    },
+    {
+      "pair": 2,
+      "order": [
+        "r8",
+        "r7"
+      ],
+      "r7MedianMs": 88.57379299999957,
+      "r8MedianMs": 91.91302899999937,
+      "deltaR8MinusR7Ms": 3.3392359999998007
+    },
+    {
+      "pair": 3,
+      "order": [
+        "r7",
+        "r8"
+      ],
+      "r7MedianMs": 94.63903900000014,
+      "r8MedianMs": 94.91635399999996,
+      "deltaR8MinusR7Ms": 0.2773149999998168
+    },
+    {
+      "pair": 4,
+      "order": [
+        "r8",
+        "r7"
+      ],
+      "r7MedianMs": 95.87888299999986,
+      "r8MedianMs": 87.09540800000013,
+      "deltaR8MinusR7Ms": -8.783474999999726
+    }
+  ],
+  "pairedOrdinalSampleDifferences": [
+    {
+      "pair": 1,
+      "run": 0,
+      "r7Ms": 90.89988599999992,
+      "r8Ms": 85.21283099999982,
+      "deltaR8MinusR7Ms": -5.6870550000001
+    },
+    {
+      "pair": 1,
+      "run": 1,
+      "r7Ms": 99.73228499999959,
+      "r8Ms": 91.97135100000014,
+      "deltaR8MinusR7Ms": -7.760933999999452
+    },
+    {
+      "pair": 1,
+      "run": 2,
+      "r7Ms": 91.20918799999981,
+      "r8Ms": 83.58004299999993,
+      "deltaR8MinusR7Ms": -7.62914499999988
+    },
+    {
+      "pair": 1,
+      "run": 3,
+      "r7Ms": 84.53583700000036,
+      "r8Ms": 90.06368199999997,
+      "deltaR8MinusR7Ms": 5.5278449999996155
+    },
+    {
+      "pair": 1,
+      "run": 4,
+      "r7Ms": 93.83498400000008,
+      "r8Ms": 86.06110999999964,
+      "deltaR8MinusR7Ms": -7.773874000000433
+    },
+    {
+      "pair": 2,
+      "run": 0,
+      "r7Ms": 98.85733099999993,
+      "r8Ms": 98.02974700000004,
+      "deltaR8MinusR7Ms": -0.827583999999888
+    },
+    {
+      "pair": 2,
+      "run": 1,
+      "r7Ms": 97.99338699999998,
+      "r8Ms": 98.61570400000028,
+      "deltaR8MinusR7Ms": 0.6223170000002938
+    },
+    {
+      "pair": 2,
+      "run": 2,
+      "r7Ms": 82.49179000000004,
+      "r8Ms": 88.14608700000008,
+      "deltaR8MinusR7Ms": 5.654297000000042
+    },
+    {
+      "pair": 2,
+      "run": 3,
+      "r7Ms": 88.57379299999957,
+      "r8Ms": 87.06509099999948,
+      "deltaR8MinusR7Ms": -1.5087020000000848
+    },
+    {
+      "pair": 2,
+      "run": 4,
+      "r7Ms": 82.25594600000022,
+      "r8Ms": 91.91302899999937,
+      "deltaR8MinusR7Ms": 9.657082999999147
+    },
+    {
+      "pair": 3,
+      "run": 0,
+      "r7Ms": 92.99192399999993,
+      "r8Ms": 98.38694899999996,
+      "deltaR8MinusR7Ms": 5.395025000000032
+    },
+    {
+      "pair": 3,
+      "run": 1,
+      "r7Ms": 94.63903900000014,
+      "r8Ms": 90.720507,
+      "deltaR8MinusR7Ms": -3.918532000000141
+    },
+    {
+      "pair": 3,
+      "run": 2,
+      "r7Ms": 93.014498,
+      "r8Ms": 92.33082900000045,
+      "deltaR8MinusR7Ms": -0.6836689999995542
+    },
+    {
+      "pair": 3,
+      "run": 3,
+      "r7Ms": 98.67393100000027,
+      "r8Ms": 98.88670900000034,
+      "deltaR8MinusR7Ms": 0.2127780000000712
+    },
+    {
+      "pair": 3,
+      "run": 4,
+      "r7Ms": 97.48138699999981,
+      "r8Ms": 94.91635399999996,
+      "deltaR8MinusR7Ms": -2.5650329999998576
+    },
+    {
+      "pair": 4,
+      "run": 0,
+      "r7Ms": 97.50560599999994,
+      "r8Ms": 81.64112099999988,
+      "deltaR8MinusR7Ms": -15.864485000000059
+    },
+    {
+      "pair": 4,
+      "run": 1,
+      "r7Ms": 95.87888299999986,
+      "r8Ms": 95.28033099999993,
+      "deltaR8MinusR7Ms": -0.5985519999999269
+    },
+    {
+      "pair": 4,
+      "run": 2,
+      "r7Ms": 98.42524400000002,
+      "r8Ms": 81.15964299999996,
+      "deltaR8MinusR7Ms": -17.26560100000006
+    },
+    {
+      "pair": 4,
+      "run": 3,
+      "r7Ms": 90.57571600000028,
+      "r8Ms": 87.09540800000013,
+      "deltaR8MinusR7Ms": -3.48030800000015
+    },
+    {
+      "pair": 4,
+      "run": 4,
+      "r7Ms": 83.23089299999992,
+      "r8Ms": 99.03393899999992,
+      "deltaR8MinusR7Ms": 15.803045999999995
+    }
+  ],
+  "pairedOrdinalDeltaSummary": {
+    "nearestRankMedianMs": -1.5087020000000848,
+    "r8Faster": 13,
+    "r8Slower": 7
+  },
+  "quantiles": "Nearest-rank median/quartiles consistent with existing summary tool; even-count midpoint median also reported. Paired ordinal samples are sequential matches, not simultaneous measurements.",
+  "coordinatorVerification": {
+    "before": "39908d855fc2f57866faeb76a00e00ebcfdf368b800727d057355280c13eaf6c",
+    "after": "39908d855fc2f57866faeb76a00e00ebcfdf368b800727d057355280c13eaf6c",
+    "unchanged": true
+  },
+  "frozenMethodVerification": {
+    "before": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+    "after": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+    "unchanged": true
+  },
+  "controlledSourceDifference": {
+    "changed": [
+      "src/app/jobs/JobsClient.tsx",
+      "src/components/ui/pressable-card.tsx",
+      "src/hooks/use-press.ts"
+    ],
+    "sourceFileCounts": {
+      "r7": 2289,
+      "r8": 2289
+    },
+    "scope": "Frozen source-fingerprint inputs; separate canonical proof covers all unaffected public files."
+  },
+  "canonicalSourcesAfter": {
+    "r7": {
+      "sourceFingerprint": "42fcc8c7a84d3cb7a243e6f2ca393abffc76d1181df0dbe84d33b926ff1b5efa",
+      "sourceFileCount": 2289,
+      "matchesBefore": true
+    },
+    "r8": {
+      "sourceFingerprint": "b4b219989f49b7d9d8bc1d70a5b613d9d8aa0285dff98a65bdc85c959fce637c",
+      "sourceFileCount": 2289,
+      "matchesBefore": true
+    }
+  },
+  "finalDatabaseHealth": {
+    "r7": {
+      "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+      "errors": []
+    },
+    "r8": {
+      "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+      "errors": []
+    }
+  },
+  "cleanup": {
+    "ports3482And3483NoListener": true,
+    "bothPrivateDatabaseDirectoriesRemoved": true
+  },
+  "interpretation": "The pooled nearest-rank medians differ by about 2.3 ms with overlapping IQRs. R8 block medians are lower in 2 pairs and higher in 2 pairs; this does not show a consistent one-frame benefit or justify an R8 full matrix/performance claim. Controlled three-path source difference alone does not identify a specific internal cost or physical frame effect.",
+  "originalGate": "R7 full matrix remains failed in four cells; no metric/threshold/sample replacement or waiver.",
+  "limitations": [
+    "Original sealed run.mjs and journeys.mjs execute each five-sample block unchanged; default exact first job-name click, destination assertion and two-rAF completion remain intact.",
+    "No continuous rAF/MutationObserver, force option, added browser timing probe or app-source instrumentation.",
+    "One new browser per five-sample block is untimed and differs from a full-matrix single browser lifetime. Each context remains fresh as in the original method.",
+    "Two synthetic app servers run concurrently; shared production/OS background activity remains uncontrolled.",
+    "Office only; descriptive source/block/paired distributions, not a full gate, physical pixels, statistical p95 or component-cause proof.",
+    "R7 full-matrix failures and all prior evidence remain unchanged; no acceptance threshold is introduced.",
+    "Forty Office samples across eight five-sample blocks only; no full R8 matrix was run and no further run is authorized.",
+    "No added per-sample negative-target instrumentation was injected into the original frozen driver; original visited preparation and destination assertions are preserved exactly.",
+    "No before-input phase attribution is available here; earlier observer/force diagnostics are separate, incomparable protocols.",
+    "Fresh source-bound synthetic PG/Clerk stubs, non-hex lab public build tag and stock server transport remain; production private SW/update, real auth, physical/Android/offline/every-frame targets remain unproven.",
+    "No declared agent-heavy/ADB/phone work during timing; production/OS background activity remained uncontrolled."
+  ]
+}

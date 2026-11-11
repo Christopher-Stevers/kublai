@@ -1,0 +1,31 @@
+{
+  "protocol": "openjob-default-press-comparison-v1",
+  "status": "prepared-not-executed",
+  "coordinator": "/tmp/foremanhq-press-comparison-method-DFn7EY/openjob-press-comparison.mjs",
+  "coordinatorSha256": "39908d855fc2f57866faeb76a00e00ebcfdf368b800727d057355280c13eaf6c",
+  "frozenMethodRoot": "/tmp/foremanhq-perf-method-f9bHR6",
+  "frozenMethodFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "sourceR7": "/home/tim/.openclaw/workspace/releases/speed-phase1-reviewed-r7-20261111",
+  "sourceR8": "/home/tim/.openclaw/workspace/releases/speed-phase1-press-r8-20261111",
+  "expectedR7SourceBuild": "754be902243877741d07e73a3fd492261afaf7dc0a3cdf07e859a85c9ad5b2d4",
+  "expectedR8SourceBuild": "abb000ebe9cd91803e0ffea2c230d2cbf87536800cb4bb894c74f3e4583adf86",
+  "samples": 40,
+  "samplesPerSource": 20,
+  "blocks": [
+    "r7",
+    "r8",
+    "r8",
+    "r7",
+    "r7",
+    "r8",
+    "r8",
+    "r7"
+  ],
+  "samplesPerBlock": 5,
+  "link": "Office",
+  "hypothesis": "Controlled three-file attribute-feedback patch may reduce default openjob latency; retain descriptive distributions without component/frame-cause or full-gate claim.",
+  "metrics": "Source median/IQR, each5-sample block median,20paired within-block-order differences and fourpaired-block median differences; no new acceptance threshold.",
+  "noExtraObservers": true,
+  "noFrozenMethodChanges": true,
+  "noAutomaticFollowup": true
+}
