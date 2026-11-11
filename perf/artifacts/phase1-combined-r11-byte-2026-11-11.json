@@ -1,0 +1,124 @@
+{
+  "status": "combined-candidate-compiled-prepared-not-activated",
+  "sourceFreezeCommit": "c272d982",
+  "baseBuild": "945730c686993e7f714af726c9351d3ed54aa846afc67333b697e6ce657d4e4a",
+  "source": {
+    "sourceBuild": "ae52a68dd64be4099077ac95c7ad489255c3501dda164a7d5b9bf023ee95d668",
+    "sourceFingerprint": "71410fbee1832a3dc141c47ef790edf9093c6e5146beac3842534503f7a8b0f3",
+    "sourceFileCount": 2304,
+    "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+    "controlledSourceChanges": [
+      "scripts/check-lint.mjs",
+      "scripts/check-navigation.mjs",
+      "scripts/check-providers.mjs",
+      "scripts/layout/provider-baseline.json",
+      "scripts/layout/shared-providers.mjs",
+      "scripts/navigation/baseline.json",
+      "scripts/navigation/raw-navigation.mjs",
+      "scripts/release/build.mjs",
+      "src/app/api/live/route.ts",
+      "src/app/jobs/JobsClient.tsx",
+      "src/app/jobs/organization/page.tsx",
+      "src/components/app/MaterialSortProvider.tsx",
+      "src/components/jobs/DrawingWorkspace.tsx",
+      "src/components/jobs/JobChatThread.tsx",
+      "src/components/jobs/JobDrawingsView.tsx",
+      "src/components/materialLists/JobMaterialListsView.tsx",
+      "src/components/materialLists/MaterialListActions.tsx",
+      "src/components/materialLists/MaterialListScreen.tsx",
+      "src/components/materialLists/OrdersPreviewSheet.tsx",
+      "src/components/organization/MembersSection.tsx",
+      "src/components/performance/SpeedTelemetry.tsx",
+      "src/hooks/use-create-drawing-set.ts",
+      "src/hooks/use-job-workspace-navigation.ts",
+      "src/hooks/use-material-sort-authority.ts",
+      "src/hooks/use-material-sort-live.ts",
+      "src/hooks/use-member-save.ts",
+      "src/lib/live-client.ts",
+      "src/lib/live-protocol.ts",
+      "src/lib/navigation-paint.ts",
+      "src/server/api/routers/drawings.ts",
+      "src/server/api/routers/organization.ts",
+      "src/server/api/routers/user.ts",
+      "src/server/background/hints.ts",
+      "src/server/background/listen-lifecycle.ts",
+      "src/server/live/material-sort-events.ts",
+      "src/server/material-sort-preferences.ts"
+    ],
+    "runtimePathCount": 28,
+    "operationalPathCount": 8,
+    "unaffectedFiles": 5428,
+    "publicCorpusFiles": 3263,
+    "unexpectedSourceChanges": 0,
+    "productionOverlayStringHits": 0,
+    "productionOverlayModuleHits": 0,
+    "statsBuildMatches": true,
+    "fingerprintMatchesReviewedFreeze": true,
+    "navigationPreflight": "pass: no changed/new raw navigation",
+    "providerPreflight": "pass: no new shared boundaries",
+    "webpackProductionTypesPrerender": "pass first try",
+    "r8PressExcluded": true,
+    "laterScaleAndMergeExcluded": true,
+    "proofServerStarted": false,
+    "activated": false,
+    "originalSourceFingerprintRechecked": true,
+    "productionOverlayModulePattern": "SpeedDevelopmentOverlay"
+  },
+  "formalByteRatchets": {
+    "sharedGzipBytes": {
+      "phase0Baseline": 502618,
+      "r10": 473958,
+      "r11": 477954,
+      "deltaFromR10": 3996,
+      "headroomToPhase0Baseline": 24664,
+      "passesPhase0Ratchet": true
+    },
+    "screenGzipBytes": {
+      "phase0Baseline": 758531,
+      "r10": 749234,
+      "r11": 757796,
+      "deltaFromR10": 8562,
+      "headroomToPhase0Baseline": 735,
+      "passesPhase0Ratchet": true
+    },
+    "deployGzipBytes": {
+      "phase0Baseline": 2734731,
+      "r10": 1271639,
+      "r11": 1293940,
+      "deltaFromR10": 22301,
+      "headroomToPhase0Baseline": 1440791,
+      "passesPhase0Ratchet": true
+    }
+  },
+  "formalMetricMethod": "Union of client-reference manifest JS chunks plus rootMainFiles; jobs shared is intersection across all jobs page manifests. Gzip level 9 per file. Manifest dependency map, not browser request trace; conditional references may overstate actual startup.",
+  "heaviestRoute": "/jobs/[jobId]/receiving/page",
+  "strictChangedScriptTarget": {
+    "baselineBuild": "945730c686993e7f714af726c9351d3ed54aa846afc67333b697e6ce657d4e4a",
+    "candidateBuild": "ae52a68dd64be4099077ac95c7ad489255c3501dda164a7d5b9bf023ee95d668",
+    "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+    "currentScripts": 284,
+    "reusedScripts": 241,
+    "changedScripts": 43,
+    "changedRawBytes": 1357079,
+    "changedGzipBytes": 441018,
+    "budgetGzipBytes": 100000,
+    "passes": false
+  },
+  "finalTargets": {
+    "sharedGzipBytes": {
+      "target": 120000,
+      "measured": 477954,
+      "passes": false
+    },
+    "heaviestGzipBytes": {
+      "target": 180000,
+      "measured": 757796,
+      "passes": false
+    }
+  },
+  "limits": [
+    "Combined feature batch is not a controlled single-leaf typical-edit experiment. Its strict changed-script target still fails and is not waived.",
+    "No HTTP server, browser journey, idle observation, full matrix or activation ran for this candidate.",
+    "Previous failed performance gates are unchanged; byte ratchets alone do not establish release readiness."
+  ]
+}

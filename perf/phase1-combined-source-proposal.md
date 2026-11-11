@@ -1,6 +1,6 @@
 # Combined Phase1 source proposal
 
-This is a reviewed R11 source freeze, **not a built candidate or activation**. The base is the immutable R10 source: build `945730c686993e7f714af726c9351d3ed54aa846afc67333b697e6ce657d4e4a`, source fingerprint `d9c6e9cb20203dc4931aae02ed69225be6e9ac8edf86178e6dfe6462e1e3ee7f`. R10 itself is exact R9 plus the two voice-engine split files; R8 attribute feedback is absent.
+This is the reviewed R11 source composition. It subsequently compiled successfully; **it has not been activated**. The base is the immutable R10 source: build `945730c686993e7f714af726c9351d3ed54aa846afc67333b697e6ce657d4e4a`, source fingerprint `d9c6e9cb20203dc4931aae02ed69225be6e9ac8edf86178e6dfe6462e1e3ee7f`. R10 itself is exact R9 plus the two voice-engine split files; R8 attribute feedback is absent.
 
 The [initial inventory](artifacts/phase1-combined-source-proposal-2026-11-11.json) is retained. The [final frozen inventory](artifacts/phase1-combined-r11-source-freeze-2026-11-11.json) records commit IDs, selected paths, patch hashes, and parent/result SHA256 values. A disposable source-only patch sandbox applied each commit's selected runtime/operational diff in order. **Every selected parent blob matches exactly**, including the successive member-save, archive-width and build-tooling changes. All thirteen groups apply without conflicts, including the later reviewed authority group. No current HEAD file bodies or dirty working files were copied.
 
@@ -25,12 +25,16 @@ The final frozen source is `/home/tim/.openclaw/workspace/releases/speed-phase1-
 
 Preparation attempt 1 stopped at the first postimage assertion because `git apply` from inside an enclosing repository skipped patch paths; its directory is preserved. Attempt 2 applies to an explicit absolute destination from `/tmp`, checks every intermediate postimage, and passes the complete unaffected/public comparison. No failed preparation is presented as a successful freeze.
 
-The next step requires root review and explicit build clearance. Proposed pinned command (not executed):
+Root reviewed the freeze and authorized the following pinned canonical command, which exited 0:
 
 ```sh
 RELEASE_SOURCE_DIR=/home/tim/.openclaw/workspace/releases/speed-phase1-combined-r11-20261111 RELEASE_BUNDLE_STATS=1 node /home/tim/.openclaw/workspace/releases/speed-phase1-combined-r11-20261111/scripts/release/build.mjs /home/tim/.openclaw/workspace/releases/speed-phase1-combined-r11-20261111/.next-web
 ```
 
-No compile, HTTP proof, journey, idle observation or activation has run for this proposal. R10's prior byte/performance evidence cannot be reused as this combined candidate's evidence.
+R11's canonical webpack compilation, production TypeScript and prerendering passed first try. Source-law preflights passed. Build is `ae52a68dd64be4099077ac95c7ad489255c3501dda164a7d5b9bf023ee95d668`; its fingerprint matches the reviewed source, and all 36 overlays plus unaffected/public inputs were rechecked. The actual `SpeedDevelopmentOverlay` module and development overlay text are absent from production output.
+
+[The candidate byte report](artifacts/phase1-combined-r11-byte-2026-11-11.json) records all unchanged gates. Shared is **477,954**, heaviest **757,796** (receiving), and Phase0-relative deployment **1,293,940 gzip bytes**. These rise by 3,996 / 8,562 / 22,301 from R10, but all three Phase0 ratchets still pass. The heaviest ratchet has only **735 bytes** of headroom. Final 120KB shared / 180KB heaviest targets remain unmet. Strict R10→R11 changed payload is **441,018 gzip bytes**, 43/284 scripts changed (241 reused), so the unchanged **100,000-byte target fails**. This feature-batch comparison is distinct from earlier controlled single-leaf edit evidence.
+
+No HTTP proof, browser journey, idle observation, full candidate matrix or activation ran for R11. R10's prior runtime evidence is not presented as matching R11 evidence, and previous failed gates remain unchanged.
 
 Keep schema, worker, zoom intent, PackingSlips, package/lockfile, tsconfig and unrelated dirty source out. Applicable byte and journey gates remain unchanged; prior failures remain failures.

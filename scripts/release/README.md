@@ -91,3 +91,15 @@ Common initial graph saves 3,187 gzip bytes; formal shared/heaviest fall to
 100,000-byte update target fails at 157,682 (25/284 scripts changed).
 See `perf/voice-engine-import-split.md` and its concise byte artifact. This was
 a byte-only experiment: no HTTP server, journey/idle observation or activation.
+
+
+R11 combined candidate (2026-11-11): reviewed frozen R10 plus the 13 approved
+overlay groups; see `perf/phase1-combined-source-proposal.md` and its final source
+manifest. Pinned canonical webpack/production TypeScript/prerender passed first
+try; source fingerprint `71410fbe…` and all public/unaffected inputs rechecked.
+Build `ae52a68dd64be4099077ac95c7ad489255c3501dda164a7d5b9bf023ee95d668`.
+Formal shared/heaviest/Phase0-relative deployment are 477,954/757,796/1,293,940
+gzip bytes: Phase0 ratchets pass, with only 735 bytes of heaviest headroom.
+Strict R10→R11 changed payload fails the unchanged 100,000-byte target at
+441,018 (43/284 scripts changed). Final shared/heaviest targets remain unmet.
+No HTTP server, journey, idle observation, full matrix or activation ran for R11.
