@@ -140,6 +140,7 @@ export function replayPaths(
     leading: 0,
     mode: 0,
   };
+  let pendingClip: "evenodd" | "nonzero" | null = null;
   const failures = new Set<string>();
   let glyphsPainted = 0,
     formsPainted = 0;
@@ -158,6 +159,8 @@ export function replayPaths(
     }
     text = textStack.pop()!.text;
     ctx.restore();
+    // pdf.js restore discards an unconsumed pending clipping operation.
+    pendingClip = null;
   };
   const paint = (mode: number) => {
     const n = names[mode] ?? "";
@@ -374,10 +377,18 @@ export function replayPaths(
           }
         }
         paint(a[0]);
+        // pdf.js consumes the clipping request only after painting this path.
+        // endPath paints nothing but still consumes its packed clipping path.
+        if (pendingClip) {
+          ctx.clip(pendingClip);
+          pendingClip = null;
+        }
+        ctx.beginPath();
       } else if (name === "clip" || name === "eoClip")
-        ctx.clip(name === "eoClip" ? "evenodd" : "nonzero");
+        pendingClip = name === "eoClip" ? "evenodd" : "nonzero";
     }
   } finally {
+    if (pendingClip) failures.add("unconsumed-clip");
     if (textStack.length) failures.add("unbalanced-save-or-form");
     while (textStack.length) {
       textStack.pop();

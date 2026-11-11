@@ -36,7 +36,7 @@ for (const suffix of ["0", "1", "2", "3", "eb8da2f0", "7725eb4b"])
 const previewRoot = path.join(
   root,
   combinedPrototype
-    ? "combined-prototype-previews"
+    ? "combined-clip-v2-previews"
     : imagePrototype
       ? "image-prototype-previews"
       : "previews",
@@ -239,7 +239,7 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
           await writeFile(
             path.join(
               previewRoot,
-              `${sample.hash.slice(0, 12)}-${combinedPrototype ? `${width}-combined-prototype` : imagePrototype ? `${width}-image-prototype` : "prototype"}.png`,
+              `${sample.hash.slice(0, 12)}-${combinedPrototype ? `${width}-combined-clip-v2` : imagePrototype ? `${width}-image-prototype` : "prototype"}.png`,
             ),
             prototype.toBuffer("image/png"),
           );
@@ -265,7 +265,7 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
       raster,
       fidelity,
       prototypeProtocol: combinedPrototype
-        ? "combined-image-glyph-form-replay-v1-single-existing-sample"
+        ? "combined-image-glyph-form-clip-replay-v2-single-existing-sample"
         : imagePrototype
           ? "decoded-image-replay-v1"
           : "historical-path-glyph-replay",
@@ -313,7 +313,7 @@ for (const [sampleIndex, sample] of corpus.samples.entries()) {
   await writeFile(
     path.join(
       root,
-      `measurements-${combinedPrototype ? `combined-prototype-${combinedHash}` : imagePrototype ? `image-prototype-${process.env.DRAWING_ONLY_HASH ?? shard}` : glyphPrototype ? "glyph-prototype" : (process.env.DRAWING_ONLY_HASH ?? shard)}.json`,
+      `measurements-${combinedPrototype ? `combined-clip-v2-${combinedHash}` : imagePrototype ? `image-prototype-${process.env.DRAWING_ONLY_HASH ?? shard}` : glyphPrototype ? "glyph-prototype" : (process.env.DRAWING_ONLY_HASH ?? shard)}.json`,
     ),
     JSON.stringify(
       {

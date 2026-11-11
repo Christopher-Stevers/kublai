@@ -414,3 +414,102 @@ it("keeps glyph spacing, multiline position and text state across nested forms",
   expect(translations[4]).toEqual([1.5, 0]);
   expect(translations[6]).toEqual([0, -4]);
 });
+
+describe("deferred packed-path clipping", () => {
+  const names = {
+    1: "clip",
+    2: "eoClip",
+    3: "constructPath",
+    4: "endPath",
+    5: "fill",
+    6: "save",
+    7: "restore",
+  };
+  const rect = (mode: number, x: number, y: number, w: number, h: number) => [
+    mode,
+    [[0, x, y, 1, x + w, y, 1, x + w, y + h, 1, x, y + h, 4]],
+  ];
+  it("clips the following endPath geometry instead of the previous or empty path", () => {
+    const canvas = createCanvas(20, 20),
+      ctx = canvas.getContext("2d");
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, 20, 20);
+    const result = replayPaths(
+      ctx,
+      {
+        fnArray: [1, 3, 3],
+        argsArray: [[], rect(4, 4, 4, 8, 8), rect(5, 0, 0, 20, 20)],
+      },
+      names,
+      [1, 0, 0, 1, 0, 0],
+    );
+    expect(result.failures).toEqual([]);
+    expect(Array.from(ctx.getImageData(6, 6, 1, 1).data)).toEqual([
+      0, 0, 0, 255,
+    ]);
+    expect(Array.from(ctx.getImageData(2, 2, 1, 1).data)).toEqual([
+      255, 255, 255, 255,
+    ]);
+  });
+  it("uses even-odd clipping holes and restores the previous canvas clip", () => {
+    const canvas = createCanvas(20, 20),
+      ctx = canvas.getContext("2d");
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, 20, 20);
+    const outer = rect(4, 2, 2, 14, 14) as [number, number[][]];
+    const hole = rect(4, 6, 6, 4, 4) as [number, number[][]];
+    const clipPath = [4, [outer[1][0]!.concat(hole[1][0]!)]];
+    replayPaths(
+      ctx,
+      {
+        fnArray: [6, 2, 3, 3, 7, 3],
+        argsArray: [
+          [],
+          [],
+          clipPath,
+          rect(5, 0, 0, 20, 20),
+          [],
+          rect(5, 17, 17, 2, 2),
+        ],
+      },
+      names,
+      [1, 0, 0, 1, 0, 0],
+    );
+    const pixel = (x: number, y: number) =>
+      Array.from(ctx.getImageData(x, y, 1, 1).data);
+    expect(pixel(4, 4)).toEqual([0, 0, 0, 255]);
+    expect(pixel(8, 8)).toEqual([255, 255, 255, 255]);
+    expect(pixel(18, 18)).toEqual([0, 0, 0, 255]);
+  });
+  it("paints before applying the pending clip, and drops an unconsumed clip on restore", () => {
+    const calls: string[] = [];
+    const ctx: any = new Proxy(
+      {},
+      {
+        get:
+          (_target, key) =>
+          (..._args: unknown[]) =>
+            calls.push(String(key)),
+        set: () => true,
+      },
+    );
+    replayPaths(
+      ctx,
+      {
+        fnArray: [1, 3, 6, 2, 7, 3],
+        argsArray: [
+          [],
+          rect(5, 0, 0, 10, 10),
+          [],
+          [],
+          [],
+          rect(5, 0, 0, 20, 20),
+        ],
+      },
+      names,
+      [1, 0, 0, 1, 0, 0],
+    );
+    expect(calls.indexOf("fill")).toBeLessThan(calls.indexOf("clip"));
+    expect(calls.filter((x) => x === "clip")).toHaveLength(1);
+  });
+});

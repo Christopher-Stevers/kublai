@@ -107,3 +107,28 @@ threshold was relaxed. Historical reports remain unchanged. See
 [the exact single-run metadata](combined-replay-one-sample.json); PDF and images
 remain private. No complete encoding, byte target, phone/GPU or production claim
 is made. The process exited and no server/database/worker process was started.
+
+### Deferred-clip v2 single-sample result
+
+Installed pdf.js records `clip`/`eoClip` as pending and applies it when the
+following packed path is consumed after paint/endPath. The prototype previously
+clipped the empty/stale current path immediately. The correction defers clipping
+and clears pending state on restore; ordinary form bbox direct clipping is
+unchanged. Three new synthetic tests cover clip/endPath geometry, even-odd
+holes/restore, and paint-before-clip ordering/discard on restore. All 22 focused
+tests and the scoped strict TypeScript check pass.
+
+One separately authorized same-page v2 run used distinct `combined-clip-v2`
+outputs and the same 180-second watchdog. It exited 0, source hashes matched
+before/after, and both private reference/prototype pairs were inspected. Main
+plan geometry is now present, but line weights/contrast and some details still
+differ. Full-sheet fidelity **fails both widths**: min tile SSIM 0.40694/0.46004,
+mean 0.63169/0.74453, ink difference 0.05555/0.02263. Thresholds are unchanged.
+The same 1,349 glyphs and one image replayed, with zero form operators. Known
+subset failures being empty does not prove complete support. Layers/opacity and
+remaining stroke/style/text/path semantics still require work.
+
+[Exact v2 metadata](combined-clip-v2-one-sample.json) records method and
+before/after hashes, including proof that v1 and historical reports stayed
+unchanged. Images/PDF remain private. No retry, complete-encoding, size, corpus,
+phone/GPU or production claim is made; the owned process exited cleanly.
