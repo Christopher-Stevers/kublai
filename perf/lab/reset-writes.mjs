@@ -23,9 +23,9 @@ const sql = postgres({
 });
 try {
   await sql.begin(async (tx) => {
-    await tx`update kublai_quote_item set quantity='10' where quote_id in (select id from kublai_quote where material_list_id=${fixture.materialListId})`;
-    await tx`update kublai_order_item set received_quantity='0', verification_status='pending' where order_id=${fixture.orderId}`;
-    await tx`delete from kublai_job_chat_message where job_id=${fixture.jobId} and body like 'Synthetic speed lab message %'`;
+    await tx`update kublai_quote_item set quantity='10' where "quoteId" in (select id from kublai_quote where "materialListId"=${fixture.materialListId})`;
+    await tx`update kublai_order_item set "receivedQuantity"='0', "verificationStatus"='pending' where "orderId"=${fixture.orderId}`;
+    await tx`delete from kublai_job_chat_message where "jobId"=${fixture.jobId} and body like 'Synthetic speed lab message %'`;
   });
   console.log(
     "Reset only synthetic quantity, receipt and lab chat writes before independent capture.",
