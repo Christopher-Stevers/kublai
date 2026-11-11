@@ -66,9 +66,93 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.resetAllMocks();
 });
+
+it("allows closing if connectivity is lost after the final refresh starts", async () => {
+  const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+  const refresh = deferred<void>();
+  const onClose = vi.fn();
+  render(
+    <SuperLabelDialog
+      source={source}
+      onClose={onClose}
+      onSaved={() => refresh.promise}
+    />,
+  );
+  start();
+  await waitFor(() =>
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Refreshing drawing labels",
+    ),
+  );
+  await act(async () => {
+    online.mockReturnValue(false);
+    window.dispatchEvent(new Event("offline"));
+  });
+  expect(screen.getByRole("alert")).toHaveTextContent("Reconnect and refresh");
+  fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  expect(onClose).toHaveBeenCalledOnce();
+  expect(server.apply).toHaveBeenCalledTimes(2);
+  await act(async () => refresh.resolve());
+  expect(server.apply).toHaveBeenCalledTimes(2);
+});
+
+it("bounds a stalled final refresh without repeating the completed reads", async () => {
+  const refresh = deferred<void>();
+  const onClose = vi.fn();
+  render(
+    <SuperLabelDialog
+      source={source}
+      onClose={onClose}
+      onSaved={() => refresh.promise}
+    />,
+  );
+  vi.useFakeTimers();
+  await act(async () => {
+    start();
+  });
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "Refreshing drawing labels",
+  );
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(15_000);
+  });
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "refresh is taking too long",
+  );
+  expect(screen.getByRole("status")).toHaveTextContent("2 / 2 processed");
+  fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  expect(onClose).toHaveBeenCalledOnce();
+  expect(server.apply).toHaveBeenCalledTimes(2);
+  await act(async () => refresh.resolve());
+});
+
+it.each(["saving", "reading"])(
+  "does not schedule new reads after removal during %s",
+  async (stage) => {
+    const saving = deferred<void>();
+    const reading = deferred<typeof result>();
+    if (stage === "saving") server.save.mockReturnValue(saving.promise);
+    else server.apply.mockReturnValue(reading.promise);
+    const onSaved = vi.fn();
+    const view = render(
+      <SuperLabelDialog source={source} onClose={vi.fn()} onSaved={onSaved} />,
+    );
+    start();
+    if (stage === "reading")
+      await waitFor(() => expect(server.apply).toHaveBeenCalledOnce());
+    view.unmount();
+    await act(async () => {
+      saving.resolve();
+      reading.resolve(result);
+    });
+    expect(server.apply).toHaveBeenCalledTimes(stage === "reading" ? 1 : 0);
+    expect(onSaved).not.toHaveBeenCalled();
+  },
+);
 
 it("shows each pending stage immediately and only displays labels returned by the server", async () => {
   const saving = deferred<void>();

@@ -67,6 +67,7 @@ export default function SpeedDevelopmentOverlay() {
       PerformanceObserver.supportedEntryTypes.includes("measure")
     ) {
       observer = new PerformanceObserver((list) => {
+        if (document.visibilityState === "hidden") return;
         for (const entry of list.getEntries()) {
           if (!Number.isFinite(entry.duration) || entry.duration < 0) continue;
           if (entry.name === "foremenhq:tap-to-paint") setTap(entry.duration);

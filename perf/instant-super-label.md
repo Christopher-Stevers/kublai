@@ -16,6 +16,10 @@ refused, and losing connectivity stops the next read. The notice asks for a
 refresh because a lost response cannot prove whether the server saved a label.
 No automatic replay or second offline queue is introduced.
 
-Seven deferred-response tests pass for phase feedback, stop, duplicate activation,
-save/read failure, and connection loss. This is pending feedback for remote work, not completion
+Eleven tests pass for phase feedback, stop, duplicate activation,
+save/read failure, connection loss, stalled refresh and removal. The final
+read-only refresh wait ends on disconnect, removal or a 15-second deadline so
+it cannot trap the dialog after recognition completes. Removing or hiding the
+dialog stops scheduling further reads; the already authorized in-flight request
+can finish. This is pending feedback for remote work, not completion
 of an optimistic-write gate or proof of model accuracy or physical frame timing.

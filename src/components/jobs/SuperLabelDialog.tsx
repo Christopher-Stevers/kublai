@@ -17,6 +17,71 @@ type LabelProgress =
   | { stage: "reading"; index: number; total: number; name: string }
   | { stage: "refreshing" };
 
+// Invalidation may pause indefinitely offline. Reads can finish in the cache
+// later, but they must not trap the user in a dialog after recognition ends.
+function refreshLabels(
+  refresh: () => void | Promise<void>,
+  signal: AbortSignal,
+) {
+  return new Promise<void>((resolve, reject) => {
+    let finished = false;
+    const finish = (complete: () => void) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      window.removeEventListener("offline", offline);
+      signal.removeEventListener("abort", aborted);
+      complete();
+    };
+    const offline = () =>
+      finish(() =>
+        reject(
+          new Error(
+            "Drawing reads finished. Reconnect and refresh to check saved labels.",
+          ),
+        ),
+      );
+    const aborted = () =>
+      finish(() =>
+        reject(new DOMException("Drawing window closed", "AbortError")),
+      );
+    const timer = setTimeout(
+      () =>
+        finish(() =>
+          reject(
+            new Error(
+              "Drawing reads finished, but refresh is taking too long. Close and reopen the drawing set to check saved labels.",
+            ),
+          ),
+        ),
+      15_000,
+    );
+    window.addEventListener("offline", offline);
+    signal.addEventListener("abort", aborted, { once: true });
+    if (signal.aborted) {
+      aborted();
+      return;
+    }
+    if (!navigator.onLine) {
+      offline();
+      return;
+    }
+    const failed = (error: unknown) =>
+      finish(() =>
+        reject(
+          error instanceof Error
+            ? error
+            : new Error("Unable to refresh drawing labels", { cause: error }),
+        ),
+      );
+    try {
+      void Promise.resolve(refresh()).then(() => finish(resolve), failed);
+    } catch (error) {
+      failed(error);
+    }
+  });
+}
+
 export function SuperLabelDialog({
   source,
   onClose,
@@ -51,6 +116,16 @@ export function SuperLabelDialog({
   const loaded = useRef(false);
   const stop = useRef(false);
   const running = useRef(false);
+  const visible = useRef(true);
+  const refreshWait = useRef<AbortController | null>(null);
+  useEffect(() => {
+    visible.current = true;
+    return () => {
+      visible.current = false;
+      stop.current = true;
+      refreshWait.current?.abort();
+    };
+  }, []);
   useEffect(() => {
     if (settings.data && !loaded.current) {
       setBoxes(settings.data.boxes ?? {});
@@ -69,7 +144,13 @@ export function SuperLabelDialog({
   const valid = superLabelSchema.safeParse(boxes).success;
   async function run() {
     const parsed = superLabelSchema.safeParse(boxes);
-    if (running.current || !parsed.success || !settings.data) return;
+    if (
+      running.current ||
+      !visible.current ||
+      !parsed.success ||
+      !settings.data
+    )
+      return;
     if (!navigator.onLine) {
       setError("Reconnect before applying labels.");
       return;
@@ -113,6 +194,7 @@ export function SuperLabelDialog({
           ]);
         }
       }
+      if (!visible.current) return;
       if (!navigator.onLine) {
         setError(
           "Connection lost. Reconnect and refresh to check saved labels before running again.",
@@ -121,16 +203,19 @@ export function SuperLabelDialog({
       }
       refreshing = true;
       setProgress({ stage: "refreshing" });
-      await onSaved();
+      refreshWait.current = new AbortController();
+      await refreshLabels(onSaved, refreshWait.current.signal);
     } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : refreshing
-            ? "Unable to refresh drawing labels"
-            : "Unable to save boxes",
-      );
+      if (visible.current)
+        setError(
+          e instanceof Error
+            ? e.message
+            : refreshing
+              ? "Unable to refresh drawing labels"
+              : "Unable to save boxes",
+        );
     } finally {
+      refreshWait.current = null;
       running.current = false;
       setBusy(false);
       setProgress(null);

@@ -16,5 +16,5 @@ those gaps, not a count of actual dropped compositor frames. Development
 instrumentation itself costs time. These readings do not replace the isolated
 lab, physical-phone frame traces, or field gates.
 
-Both estimator and lifecycle tests pass. Production exclusion still needs the
+All three estimator, lifecycle and hidden-observer tests pass. Production exclusion still needs the
 next canonical build check. This is the development aid from speed-plan section 13.
