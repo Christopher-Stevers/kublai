@@ -294,7 +294,7 @@
     "candidateComparisonAccepted": false,
     "physicalBaselineAccepted": false
   },
-  "updatedAt": "2026-11-11T14:02:02.815027+00:00",
+  "updatedAt": "2026-11-11T14:15:03.747747+00:00",
   "completedCandidateLabCaptures": 3,
   "candidateRegression": {
     "status": "failed",
@@ -792,6 +792,19 @@
       "activation": false
     },
     "r17FullMatrix": {
+      "status": "running-corrected-attempt2",
+      "protocol": "ready-then-pinch-v2",
+      "methodFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+      "samplesPlanned": 120,
+      "idleDurationMs": 600000,
+      "baseline": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+      "preparation": "perf/artifacts/candidate-r17-ready-then-pinch-v2-attempt2-2026-11-11-preparation/plan.json",
+      "preDatabaseProtocolGuardPassed": true,
+      "preIdleProtocolGuardPassed": true,
+      "actualReadPreflightPassed": 14,
+      "resultAvailable": false
+    },
+    "r17IncompatibleCapture": {
       "status": "rejected-incompatible-protocol",
       "source": "perf/artifacts/candidate-r17-incompatible-early-pinch-v1-2026-11-11/assessment.json",
       "samplesCompleted": 120,
@@ -809,6 +822,33 @@
       "idleQueries": 74,
       "schemaEvidence": "Actual source-bound fixture counts embedded in health.fixtureSchema; standalone inventory was not independently copied before DB cleanup.",
       "correctedCapture": "Preparation only; explicit environment guard required before a separate run."
+    },
+    "snapshotControlsSplit": {
+      "commit": "13fcfeed",
+      "focusedTestsPassed": 19,
+      "productionTypeErrors": 0,
+      "newNormalizedTypeDiagnostics": 0,
+      "newLintErrors": 0,
+      "candidateBuild": false,
+      "excludedFromR17": true,
+      "source": "perf/snapshot-controls-split.md"
+    },
+    "drawingCombinedClipPrototype": {
+      "commits": [
+        "10aeec1c",
+        "112f2a85"
+      ],
+      "source": "perf/drawings/combined-clip-v2-one-sample.json",
+      "focusedTestsPassed": 22,
+      "scopedTypeCheckPassed": true,
+      "samples": 1,
+      "widths": [
+        512,
+        1024
+      ],
+      "fullSheetFidelityPass": false,
+      "historicalReportsUnchanged": true,
+      "productionChanged": false
     }
   }
 }

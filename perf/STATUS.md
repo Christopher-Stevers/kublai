@@ -653,3 +653,30 @@ pre-database guard against the declared baseline, and complete per-run schema
 archiving. The frozen timing code, baseline, thresholds and failed records stay
 unchanged. No second capture has started at this checkpoint. Independent source
 validation has resumed; production remains the Phase0 bootstrap.
+
+## Corrected comparison running; isolated follow-ups verified — 2026-11-11
+
+A separate R17 attempt2 has started against the same frozen candidate, v2 method
+and original baseline. Explicit protocol guards passed before database startup
+and idle observation; all 14 read preflights passed on its fresh private fixture.
+This run preserves its own schema/source/fixture evidence before cleanup. Ten
+database-free protocol/cleanup checks passed, including failed-copy propagation.
+The original incompatible capture is unchanged; no timing result is claimed for
+the running corrected attempt. Other heavy work is stopped again.
+
+The later snapshot presentation split (`13fcfeed`) passes 19 focused tests,
+including delayed import, retry, captured draft retention and keyed replacement.
+Selection focus and capture initiation stay in the eager controller. Isolated
+R17-versus-overlay types show zero production/owned errors or new diagnostics;
+existing image lint warnings are unchanged. This source is excluded from R17
+and has not been built or measured for byte savings.
+
+The isolated drawing prototype now combines existing glyph/image replay and
+bounded forms. A subsequent source-proven correction defers clipping until the
+intended packed path is consumed. All 22 focused tests and scoped types pass.
+One separately versioned render of the same sample restores the main geometry,
+but full-sheet fidelity still fails at both widths (minimum tile SSIM about
+0.407/0.460, below 0.98). Both reference/prototype pairs were inspected; source
+hashes match and prior reports are unchanged. No production renderer, worker or
+Rust compiler was changed. Known stroke/hairline and graphics-state style gaps
+are documented as source findings, not another measured pass.
