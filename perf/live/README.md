@@ -151,3 +151,93 @@ hours or permission data. The original 30-second context poll remains because
 it independently refreshes jobs/people, permissions and timezone-day boundaries.
 This removes **zero polls**, adds no domain server poll/schema/worker and does
 not establish the no-poll gate. See [scope and validation](timesheet-hints.md).
+
+### 2026-11-11: equipment pending-work continuation proposal (source only)
+
+`SuperEquipmentDialog.tsx:45` refetches `superEquipmentReport` every two seconds
+only while its result has `pending > 0` (nominally 30 requests/minute; no measured
+request-rate claim). **Keep this poll.** It is also a scheduler:
+`super-equipment.ts:79` calls `readRegisters(files, 12_000)`, and
+`equipment-register.ts:242–249` explicitly leaves uncached tail files unstarted
+when the budget expires. A completion-only hint cannot start that tail.
+
+A bounded replacement would have this contract, without schema or worker edits:
+
+1. A freshly authorized report captures the current logical drawing/document
+   source set. An internal web coordinator deduplicates its continuation by
+   organization/job and immutable file+format, never by an untrusted browser
+   path. It drains the unstarted tail through the existing `fileRegister` path,
+   preserving four register readers, the existing global two-child `slot()`
+   limit, size/cache caps and 60-second child timeout. Do not introduce another
+   independent concurrency pool. Bound queued sources, active subscriptions,
+   total lifetime and retry attempts; report explicit incomplete/failure when
+   bounds are reached. Stale/cancelled source generations cannot publish a
+   ready result. Merely returning a report must not imply that all work started.
+2. Observe child settlement in `equipment-index.ts`'s existing web wrapper,
+   after successful index read or terminal failure, not before atomic output
+   rename. This covers the unchanged separately pinned index worker. OCR's
+   wrapper and `clearEquipmentRegisters` invalidations need the same generation
+   handling. Publish content-free job-scoped hints through the existing bridge;
+   never emit source paths, OCR text, file hashes or report payloads. Hints
+   request fresh reads; they do not grant access or assert coverage completeness.
+3. On stream admission/reset/reconnect or web-process restart, a fresh report
+   reconstructs the current source set from authoritative metadata and inspects
+   actual index/OCR files. It resumes missing work within the same limits.
+   In-memory `building`/LRU maps and connection-local hint versions are not a
+   durable journal. Independent web processes can observe existing atomically
+   published files, but current maps do not provide a cross-process lease:
+   concurrent duplicate child work/output races must be tested or fenced before
+   claiming global deduplication. Do not invent a durable cursor from timestamps.
+4. Observable readiness must distinguish **transport ready**, **fresh scoped
+   authorization + catch-up complete**, **continuation accepted**, and **source
+   coverage ready/terminally incomplete**. Only the second plus a healthy,
+   bounded continuation lease could suppress the timer. Reset/disconnect,
+   stale authority, expiry or continuation rejection restores fallback and
+   performs one coalesced authoritative catch-up. A reconnect-ready boolean
+   alone is insufficient. Hidden/offline/unmounted views stop client callbacks;
+   resume rereads before suppression. Any allowed server continuation has its
+   own finite lifetime and cannot keep an old actor lease alive indefinitely.
+5. Preserve `sheetTools`'s `drawings.view`/`drawings.sheetTools`, `accessSheet`,
+   `assertDocumentAccess` and selected-document validation on every catch-up.
+   Stream admission must validate the same scope. The existing four-minute
+   stream expiry is not proof of fresh sheet/document permission between reads.
+   Known denial clears/locks the view; transient network failure preserves only
+   previously permitted offline behavior. No automatic OCR mutation or source
+   selection replay is part of catch-up.
+
+The smallest first testable slice is **bounded continuation plus its completion
+bridge**, with the existing browser poll retained: all-tail scheduling across
+multiple request budgets; no more than existing concurrency; success, timeout,
+failure and cancellation; process restart; independent-process completion;
+source generation replacement; rollback/no-op hints; stale account and hidden
+view fencing. This slice removes zero polls. Prefer it to a hints-only patch,
+which cannot demonstrate eventual completion. It may require a carefully bounded
+new coordinator module, rather than extending a request beyond its lifetime.
+
+Minimal first-slice paths are `server/drawings/equipment-register.ts`,
+`server/drawings/equipment-index.ts`, `server/drawings/super-equipment.ts`, a small
+new coordinator and scoped live-source module, `server/background/hints.ts`,
+`app/api/live/route.ts`, `lib/live-protocol.ts`, `lib/live-client.ts`, and the
+`SuperEquipmentDialog.tsx` consumer plus focused tests. Existing workers,
+`workerCommand`, schema and their release remain unchanged. This is a proposed
+allowlist, not approval to edit all these paths.
+
+**Exact suppression blockers remain:** the tail scheduler/restart contract;
+independent-process duplicate-output safety; durable source-change catch-up;
+fresh sheet/document/role authority and expiry; and complete source producers.
+The latter include drawing creation/archive/revision/current-source metadata in
+`drawings/service.ts` (plus upload entry points), document version/delete/review/
+status changes funnelled through `documents/service.ts:mutateWorkspace`
+(including editor-save/WOPI callers), explicit OCR in `super-equipment.ts` and
+`equipment-index.ts`, and OCR/register invalidation in `drawings/legend.ts`.
+All direct database/file writers must be traced before declaring this list
+complete. Existing live topics do not cover this domain. Source manifests and
+terminal states must be revalidated after replacement/deletion, not inferred
+from an index-completed event. If an actual independently scheduled producer is
+found outside these wrappers, its existing worker release becomes a separate
+coverage requirement; the audited index subprocess itself does not require a
+worker edit merely to observe completion.
+
+This proposal was prepared during R17's benchmark window using source reads
+only. No implementation, poll suppression, runtime, tests or frozen candidate
+change was performed. It does not satisfy the plan's no-polls gate.
