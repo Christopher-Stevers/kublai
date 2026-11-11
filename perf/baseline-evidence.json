@@ -561,6 +561,20 @@
         "heaviestGzipBytes": 749234,
         "strictChangedScriptGzipBytes": 157682,
         "strictChangedScriptPass": false
+      },
+      {
+        "name": "R11",
+        "sourceFreezeCommit": "c272d982",
+        "proofCommit": "d619ecc9",
+        "artifact": "perf/artifacts/phase1-combined-r11-byte-2026-11-11.json",
+        "sharedGzipBytes": 477954,
+        "heaviestGzipBytes": 757796,
+        "phase0RelativeDeployGzipBytes": 1293940,
+        "phase0ByteRatchetsPass": true,
+        "strictChangedScriptGzipBytes": 441018,
+        "strictChangedScriptPass": false,
+        "fullMatrixRun": false,
+        "activated": false
       }
     ],
     "otherPreparedCommits": {
@@ -574,7 +588,13 @@
       "bulkReceiptFeedback": "9530aaab",
       "navigationSourceGate": "27d2ddd5",
       "sharedProviderSourceGate": "60b1d800",
-      "preferenceAuthority": "bd02918b"
+      "preferenceAuthority": "bd02918b",
+      "ordinaryMaterialRows": "49e911d3",
+      "mergeFeedback": [
+        "3c322416",
+        "1a1d88a4"
+      ],
+      "snapshotIdleObserver": "9970d723"
     },
     "fullR7GateUnchanged": "failed4cells",
     "first20LatencyAccepted": false,
@@ -591,6 +611,14 @@
       "browserIdleSavingsMeasured": false,
       "newRoleObservers": 0,
       "newRolePolls": 0
+    },
+    "materialCpuDiagnostics": {
+      "v4": "perf/artifacts/material-list-cpu-diagnostic-2026-11-11-attempt4",
+      "v5": "perf/artifacts/material-list-cpu-diagnostic-2026-11-11-attempt5",
+      "capturesPerSourcePerMethod": 1,
+      "causeEstablished": false,
+      "gateChanged": false,
+      "ownedRuntimeCleaned": true
     }
   }
 }

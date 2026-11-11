@@ -415,3 +415,44 @@ Additional source slices, not part of those byte builds:
 These focused checks do not complete the first-twenty latency target, all-screen
 cache coverage, no-poll idle gate, physical-phone measurements or Phase 0. No
 production database change, worker release or phase-two sync rollout occurred.
+
+## Combined R11 and later focused fixes — 2026-11-11
+
+R11 combines the reviewed R10 source with thirteen exact commit groups, including
+the preference authority, folder/member/bulk feedback and source-law changes.
+Every intermediate parent and final source hash matches; unrelated dirty files,
+the R8 press experiment, schema and worker executable remain excluded. Canonical
+webpack, production TypeScript, prerender and both source preflights pass.
+Build `ae52a68d…` has shared/heaviest/deploy gzip metrics of
+477,954 / 757,796 / 1,293,940, passing the original Phase0 byte ratchets. The
+heaviest screen has only 735 bytes of headroom. Strict R10→R11 changed scripts
+total 441,018 bytes, still above the separate 100 KB target. This is a combined
+feature batch, not a typical single-leaf edit. No matching HTTP, idle, full
+journey matrix or activation is claimed. See
+`artifacts/phase1-combined-r11-byte-2026-11-11.json`.
+
+The supplemental material-list CPU profiles completed for Phase0/R6 in v4 and
+v5, preserved separately with raw evidence and cleanup records. V5 replaces an
+expensive diagnostic readiness observer with a latched first-control check;
+observer overhead drops from about 48 to 8 ms because the measurement method
+changed. The one R6 capture has about 8.5 ms more work in a React callback region,
+but sampled module weights overlap and do not establish a component cause.
+Neither diagnostic changes the acceptance metric or earlier failed matrices.
+See `artifacts/material-list-cpu-diagnostic-2026-11-11-attempt5/README.md`.
+
+Later prepared source, excluded from R11:
+
+- Ordinary unsent material rows (`49e911d3`) skip receipt-only hooks through a
+  separate component. Sent/receiving rows keep the original controller; shared
+  stateless presentation prevents duplicated card markup. 39 focused tests
+  pass. Elided hook registrations are source counts, not measured milliseconds.
+- Merge feedback (`3c322416`, `1a1d88a4`) requests accepted-result sync immediately
+  instead of awaiting a 500 ms animation. Both optional animations take 150 ms;
+  late responses cannot revive an unmounted view. 15 focused tests pass.
+- Snapshot portal tracking (`9970d723`) stops its whole-body observer while the
+  feature is closed and resolves the current fullscreen host before reopening
+  controls paint. 14 focused tests pass; no timing improvement is asserted.
+
+Drawing-scale acknowledgement races and on-demand comparison loading are still
+being validated as later slices. Phone work stays deferred; no schema, worker,
+production data write or candidate activation occurred at this checkpoint.
