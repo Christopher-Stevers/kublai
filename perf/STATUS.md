@@ -390,8 +390,14 @@ Additional source slices, not part of those byte builds:
 - Material-sort realtime (`168502f8`): transactionally committed identifiers-only
   hints, account-scoped delivery, coalesced reconnect/visibility catch-up. 38
   focused tests and a private PostgreSQL cross-process rollback/reconnect proof
-  pass. Its 60-second authority poll is retained; a subsequent authority reuse
-  slice is in preparation and has not yet been accepted or measured.
+  pass. Follow-up `bd02918b` conditionally suppresses that one 60-second poll
+  only with verified listener health, an authoritative settings catch-up and
+  fresh matching results from the already-shared role query. It adds no role
+  request/observer or Clerk polling. Listener loss, stale authority, resume or
+  unsupported driver lifecycle restores fallback. 78 focused tests plus a real
+  private-PG kill/reconnect proof pass; browser idle savings and compiled runtime
+  behavior remain unmeasured. All other polling sites remain unchanged. See
+  `live/material-sort-authority.md`.
 - Member save feedback (`326aed65`, `7f8ca0f6`, `88f9a2c4`): visible pending
   and authoritative-refresh phases, duplicate/offline guard, retained draft,
   bounded read-only recovery after uncertain outcomes, and an actor guard. 40 focused

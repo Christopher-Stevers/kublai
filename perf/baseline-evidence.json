@@ -573,13 +573,24 @@
       ],
       "bulkReceiptFeedback": "9530aaab",
       "navigationSourceGate": "27d2ddd5",
-      "sharedProviderSourceGate": "60b1d800"
+      "sharedProviderSourceGate": "60b1d800",
+      "preferenceAuthority": "bd02918b"
     },
     "fullR7GateUnchanged": "failed4cells",
     "first20LatencyAccepted": false,
     "noPollIdleAccepted": false,
     "activated": false,
     "productionSchemaChanged": false,
-    "workerReleased": false
+    "workerReleased": false,
+    "preferencePoll": {
+      "suppression": "conditional-source-prepared",
+      "unconditionalDeclarationsRemoved": 0,
+      "otherPollingSitesUnchanged": 28,
+      "focusedTests": 78,
+      "privatePostgresProofs": 1,
+      "browserIdleSavingsMeasured": false,
+      "newRoleObservers": 0,
+      "newRolePolls": 0
+    }
   }
 }
