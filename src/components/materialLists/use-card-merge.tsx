@@ -19,10 +19,14 @@ export function useCardMerge({ disabled, onMerged }: {
   const flight = useRef<{ clone: HTMLElement; from: DOMRect; to: DOMRect } | null>(null);
   const animatedClones = useRef(new Set<HTMLElement>());
   const inFlight = useRef(false);
+  const mounted = useRef(false);
   useEffect(() => {
+    mounted.current = true;
     const clones = animatedClones.current;
     return () => {
+      mounted.current = false;
       flight.current?.clone.remove();
+      flight.current = null;
       for (const clone of clones) clone.remove();
       clones.clear();
     };
@@ -32,12 +36,13 @@ export function useCardMerge({ disabled, onMerged }: {
     onSuccess: ({ id, movedCount, sourceDeleted }) => {
       const snapshot = flight.current;
       flight.current = null;
-      setSource(null);
-      setTargetId(null);
       inFlight.current = false;
       // The server has accepted the merge. Refresh now; decorative motion must
       // never postpone reconciliation or keep the controls locked.
       requestMaterialListReplicacheSync();
+      if (!mounted.current) return;
+      setSource(null);
+      setTargetId(null);
       onMerged();
       notify(`${movedCount} unlocked ${movedCount === 1 ? "item merged" : "items merged"}. ${sourceDeleted ? "Empty source list removed." : "Locked items remain in the original list."}`, "success");
       if (snapshot && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -71,6 +76,7 @@ export function useCardMerge({ disabled, onMerged }: {
       flight.current?.clone.remove();
       flight.current = null;
       inFlight.current = false;
+      if (!mounted.current) return;
       setTargetId(null);
       notify(error.message, "error");
     },

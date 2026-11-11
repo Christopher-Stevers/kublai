@@ -133,3 +133,20 @@ it.each(["reduced motion", "unavailable animation", "cancelled animation"])("kee
     vi.unstubAllGlobals();
   }
 });
+
+it("reconciles a late accepted merge without reviving a removed view or animation", () => {
+  const onMerged = vi.fn();
+  const { result, unmount } = renderHook(() => useCardMerge({ disabled: false, onMerged }));
+  const from = document.createElement("div");
+  from.textContent = "Removed merge view";
+  result.current.cardProps(source).ref(from);
+  result.current.cardProps(target).ref(document.createElement("div"));
+  act(() => result.current.begin(source));
+  act(() => result.current.pick(target));
+  unmount();
+  act(() => mocks.options.onSuccess({ id: target.id, movedCount: 1, sourceDeleted: true }));
+  expect(mocks.sync).toHaveBeenCalledOnce();
+  expect(onMerged).not.toHaveBeenCalled();
+  expect(mocks.notify).not.toHaveBeenCalled();
+  expect(document.body.textContent).not.toContain("Removed merge view");
+});

@@ -15,11 +15,13 @@ sync, refreshes the caller and reports its actual moved count/source outcome.
 These actions no longer await motion. The source clone and target pulse run
 concurrently for 150 ms, respect reduced motion and cannot turn an accepted
 merge into an error if animation is unavailable or interrupted. Temporary
-clones are cleaned on completion, cancellation and unmount. The actual list
+clones are cleaned on completion, cancellation and unmount. A response arriving
+after unmount still requests authoritative sync but cannot revive the old view,
+show a notification or append an animation. The actual list
 contents still come from the authoritative sync; no counts, source deletion
 or server identity are invented.
 
-Validation: 14 tests across the merge hook, material-list view and Jobs tools
+Validation: 15 tests across the merge hook, material-list view and Jobs tools
 pass. They include local pending feedback while the mutation observer still
 says idle, repeated submissions, refusal/retry, actual accepted result,
 unresolved animation completion, unmount cleanup, unavailable/cancelled
