@@ -1,0 +1,90 @@
+{
+  "sourceBuild": "a5c2aa0b130eb530ed4aee9b0c3818ae89d08ca7a00228928e8592a36c5f0096",
+  "sourceFingerprint": "6f5dfb9686a21a2057ef4b095f3f55cab45200a1793da0bd9563cb530b4eabf4",
+  "status": "matching-read-only-http-proof-passed-not-activated",
+  "attempts": [
+    {
+      "attempt": 1,
+      "status": "failed-fixture-host-binding",
+      "failure": "Next self-proxy uses localhost but proof bound127.0.0.1; manifest proxy ECONNREFUSED",
+      "manifestStatusNotCaptured": true,
+      "clientFailedAtPublicManifestAssertion": true,
+      "currentStaticAndTenHistoryAssertionsCompletedBeforeFailure": true,
+      "healthSignInBindingNotReached": true,
+      "teardownRequestedBeforeClientExitObserved": true,
+      "ownServerStopped": true,
+      "forced": false,
+      "credentialsLogged": false
+    },
+    {
+      "attempt": 2,
+      "status": "passed",
+      "host": "localhost",
+      "http": {
+        "build": "a5c2aa0b130eb530ed4aee9b0c3818ae89d08ca7a00228928e8592a36c5f0096",
+        "currentAssets": 292,
+        "currentScripts": 287,
+        "allCurrentBrotliSidecarsAndDecodedBytesExact": true,
+        "immutableStaticHeaders": true,
+        "previousReleaseSamples": 10,
+        "allHistoricalBytesExact": true,
+        "allHistoricalBrotliSidecarsAndDecodedBytesExact": true,
+        "workerMatchesPackaged": true,
+        "releaseManifestStatus": 200,
+        "releaseManifestMatchesBuild": true,
+        "knownRejectedArtifact": false,
+        "healthStatus": 200,
+        "signInStatus": 200,
+        "unauthenticatedBindingStatus": 401,
+        "backgroundMode": "separate",
+        "bimDisabled": true,
+        "databaseReadOnlyVerified": true,
+        "allRequestsCookieFreeGet": true
+      },
+      "cleanup": {
+        "exitCode": 0,
+        "ownServerStopped": true,
+        "forced": false,
+        "appMutationsRequested": false,
+        "databaseReadOnlyConfigured": true,
+        "pidAbsent": true,
+        "portClosed": true,
+        "workerDispatchLogMatches": 0
+      }
+    }
+  ],
+  "methodProvenance": [
+    {
+      "method": "supervisor",
+      "attempt1Sha256": "b8b34804cb9919d081c79c803337edfc25875eb50ee0c9fb8f2d1cb5553de448",
+      "attempt2Sha256": "e36f517421f31ca7e73821203a864c7eb1d469a67371d29ebe5bc7dcbd99b392",
+      "attempt1ReconstructableByOnlyLocalhostTo127HostLiteralChange": true,
+      "attempt1SourcePreservedExternally": true,
+      "attempt2SourceCommitted": true
+    },
+    {
+      "method": "client",
+      "attempt1Sha256": "d62a8ced5832c08f4c89a3e1260c64d78749d0c1274a3965c811eeb47e5ef15b",
+      "attempt2Sha256": "4f9f6e1aab274c102f577ca36893e721edef8fe4821ae873db97a41b53a08512",
+      "attempt1ReconstructableByOnlyLocalhostTo127HostLiteralChange": true,
+      "attempt1SourcePreservedExternally": true,
+      "attempt2SourceCommitted": true
+    }
+  ],
+  "safety": {
+    "pinnedWrapper": true,
+    "separateBackgroundMode": true,
+    "bimDisabled": true,
+    "databaseDefaultTransactionReadOnlyVerifiedOn": true,
+    "allHttpRequestsCookieFreeGet": true,
+    "authenticatedRequests": 0,
+    "productionWritesRequested": 0,
+    "credentialsLogged": false,
+    "hardWatchdogSeconds": 180
+  },
+  "limits": [
+    "Public release manifest status/build identity checked; no claim of full real browser update/cache behavior.",
+    "Ten retained historical URLs sampled, not every historical URL.",
+    "No authenticated private route, browser journey, timing capture or activation."
+  ]
+}

@@ -19,4 +19,13 @@ The pinned command exited 0 first try: webpack, production TypeScript, prerender
 
 Unchanged formal shared/heaviest/Phase0-relative deployment are **478,139 / 640,663 / 1,320,293 gzip bytes** (each four bytes below R13); all Phase0 byte ratchets pass. Strict R13→R14 changed payload is **20,570 gzip bytes**, five of 287 scripts changed (282 reused), passing the unchanged **100,000-byte** target. This controlled single-server-file result does not waive prior failed shared-hook/UI edits or multi-feature batches. Final 120KB shared / 180KB heaviest targets remain unmet.
 
-R13's failed emitted-native proof and immutable build are preserved. No HTTP server, application/database runtime, full journey or activation ran for R14. Separately authorized functional evidence remains required.
+R13's failed emitted-native proof and immutable build are preserved. At the canonical-only checkpoint no HTTP server or application/database runtime ran. The separately authorized read-only HTTP proof below followed; authenticated functionality, journeys and activation remain unproven.
+
+
+## Matching read-only HTTP proof
+
+[HTTP evidence](artifacts/phase1-r14-http-proof-2026-11-11.json) matches the exact R14 build/fingerprint. All **292 current assets (287 JavaScript, five CSS)** returned accepted Brotli identical to packaged sidecars and decoded source bytes, with immutable/Vary headers. One URL from each of ten retained releases also passed exact sidecar/decoded-byte checks. `/sw.js` matched packaged runtime bytes. Public release manifest returned 200 with the R14 build; health/sign-in returned 200, cookie-free unauthenticated binding returned 401.
+
+The pinned runtime wrapper used separate background mode, BIM disabled and an owned local port. Its server-only database URL additionally set `default_transaction_read_only=on`; a private metadata probe verified that setting without logging credentials. Only cookie-free GETs were sent: no authenticated request, data mutation, browser, worker or activation. Shared LISTEN/health can use read-only database connections; no application write was requested. Final server exit was 0 without force; PID absent and port closed, zero dispatch-log matches.
+
+Attempt 1 used 127.0.0.1 while Next's public-manifest self-proxy targeted localhost, causing ECONNREFUSED. Current assets/history/SW assertions completed, then the manifest assertion failed before health/auth checks; response status was not captured. Teardown was requested before observing client exit. Its method/log/assessment/cleanup are preserved, not represented as a pass. Attempt 2 restored established localhost binding and passed. Exact source variants are retrievable by their hashes; final [supervisor](artifacts/phase1-r14-http-supervisor.mjs) and [client](artifacts/phase1-r14-http-client.mjs) are committed. This is functional asset/auth-edge evidence, not private account/cache correctness, actual browser performance or full retention coverage.

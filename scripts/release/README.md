@@ -142,3 +142,12 @@ LISTEN/app functional evidence. Formal byte ratchets pass at
 gzip bytes (5/287 scripts changed). Final byte targets remain unmet and prior
 failed update cases remain failures. No HTTP/app/DB runtime or activation ran.
 See `perf/phase1-r14-native-fix.md`; R13 failure remains preserved.
+
+
+R14 matching read-only HTTP proof followed its canonical checks: all 292 current
+JS/CSS assets and ten historical samples matched Brotli/decoded bytes; packaged
+SW exact; manifest/health/sign-in 200, unauthenticated binding 401. Pinned wrapper
+used separate mode/BIM disabled plus database read-only startup enforcement.
+Localhost retry passed after preserving a 127-host self-proxy fixture failure.
+Owned server exited 0, PID absent/port closed; no authenticated writes, browser
+journey, timing capture or activation. See `perf/phase1-r14-native-fix.md`.
