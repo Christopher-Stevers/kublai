@@ -1,0 +1,353 @@
+{
+  "status": "complete-repeatability-pass",
+  "acceptedPhysicalBaseline": false,
+  "phase0Complete": false,
+  "protocol": "ready-then-pinch-v2",
+  "methodFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "labBuild": "cI20Tzl0OAQscfvjfmtFW",
+  "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+  "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+  "raw": [
+    {
+      "path": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+      "sha256": "c262451ec3ef1ca979585aeb29ccc6bd67444d0a323d248584ccf74bb6d9acd4"
+    },
+    {
+      "path": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-2.json",
+      "sha256": "fa25762b3122cdebc609a045b084bc5322e2c061071a0eb0310842bf3f61a718"
+    },
+    {
+      "path": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-idle.json",
+      "sha256": "fc884bb48b4999034af2cb978366416882fda62a0c03db7f951cc83c584efeb8"
+    },
+    {
+      "path": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-preflight.json",
+      "sha256": "7a24fca63206a072b4e35e4021d6b81acdc5b6b3d0c211263faf16fc8312c4dc"
+    },
+    {
+      "path": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-static.json",
+      "sha256": "34cb426928fd3fc4e13d58d2e65d8f078478cc4600f457c9eecc6c625d3e57a7"
+    },
+    {
+      "path": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-lab-static.json",
+      "sha256": "17d2e3f7af6a38cb733ea51f0b8c347cf95d2a05e4db3d8f9fb1bf7a0ccd865c"
+    },
+    {
+      "path": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-source-evidence.json",
+      "sha256": "d8481e0c127293cf72ba4e885d36dc9f4ad666e0dd23bd481ed2dd9c1ace2c7d"
+    }
+  ],
+  "captureWindows": [
+    {
+      "start": "2026-11-11T05:05:41.392Z",
+      "end": "2026-11-11T05:23:43.255Z",
+      "samples": 120,
+      "methodVerification": {
+        "before": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+        "after": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+        "immutable": true
+      }
+    },
+    {
+      "start": "2026-11-11T05:23:44.675Z",
+      "end": "2026-11-11T05:41:45.083Z",
+      "samples": 120,
+      "methodVerification": {
+        "before": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+        "after": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+        "immutable": true
+      }
+    }
+  ],
+  "validationErrors": [
+    [],
+    []
+  ],
+  "sourceErrors": [],
+  "repeatabilityErrors": [],
+  "cellsPassed": 24,
+  "cells": [
+    {
+      "journey": "coldstart",
+      "link": "Basement",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        20324.651497,
+        20324.214999
+      ],
+      "changeRatio": -0.000021476284602643646,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "coldstart",
+      "link": "Site",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        3610.493581999908,
+        3608.8092569999862
+      ],
+      "changeRatio": -0.00046650823818636497,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "coldstart",
+      "link": "Office",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        743.211593999993,
+        756.6834500000114
+      ],
+      "changeRatio": 0.018126541766540893,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "openjob",
+      "link": "Basement",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        82.4440299999842,
+        82.64301500000875
+      ],
+      "changeRatio": 0.0024135768232652842,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "openjob",
+      "link": "Site",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        82.45718499994837,
+        82.42051999992691
+      ],
+      "changeRatio": -0.00044465500515789653,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "openjob",
+      "link": "Office",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        82.27076399989892,
+        81.39187300007325
+      ],
+      "changeRatio": -0.010682907962623894,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "switchjobtabs",
+      "link": "Basement",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        165.57363499997882,
+        166.00239300000248
+      ],
+      "changeRatio": 0.0025895306340512356,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "switchjobtabs",
+      "link": "Site",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        165.39708299993072,
+        165.4423390000593
+      ],
+      "changeRatio": 0.00027362030398440354,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "switchjobtabs",
+      "link": "Office",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        165.55675099999644,
+        165.56142899999395
+      ],
+      "changeRatio": 0.000028256171791578628,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Basement",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        215.1409510000376,
+        216.5222509999876
+      ],
+      "changeRatio": 0.00642044201036253,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Site",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        215.63234400004148,
+        206.74614399997517
+      ],
+      "changeRatio": -0.04120995874378011,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "openmateriallist",
+      "link": "Office",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        228.89309700008016,
+        230.8027820000425
+      ],
+      "changeRatio": 0.008343130592364122,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "changeqty",
+      "link": "Basement",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        98.41997200000333,
+        98.42504800000461
+      ],
+      "changeRatio": 0.00005157489783965117,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "changeqty",
+      "link": "Site",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        115.20544599997811,
+        115.29374200000893
+      ],
+      "changeRatio": 0.000766422101528428,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "changeqty",
+      "link": "Office",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        114.14365500002168,
+        115.10305199993309
+      ],
+      "changeRatio": 0.00840517153503822,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "receiveline",
+      "link": "Basement",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        432.41626800002996,
+        432.38843599997927
+      ],
+      "changeRatio": -0.00006436390605612419,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "receiveline",
+      "link": "Site",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        432.52204100007657,
+        432.7376599999843
+      ],
+      "changeRatio": 0.0004985156349701696,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "receiveline",
+      "link": "Office",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        432.24044399987906,
+        432.6444120001979
+      ],
+      "changeRatio": 0.0009345909341120519,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "opensheetpinch",
+      "link": "Basement",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        1504.493460000027,
+        1496.3232000001008
+      ],
+      "changeRatio": -0.0054305719613603745,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "opensheetpinch",
+      "link": "Site",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        1491.1436209999956,
+        1492.8143890000647
+      ],
+      "changeRatio": 0.0011204608171469213,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "opensheetpinch",
+      "link": "Office",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        1481.33909699996,
+        1462.0924250001553
+      ],
+      "changeRatio": -0.01299275232712311,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "sendchat",
+      "link": "Basement",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        231.5141809999477,
+        215.6753070000559
+      ],
+      "changeRatio": -0.06841427134822199,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "sendchat",
+      "link": "Site",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        231.81477699999232,
+        232.08983900002204
+      ],
+      "changeRatio": 0.0011865593884454117,
+      "withinTenPercent": true
+    },
+    {
+      "journey": "sendchat",
+      "link": "Office",
+      "samplesPerCapture": 5,
+      "medianMs": [
+        232.0708399999421,
+        231.57167099998333
+      ],
+      "changeRatio": -0.002150933740572094,
+      "withinTenPercent": true
+    }
+  ],
+  "database": {
+    "source": "private disposable PostgreSQL ERROR headers only; SQL statements, parameters and details excluded",
+    "errors": []
+  },
+  "cleanup": {
+    "port3481NoListener": true,
+    "privateDatabaseDirectoriesRemoved": true
+  },
+  "hostContext": "No declared agent-driven heavy work, tests, builds, compression, new ADB commands or phone workload during capture. ADB daemon left idle. Production web/worker services and ordinary OS/background activity remained running and uncontrolled; this is not complete system isolation.",
+  "limitations": [
+    "All 240 samples retained; original failed v1/v2 reports and one-cell diagnostics unchanged; no sample exclusions, metric swaps or threshold relaxation.",
+    "Two complete independent same-build runs pass all 24 cell median repeatability at unchanged 10 percent threshold; this is not 20 unchanged runs evidence.",
+    "Clerk auth/bytes stubbed; stock next start transport differs from canonical Brotli wrapper.",
+    "Desktop mobile emulation is not controlled physical Pixel, Safari, offline or every-frame proof.",
+    "Five samples per cell give a descriptive maximum, not statistically established p95.",
+    "Only compare future candidate reports with this exact protocol/method/toolchain; no cross-protocol improvement claim.",
+    "Lab repeatability passing does not complete Phase 0 or meet all plan target budgets; field and physical targets remain separate."
+  ]
+}
