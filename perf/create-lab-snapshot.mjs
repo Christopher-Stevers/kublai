@@ -4,6 +4,7 @@ import os from "node:os";
 import ts from "typescript";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { sourceEvidence } from "../scripts/release/source-fingerprint.mjs";
 // Deliberately generates a separate source tree: no auth bypass is added to the real app.
 const source = path.resolve(process.env.PERF_SOURCE_ROOT ?? process.cwd());
 const harnessRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -46,13 +47,69 @@ execFileSync(
     "--exclude=uploads",
     "--exclude=.tmp",
     "--exclude=.private",
-    "--exclude=perf/fixtures.json",
+    "--exclude=private",
+    "--exclude=state-backups",
+    "--exclude=backups",
+    "--exclude=artifacts",
+    "--include=/src/***",
+    "--include=/public/***",
+    "--include=/scripts/***",
+    "--include=/vendor/***",
+    "--include=/next.config.js",
+    "--include=/package.json",
+    "--include=/pnpm-lock.yaml",
+    "--include=/tsconfig.json",
+    "--include=/postcss.config.js",
+    "--include=/next-env.d.ts",
+    "--exclude=*",
     `${source}/`,
     `${target}/`,
   ],
   { stdio: "inherit" },
 );
-fs.cpSync(harnessRoot, path.join(target, "perf"), { recursive: true });
+const sourceBuildDir =
+  process.env.PERF_SOURCE_BUILD_DIST ?? process.env.PERF_BASELINE_DIST;
+if (!sourceBuildDir)
+  throw new Error(
+    "PERF_SOURCE_BUILD_DIST (actual release build directory) is required for source binding",
+  );
+const evidence = await sourceEvidence(
+  source,
+  target,
+  fs.readFileSync(path.join(sourceBuildDir, "BUILD_ID"), "utf8").trim(),
+  "before-lab-transforms",
+);
+fs.writeFileSync(
+  path.join(target, "source-evidence.json"),
+  JSON.stringify(evidence, null, 2),
+);
+const safeHarnessNames = new Set([
+  "auth",
+  "lab",
+  "budgets.json",
+  "check.mjs",
+  "run.mjs",
+  "journeys.mjs",
+  "idle.mjs",
+  "summarize.mjs",
+  "reference-device.json",
+]);
+fs.cpSync(harnessRoot, path.join(target, "perf"), {
+  recursive: true,
+  filter: (filename) => {
+    const relative = path.relative(harnessRoot, filename);
+    if (!relative) return true;
+    const parts = relative.split(path.sep);
+    return (
+      safeHarnessNames.has(parts[0]) &&
+      !parts.some(
+        (part) =>
+          ["private", "artifacts", "output", "state-backups"].includes(part) ||
+          part.startsWith(".env"),
+      )
+    );
+  },
+});
 fs.symlinkSync(
   path.join(path.dirname(harnessRoot), "node_modules"),
   path.join(target, "node_modules"),
@@ -60,11 +117,7 @@ fs.symlinkSync(
 );
 // postgres-js does not interpret pg's URL socket query: replace all runtime
 // application connection constructors in the isolated copy with explicit options.
-const connectionOptions = JSON.stringify({
-  host: socket,
-  port: 55463,
-  database: "foremanhq_perf_lab",
-});
+const connectionOptions = `{ host: __perfLabSocket, port: 55463, database: "foremanhq_perf_lab" }`;
 for (const relative of [
   "src/server/db/index.ts",
   "src/server/background/hints.ts",
@@ -83,6 +136,10 @@ for (const relative of [
     code.includes("postgres(process.env.DATABASE_URL")
   )
     throw new Error(`Unpatched database constructor: ${relative}`);
+  code =
+    `const __perfLabSocket = process.env.PERF_LAB_SOCKET;
+if (!__perfLabSocket?.startsWith("/tmp/foremanhq-perf-pg.")) throw new Error("Private lab socket is required");
+` + code;
   fs.writeFileSync(filename, code);
 }
 const configPath = path.join(target, "next.config.js");
@@ -105,8 +162,15 @@ export default config;`,
 );
 fs.writeFileSync(
   configPath,
-  `process.env.DATABASE_URL = ${JSON.stringify(rawDatabase)};\nprocess.env.FOREMANHQ_BACKGROUND_MODE = "separate";\nprocess.env.BIM_WORKER_DISABLED = "1";\n` +
-    config,
+  `import { existsSync as labSocketExists } from "node:fs";
+const labDatabase = new URL(process.env.PERF_LAB_DATABASE_URL ?? "http://invalid");
+const labSocket = labDatabase.searchParams.get("host");
+if (labDatabase.pathname !== "/foremanhq_perf_lab" || !labSocket?.startsWith("/tmp/foremanhq-perf-pg.") || !labSocketExists(labSocket + "/.s.PGSQL.55463")) throw new Error("Private disposable lab database required at runtime");
+process.env.PERF_LAB_SOCKET = labSocket;
+process.env.DATABASE_URL = process.env.PERF_LAB_DATABASE_URL;
+process.env.FOREMANHQ_BACKGROUND_MODE = "separate";
+process.env.BIM_WORKER_DISABLED = "1";
+` + config,
 );
 execFileSync(process.execPath, ["--check", configPath], { stdio: "inherit" });
 if (process.env.PERF_LAB_FIXTURES)

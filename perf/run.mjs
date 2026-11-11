@@ -30,6 +30,9 @@ const browser = await chromium.launch({
   headless: true,
   args: ["--no-sandbox"],
 });
+const sourceEvidence = fs.existsSync("source-evidence.json")
+  ? JSON.parse(fs.readFileSync("source-evidence.json"))
+  : {};
 const samples = [];
 const timestamp = new Date().toISOString();
 const staticMetrics = await adapter.staticMetrics?.();
@@ -151,6 +154,7 @@ try {
       }
   const report = {
     version: 1,
+    ...sourceEvidence,
     provenance: "isolated-seeded-app",
     cpuSlowdown: 4,
     build: process.env.PERF_BUILD ?? "unknown",
