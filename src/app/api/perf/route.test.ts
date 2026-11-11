@@ -35,11 +35,24 @@ it("appends only anonymous schema to an isolated daily file", async () => {
   process.env.PERF_LOG_DIR = directory;
   try {
     expect((await POST(request(payload))).status).toBe(204);
+    const proxied = new Request("http://localhost:3000/api/perf", {
+      method: "POST",
+      headers: {
+        origin: "https://foremanhq.example.invalid",
+        host: "foremanhq.example.invalid",
+        "x-forwarded-proto": "https",
+        "sec-fetch-site": "same-origin",
+      },
+      body: JSON.stringify(payload),
+    });
+    expect((await POST(proxied)).status).toBe(204);
     const names = await readdir(directory);
     expect(names).toHaveLength(1);
     expect(names[0]).toMatch(/^\d{4}-\d{2}-\d{2}\.jsonl$/);
     const saved: unknown = JSON.parse(
-      await readFile(path.join(directory, names[0]!), "utf8"),
+      (await readFile(path.join(directory, names[0]!), "utf8"))
+        .trim()
+        .split("\n")[0]!,
     );
     expect(saved).toMatchObject(payload);
     expect(Object.keys(saved as Record<string, unknown>).sort()).toEqual([

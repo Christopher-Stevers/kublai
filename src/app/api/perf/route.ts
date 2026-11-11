@@ -1,12 +1,18 @@
 import { appendFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { parseSpeedPayload } from "~/lib/speed-telemetry";
+import { assertSameOrigin } from "~/server/documents/http";
 
 export async function POST(request: Request) {
   // The normal application middleware requires a signed-in session. Also reject
   // cross-origin submissions and cap the body before parsing it.
-  if (request.headers.get("origin") !== new URL(request.url).origin)
+  if (!request.headers.get("origin"))
     return new Response(null, { status: 403 });
+  try {
+    assertSameOrigin(request);
+  } catch {
+    return new Response(null, { status: 403 });
+  }
   if (Number(request.headers.get("content-length") ?? 0) > 4096)
     return new Response(null, { status: 413 });
   const reader = request.body?.getReader();
