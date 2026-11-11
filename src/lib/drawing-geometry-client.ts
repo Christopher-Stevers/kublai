@@ -1,26 +1,12 @@
 "use client";
 
-import { analyzePipeComponents } from "./pipe-components";
 import type {
   PipeSymbolTemplate,
   PipeComponentsResult,
 } from "./pipe-components-types";
 
-import {
-  buildSnapIndex,
-  mergeCollinear,
-  type SnapIndex,
-  type SnapSegment,
-} from "./sheet-snap";
-import {
-  buildPipeSystemIndex,
-  selectPipeSystem,
-  selectPipeLayerSystem,
-  pipeLayerCodes,
-  type PipeLinework,
-  type PipeSystemIndex,
-  type PipeSystemSelection,
-} from "./pipe-system";
+import type { SnapIndex, SnapSegment } from "./sheet-snap";
+import type { PipeLinework, PipeSystemSelection } from "./pipe-system";
 import type { SheetPoint } from "./sheet-measure";
 import { pipeSizeTags, type PipeSizeTag } from "./pipe-run-sizes";
 import type {
@@ -51,6 +37,30 @@ export function registerDrawingWorker(client: { dispose: () => void }) {
 /** Private drawing work must not survive logout or an account switch. */
 export function clearDrawingGeometryWorkers() {
   for (const client of [...clients]) client.dispose();
+}
+
+// Loading fallback code is asynchronous, unlike the original inline fallback.
+// Keep it in the same synchronous account-clear registry during that new gap.
+function beginFallbackLoad(signal?: AbortSignal) {
+  let cancelled = false;
+  let rejectLoad: ((error: Error) => void) | undefined;
+  const lease = {dispose: () => { cancelled = true; rejectLoad?.(aborted()); }};
+  const unregister = registerDrawingWorker(lease);
+  const cancel = () => lease.dispose();
+  signal?.addEventListener("abort", cancel, {once: true});
+  return {
+    assertActive() { if (cancelled || signal?.aborted) throw aborted(); },
+    waitFor<T>(pending: Promise<T>) {
+      return new Promise<T>((resolve, reject) => {
+        rejectLoad = reject;
+        void pending.then(value => {
+          if (cancelled || signal?.aborted) reject(aborted());
+          else resolve(value);
+        }, (error: unknown) => reject(error instanceof Error ? error : new Error("Drawing engine failed to load")));
+      });
+    },
+    release() { rejectLoad = undefined; signal?.removeEventListener("abort", cancel); unregister(); },
+  };
 }
 
 class GeometryClient {
@@ -145,7 +155,15 @@ export async function buildDrawingSnapIndex(
 ): Promise<SnapIndex> {
   signal?.throwIfAborted();
   const client = createClient();
-  if (!client) return buildSnapIndex(mergeCollinear(segments, aspect), aspect);
+  if (!client) {
+    const lease = beginFallbackLoad(signal);
+    try {
+      lease.assertActive();
+      const fallback = await lease.waitFor(import("./drawing-geometry-fallback"));
+      lease.assertActive();
+      return fallback.buildFallbackSnapIndex(segments, aspect);
+    } finally { lease.release(); }
+  }
   try {
     for (let offset = 0; offset < segments.length; offset += INPUT_BATCH)
       await client.request(
@@ -230,38 +248,13 @@ export async function createPipeGeometrySession(
       throw error;
     }
   }
-  let index: PipeSystemIndex | null = buildPipeSystemIndex(linework);
-  let selection: PipeSystemSelection | null = null;
-  const session: PipeGeometrySession = {
-    aspect: linework.aspect,
-    sizeTags: pipeSizeTags(linework.texts ?? []),
-    components: async (templates) => {
-      if (!index || !selection) throw aborted();
-      return analyzePipeComponents(index.linework, selection, templates);
-    },
-    layerCodes: pipeLayerCodes(linework),
-    selectLayer: async (system) => {
-      if (!index) throw aborted();
-      selection = selectPipeLayerSystem(index.linework, system);
-      return selection;
-    },
-    codes: [
-      ...new Set([
-        ...pipeLayerCodes(index.linework),
-        ...[...index.segmentSystems.values()].flatMap((codes) => [...codes]),
-      ]),
-    ].sort(),
-    hasLines: index.linework.segments.length > 0,
-    select: async (point, tolerance, system) => {
-      if (!index) throw aborted();
-      selection = selectPipeSystem(index, point, tolerance, system);
-      return selection;
-    },
-    dispose: () => {
-      index = null;
-      clients.delete(session);
-    },
-  };
-  clients.add(session);
-  return session;
+  const lease = beginFallbackLoad(signal);
+  try {
+    lease.assertActive();
+    const fallback = await lease.waitFor(import("./drawing-geometry-fallback"));
+    lease.assertActive();
+    // The session joins the existing account cleanup set before this lease ends.
+    return fallback.createFallbackPipeSession(linework, registerDrawingWorker, aborted);
+  } finally { lease.release(); }
+
 }
