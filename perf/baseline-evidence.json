@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "recordedAt": "2026-11-11T01:48:54.441871+00:00",
+  "recordedAt": "2026-11-11T03:17:02.440306+00:00",
   "referenceDevice": "Google Pixel 9 Pro XL / Chrome",
   "liveBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
   "phase0Complete": false,
@@ -14,7 +14,8 @@
     "perf/SPEED_PLAN.md",
     "perf/artifacts/field-review-2026-11-10-2034.json",
     "perf/artifacts/phase1-cache-static-2026-11-10.json",
-    "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/bootstrap-static-metrics.json"
+    "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/bootstrap-static-metrics.json",
+    "perf/artifacts/server-read-observations-2026-11-10.json"
   ],
   "rows": [
     {
@@ -74,7 +75,7 @@
       "measure": "Cached sheet sharp after pinch",
       "target": "Sharp in every frame",
       "state": "missing-accepted-baseline",
-      "evidence": "Strict pilot now verifies viewer zoom rather than browser zoom, but does not establish every-frame physical sharpness."
+      "evidence": "Two full early-pinch-v1 captures failed Site repeatability (973 vs1432ms). New ready-then-pinch-v2 baseline pair is separate and pending. Neither method proves physical sharpness in every frame."
     },
     {
       "measure": "New Basement sheet readable",
@@ -101,7 +102,8 @@
       "state": "controlled-proof-only",
       "controlledSmallEditGzipBytes": 39423,
       "phase1FoundationGzipBytes": 947890,
-      "evidence": "One string edit reuses 249/255 scripts and passes 100 KB. Full cache foundation fails 100 KB. These are changed-script upper bounds, not phone download traces; neither candidate is activated."
+      "evidence": "One string edit reuses249/255scripts and changes39423gzipbytes. Full cache foundation947890bytes and reviewed batch1236327bytes exceed100KB. These are changed-script upper bounds, not phone download traces; no candidate activation.",
+      "reviewedCandidateGzipBytes": 1236327
     },
     {
       "measure": "Idle requests",
@@ -113,8 +115,11 @@
     {
       "measure": "Server read p95",
       "targetMs": 20,
-      "state": "missing-aggregate-baseline",
-      "evidence": "Server timing and query counts are live. Historical per-procedure journal durations are not a complete aggregate read-p95 baseline."
+      "state": "partial-server-observation",
+      "evidence": "Bounded single-build service window, inventory-classified tRPC query completions only. Procedure timer excludes identity/context setup and final serialization; returned-error completions and QA may be included. No controlled repeatability/full-request read gate.",
+      "observedQueries": 713,
+      "procedureP95Ms": 16,
+      "databaseP95Ms": 10.6
     },
     {
       "measure": "Field INP p75",

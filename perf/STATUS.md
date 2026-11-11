@@ -77,4 +77,50 @@ reviewed. Server execution times are not tap-to-paint times.
 
 Root activated the isolated Phase 0 telemetry/server-timing release. Root recorded health/sign-in 200 at origin and public edge, exact Brotli JavaScript bytes, successful byte checks for all ten retained historical samples, and service `NRestarts=0`. The web process uses the pinned release wrapper, canonical WorkingDirectory, separate worker mode, and a private numeric field-log directory. This starts collection from real usage; field phone baselines and the full speed gates are still open.
 
-Phase 1 router/device-cache/update changes remain preparation only. Their small-change payload collector is ready, but no Phase 1 build or activation was performed during the lab matrix. Cold private HTML caching remains disabled.
+Phase 1 router/device-cache/update changes remain preparation only. Canonical
+candidate builds and HTTP proofs have now run outside the lab quiet windows;
+none has been activated. Cold private HTML caching remains disabled.
+
+## Reviewed candidate and baseline status — 2026-11-11
+
+- The original two full `early-pinch-v1` captures each contain 120 samples, with
+  passed read preflight and zero database errors. Repeatability failed one of
+  24 cells: Site sheet opening/pinch moved from 973 to 1,432 ms median. Both raw
+  captures remain archived. There is still no accepted full baseline.
+- `ready-then-pinch-v2` explicitly waits for the initial sharp sheet before the
+  same verified viewer pinch, charging both waits to the outer timer. Its
+  calibration is a different method, not a repaired v1 result. A new frozen
+  Phase 0 pair is running; no cross-protocol comparison is accepted.
+- The reviewed candidate `ec687e6e…` passed canonical compilation, TypeScript
+  and prerender. Its production output contains neither the development speed
+  overlay string nor its module. All 282 current script/style assets passed
+  exact compressed/decompressed HTTP checks; ten retained historical samples
+  also matched. The generated public release manifest incorrectly redirects
+  to sign-in; a narrow routing fix is prepared.
+- That candidate fails the unchanged static ratchet: shared reference union
+  502,618 → 508,465 gzip bytes; heaviest screen 758,531 → 778,612. The complete
+  batch changes 1,236,327 gzip bytes, above the 100 KB target. The earlier
+  controlled single-string edit changed 39,423 bytes; that separate proof does
+  not turn the whole batch into a passing small deploy.
+- The reference union includes conditional imports. A separate emitted entry
+  graph comparison finds common jobs entry dependencies 449,264 → 451,435
+  gzip bytes and receiving 701,916 → 707,126. These diagnostic figures do not
+  replace the gate definition or its failed result. Further lazy-loading cuts
+  and explicit cached-screen refresh behavior are being prepared.
+- A bounded live service-journal sample contains 713 inventory-classified query
+  completions: procedure p95 16 ms, summed database-time p95 10.6 ms. This is
+  partial server evidence, excluding identity/context setup and serialization;
+  it includes returned errors and possibly QA. It is not a full-request or
+  repeatable read-latency gate. See
+  `artifacts/server-read-observations-2026-11-10.json`.
+- Tim confirmed Pixel 9 Pro XL/Chrome usage during the early field window.
+  This is participant attribution, not a hardware fingerprint for each anonymous
+  row or a controlled phone benchmark. Three early INP values and two materials
+  navigation marks do not establish stable percentiles.
+
+The first-20 write step currently has six converted procedure/caller actions;
+Super Label has immediate progress/stop feedback without invented recognition
+results. The shared live stream is a compatibility stage; 29 polling declarations
+remain until producer coverage is proven. No production database change, worker
+release, pre-auth private paint, full offline-convergence pass, or drawing
+compiler rollout has occurred.

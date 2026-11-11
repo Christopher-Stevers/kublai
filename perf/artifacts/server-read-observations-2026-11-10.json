@@ -1,0 +1,531 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-11T03:09:13.357624+00:00",
+  "source": "bounded structured service journal, single live service invocation; raw messages not retained",
+  "window": {
+    "since": "2026-11-11 00:39:00 UTC",
+    "until": "2026-11-11 03:00:00 UTC"
+  },
+  "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+  "procedureKindSource": {
+    "file": "perf/observed-trpc-usage.json",
+    "capturedAt": "2026-11-11T00:13:52.389216+00:00"
+  },
+  "limitations": [
+    "Inventory-classified observed tRPC queries only; unknown procedures and non-tRPC reads excluded. Not all HTTP request time.",
+    "Procedure timer starts after identity/context resolution and ends before final financial redaction/serialization; database time sums completed statements and may overlap.",
+    "Includes successful and returned-error completions because these logs contain no success marker; uncaught failures may be absent.",
+    "Observed traffic can include QA; no controlled repeatability or reference-phone timing claim.",
+    "Date.now procedure duration has millisecond precision. Percentiles use nearest-rank; small procedure counts are descriptive only."
+  ],
+  "aggregate": {
+    "procedure": {
+      "count": 713,
+      "p50Ms": 1,
+      "p95Ms": 16,
+      "maxMs": 58,
+      "totalMs": 2549
+    },
+    "database": {
+      "count": 713,
+      "p50Ms": 0.0,
+      "p95Ms": 10.6,
+      "maxMs": 59.7,
+      "totalMs": 2008.7
+    }
+  },
+  "procedures": [
+    {
+      "procedure": "supplierPriceBooks.labelContext",
+      "duration": {
+        "count": 43,
+        "p50Ms": 13,
+        "p95Ms": 20,
+        "maxMs": 29,
+        "totalMs": 569
+      },
+      "database": {
+        "count": 43,
+        "p50Ms": 6.5,
+        "p95Ms": 13.0,
+        "maxMs": 21.3,
+        "totalMs": 322.3
+      },
+      "meanDatabaseStatements": 3.2325581395348837
+    },
+    {
+      "procedure": "notifications.overview",
+      "duration": {
+        "count": 65,
+        "p50Ms": 5,
+        "p95Ms": 16,
+        "maxMs": 28,
+        "totalMs": 436
+      },
+      "database": {
+        "count": 65,
+        "p50Ms": 4.6,
+        "p95Ms": 15.7,
+        "maxMs": 27.7,
+        "totalMs": 405.9
+      },
+      "meanDatabaseStatements": 1.0
+    },
+    {
+      "procedure": "job.getJob",
+      "duration": {
+        "count": 17,
+        "p50Ms": 14,
+        "p95Ms": 41,
+        "maxMs": 41,
+        "totalMs": 241
+      },
+      "database": {
+        "count": 17,
+        "p50Ms": 8.8,
+        "p95Ms": 51.1,
+        "maxMs": 51.1,
+        "totalMs": 208.0
+      },
+      "meanDatabaseStatements": 3.588235294117647
+    },
+    {
+      "procedure": "drawingsWorkspace.list",
+      "duration": {
+        "count": 4,
+        "p50Ms": 55,
+        "p95Ms": 58,
+        "maxMs": 58,
+        "totalMs": 220
+      },
+      "database": {
+        "count": 4,
+        "p50Ms": 57.6,
+        "p95Ms": 59.7,
+        "maxMs": 59.7,
+        "totalMs": 234.0
+      },
+      "meanDatabaseStatements": 7.0
+    },
+    {
+      "procedure": "rooms.getJobRoomCount",
+      "duration": {
+        "count": 28,
+        "p50Ms": 4,
+        "p95Ms": 21,
+        "maxMs": 33,
+        "totalMs": 163
+      },
+      "database": {
+        "count": 28,
+        "p50Ms": 2.6,
+        "p95Ms": 20.1,
+        "maxMs": 31.9,
+        "totalMs": 133.5
+      },
+      "meanDatabaseStatements": 3.0
+    },
+    {
+      "procedure": "jobPricing.get",
+      "duration": {
+        "count": 11,
+        "p50Ms": 13,
+        "p95Ms": 26,
+        "maxMs": 26,
+        "totalMs": 162
+      },
+      "database": {
+        "count": 11,
+        "p50Ms": 7.2,
+        "p95Ms": 20.7,
+        "maxMs": 20.7,
+        "totalMs": 89.6
+      },
+      "meanDatabaseStatements": 4.0
+    },
+    {
+      "procedure": "chat.getOverview",
+      "duration": {
+        "count": 24,
+        "p50Ms": 3,
+        "p95Ms": 18,
+        "maxMs": 22,
+        "totalMs": 117
+      },
+      "database": {
+        "count": 24,
+        "p50Ms": 3.1,
+        "p95Ms": 20.1,
+        "maxMs": 23.8,
+        "totalMs": 118.8
+      },
+      "meanDatabaseStatements": 5.0
+    },
+    {
+      "procedure": "user.getMaterialSortPreferences",
+      "duration": {
+        "count": 49,
+        "p50Ms": 2,
+        "p95Ms": 8,
+        "maxMs": 10,
+        "totalMs": 110
+      },
+      "database": {
+        "count": 49,
+        "p50Ms": 1.1,
+        "p95Ms": 6.6,
+        "maxMs": 8.1,
+        "totalMs": 77.4
+      },
+      "meanDatabaseStatements": 1.0
+    },
+    {
+      "procedure": "push.identity",
+      "duration": {
+        "count": 206,
+        "p50Ms": 0,
+        "p95Ms": 1,
+        "maxMs": 2,
+        "totalMs": 82
+      },
+      "database": {
+        "count": 206,
+        "p50Ms": 0.0,
+        "p95Ms": 0.0,
+        "maxMs": 0.0,
+        "totalMs": 0.0
+      },
+      "meanDatabaseStatements": 0.0
+    },
+    {
+      "procedure": "push.device",
+      "duration": {
+        "count": 34,
+        "p50Ms": 1,
+        "p95Ms": 7,
+        "maxMs": 8,
+        "totalMs": 62
+      },
+      "database": {
+        "count": 34,
+        "p50Ms": 0.5,
+        "p95Ms": 6.8,
+        "maxMs": 7.0,
+        "totalMs": 48.1
+      },
+      "meanDatabaseStatements": 1.0
+    },
+    {
+      "procedure": "drawingsWorkspace.changes",
+      "duration": {
+        "count": 10,
+        "p50Ms": 3,
+        "p95Ms": 10,
+        "maxMs": 10,
+        "totalMs": 52
+      },
+      "database": {
+        "count": 10,
+        "p50Ms": 2.6,
+        "p95Ms": 36.9,
+        "maxMs": 36.9,
+        "totalMs": 120.8
+      },
+      "meanDatabaseStatements": 6.4
+    },
+    {
+      "procedure": "drawings.getSet",
+      "duration": {
+        "count": 25,
+        "p50Ms": 2,
+        "p95Ms": 3,
+        "maxMs": 4,
+        "totalMs": 49
+      },
+      "database": {
+        "count": 25,
+        "p50Ms": 1.0,
+        "p95Ms": 2.3,
+        "maxMs": 3.2,
+        "totalMs": 28.5
+      },
+      "meanDatabaseStatements": 2.0
+    },
+    {
+      "procedure": "catalogue.getPartWizardSummary",
+      "duration": {
+        "count": 2,
+        "p50Ms": 23,
+        "p95Ms": 24,
+        "maxMs": 24,
+        "totalMs": 47
+      },
+      "database": {
+        "count": 2,
+        "p50Ms": 19.5,
+        "p95Ms": 24.1,
+        "maxMs": 24.1,
+        "totalMs": 43.6
+      },
+      "meanDatabaseStatements": 5.0
+    },
+    {
+      "procedure": "drawings.listSets",
+      "duration": {
+        "count": 4,
+        "p50Ms": 10,
+        "p95Ms": 14,
+        "maxMs": 14,
+        "totalMs": 45
+      },
+      "database": {
+        "count": 4,
+        "p50Ms": 9.0,
+        "p95Ms": 11.8,
+        "maxMs": 11.8,
+        "totalMs": 38.7
+      },
+      "meanDatabaseStatements": 4.0
+    },
+    {
+      "procedure": "notifications.identity",
+      "duration": {
+        "count": 69,
+        "p50Ms": 1,
+        "p95Ms": 1,
+        "maxMs": 3,
+        "totalMs": 42
+      },
+      "database": {
+        "count": 69,
+        "p50Ms": 0.0,
+        "p95Ms": 0.0,
+        "maxMs": 0.0,
+        "totalMs": 0.0
+      },
+      "meanDatabaseStatements": 0.0
+    },
+    {
+      "procedure": "user.getMyRole",
+      "duration": {
+        "count": 66,
+        "p50Ms": 0,
+        "p95Ms": 1,
+        "maxMs": 3,
+        "totalMs": 28
+      },
+      "database": {
+        "count": 66,
+        "p50Ms": 0.0,
+        "p95Ms": 0.0,
+        "maxMs": 0.0,
+        "totalMs": 0.0
+      },
+      "meanDatabaseStatements": 0.0
+    },
+    {
+      "procedure": "catalogue.recentOrderWheelUsage",
+      "duration": {
+        "count": 3,
+        "p50Ms": 7,
+        "p95Ms": 8,
+        "maxMs": 8,
+        "totalMs": 22
+      },
+      "database": {
+        "count": 3,
+        "p50Ms": 6.0,
+        "p95Ms": 6.5,
+        "maxMs": 6.5,
+        "totalMs": 18.0
+      },
+      "meanDatabaseStatements": 1.0
+    },
+    {
+      "procedure": "drawingsWorkspace.get",
+      "duration": {
+        "count": 2,
+        "p50Ms": 7,
+        "p95Ms": 15,
+        "maxMs": 15,
+        "totalMs": 22
+      },
+      "database": {
+        "count": 2,
+        "p50Ms": 22.1,
+        "p95Ms": 45.0,
+        "maxMs": 45.0,
+        "totalMs": 67.1
+      },
+      "meanDatabaseStatements": 11.0
+    },
+    {
+      "procedure": "user.getMe",
+      "duration": {
+        "count": 36,
+        "p50Ms": 0,
+        "p95Ms": 2,
+        "maxMs": 2,
+        "totalMs": 18
+      },
+      "database": {
+        "count": 36,
+        "p50Ms": 0.0,
+        "p95Ms": 0.0,
+        "maxMs": 0.0,
+        "totalMs": 0.0
+      },
+      "meanDatabaseStatements": 0.0
+    },
+    {
+      "procedure": "rooms.getJobRooms",
+      "duration": {
+        "count": 3,
+        "p50Ms": 5,
+        "p95Ms": 6,
+        "maxMs": 6,
+        "totalMs": 14
+      },
+      "database": {
+        "count": 3,
+        "p50Ms": 3.5,
+        "p95Ms": 3.8,
+        "maxMs": 3.8,
+        "totalMs": 9.9
+      },
+      "meanDatabaseStatements": 5.0
+    },
+    {
+      "procedure": "chat.history",
+      "duration": {
+        "count": 2,
+        "p50Ms": 3,
+        "p95Ms": 9,
+        "maxMs": 9,
+        "totalMs": 12
+      },
+      "database": {
+        "count": 2,
+        "p50Ms": 2.9,
+        "p95Ms": 8.5,
+        "maxMs": 8.5,
+        "totalMs": 11.4
+      },
+      "meanDatabaseStatements": 5.0
+    },
+    {
+      "procedure": "organization.getOrganizationSettings",
+      "duration": {
+        "count": 2,
+        "p50Ms": 4,
+        "p95Ms": 6,
+        "maxMs": 6,
+        "totalMs": 10
+      },
+      "database": {
+        "count": 2,
+        "p50Ms": 7.1,
+        "p95Ms": 8.6,
+        "maxMs": 8.6,
+        "totalMs": 15.7
+      },
+      "meanDatabaseStatements": 9.0
+    },
+    {
+      "procedure": "rooms.getFloorRooms",
+      "duration": {
+        "count": 2,
+        "p50Ms": 4,
+        "p95Ms": 5,
+        "maxMs": 5,
+        "totalMs": 9
+      },
+      "database": {
+        "count": 2,
+        "p50Ms": 2.9,
+        "p95Ms": 3.4,
+        "maxMs": 3.4,
+        "totalMs": 6.3
+      },
+      "meanDatabaseStatements": 3.0
+    },
+    {
+      "procedure": "rooms.detectRoomsStatus",
+      "duration": {
+        "count": 2,
+        "p50Ms": 3,
+        "p95Ms": 3,
+        "maxMs": 3,
+        "totalMs": 6
+      },
+      "database": {
+        "count": 2,
+        "p50Ms": 1.9,
+        "p95Ms": 2.1,
+        "maxMs": 2.1,
+        "totalMs": 4.0
+      },
+      "meanDatabaseStatements": 2.0
+    },
+    {
+      "procedure": "conversations.list",
+      "duration": {
+        "count": 1,
+        "p50Ms": 5,
+        "p95Ms": 5,
+        "maxMs": 5,
+        "totalMs": 5
+      },
+      "database": {
+        "count": 1,
+        "p50Ms": 3.8,
+        "p95Ms": 3.8,
+        "maxMs": 3.8,
+        "totalMs": 3.8
+      },
+      "meanDatabaseStatements": 4.0
+    },
+    {
+      "procedure": "catalogue.getHiddenParts",
+      "duration": {
+        "count": 2,
+        "p50Ms": 2,
+        "p95Ms": 2,
+        "maxMs": 2,
+        "totalMs": 4
+      },
+      "database": {
+        "count": 2,
+        "p50Ms": 0.9,
+        "p95Ms": 1.4,
+        "maxMs": 1.4,
+        "totalMs": 2.3
+      },
+      "meanDatabaseStatements": 1.0
+    },
+    {
+      "procedure": "appDevices.organization",
+      "duration": {
+        "count": 1,
+        "p50Ms": 2,
+        "p95Ms": 2,
+        "maxMs": 2,
+        "totalMs": 2
+      },
+      "database": {
+        "count": 1,
+        "p50Ms": 1.0,
+        "p95Ms": 1.0,
+        "maxMs": 1.0,
+        "totalMs": 1.0
+      },
+      "meanDatabaseStatements": 1.0
+    }
+  ],
+  "excluded": {
+    "otherInvocation": 0,
+    "nonTiming": 213,
+    "mutationOrSubscription": 80,
+    "unknownProcedure": 0
+  }
+}
