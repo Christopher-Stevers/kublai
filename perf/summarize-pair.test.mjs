@@ -78,11 +78,11 @@ function fixture(index = 1) {
     },
     samples: budgets.journeys.flatMap((journey) =>
       Object.keys(budgets.links).flatMap((link) =>
-        Array.from({ length: 5 }, (_, run) => ({
+        Array.from({ length: 15 }, (_, run) => ({
           journey,
           link,
           run,
-          durationMs: 96 + run * 2,
+          durationMs: 86 + run * 2,
           variant: ["openjob", "switchjobtabs", "openmateriallist"].includes(
             journey,
           )
@@ -106,9 +106,9 @@ test("all24 cell medians remain separate and source/time/hash metadata is exact"
   assert.equal(HARNESS_FILES.includes("perf/summarize-pair.mjs"), false);
   assert.equal(summary.cells.length, 24);
   assert.equal(summary.repeatability.passes, true);
-  assert.equal(summary.cells[0].first.count, 5);
+  assert.equal(summary.cells[0].first.count, 15);
   assert.equal(summary.cells[0].first.medianMs, 100);
-  assert.equal(summary.cells[0].first.p95Ms, 104);
+  assert.equal(summary.cells[0].first.p95Ms, 114);
   assert.equal(summary.cells[0].deltaMs, 0);
   assert.equal(summary.reports[0].sha256, hash(first));
   assert.equal(summary.reports[0].captureStartedAt, "2026-01-01T00:00:01.123Z");
@@ -124,15 +124,15 @@ test("all24 cell medians remain separate and source/time/hash metadata is exact"
 test("failed repeatability still reports every cell and every original sample", () => {
   const second = fixture(2);
   second.samples[0].durationMs = 150;
-  // Change all five values in just one cell; no outlier filtering or sample selection.
-  second.samples.slice(0, 5).forEach((row) => {
+  // Change all fifteen values in just one cell; no outlier filtering or sample selection.
+  second.samples.slice(0, 15).forEach((row) => {
     row.durationMs += 20;
   });
   const summary = summarizePair(bytes(fixture(1)), bytes(second));
   assert.equal(summary.repeatability.passes, false);
   assert.equal(summary.cells.length, 24);
-  assert.equal(summary.cells[0].second.count, 5);
-  assert.equal(summary.cells[0].withinNoiseBand, false);
+  assert.equal(summary.cells[0].second.count, 15);
+  assert.equal(summary.cells[0].initialTimingFailure, true);
   assert.equal(summary.cells[0].second.byRun[0].durationMs, 170);
 });
 test("stage occurrences and missing runs are preserved without pooling or imputation", () => {
@@ -145,8 +145,8 @@ test("stage occurrences and missing runs are preserved without pooling or imputa
   second.samples[0].browserMeasures = [];
   const stage = summarizePair(bytes(first), bytes(second)).cells[0]
     .browserStages[0];
-  assert.equal(stage.first.distribution.count, 6);
-  assert.equal(stage.second.distribution.count, 4);
+  assert.equal(stage.first.distribution.count, 16);
+  assert.equal(stage.second.distribution.count, 14);
   assert.deepEqual(stage.first.byRun[0].durationMs, [0, 90]);
   assert.deepEqual(stage.second.missingRuns, [0]);
 });
@@ -240,22 +240,31 @@ test("CLI writes only summary stdout and leaves both raw report files byte exact
   }
 });
 
-test("unchanged10% boundary and zero medians use the existing gate rule", () => {
-  const first = fixture(1),
-    second = fixture(2);
-  second.samples.forEach((row) => {
-    row.durationMs = 110;
-  });
-  const boundary = summarizePair(bytes(first), bytes(second));
-  assert.equal(boundary.repeatability.passes, true);
-  assert.equal(boundary.cells[0].withinNoiseBand, true);
-  first.samples.slice(0, 5).forEach((row) => {
-    row.durationMs = 0;
-  });
-  second.samples.slice(0, 5).forEach((row) => {
-    row.durationMs = 1;
-  });
-  const zero = summarizePair(bytes(first), bytes(second));
-  assert.equal(zero.cells[0].deltaPercent, null);
-  assert.equal(zero.cells[0].withinNoiseBand, false);
+test("strict dual thresholds, equality, faster variation and zero baseline stay diagnostic", () => {
+  for (const [baseline, next, fails] of [
+    [100, 117, false], [100, 117.001, true],
+    [200, 220, false], [200, 220.001, true],
+    [100, 50, false], [0, 1, false], [0, 18, true],
+  ]) {
+    const first = fixture(1), second = fixture(2);
+    first.samples.forEach(row => { row.durationMs = baseline; });
+    second.samples.forEach(row => { row.durationMs = next; });
+    const summary = summarizePair(bytes(first), bytes(second));
+    assert.equal(summary.repeatability.passes, !fails);
+    assert.equal(summary.cells[0].initialTimingFailure, fails);
+    assert.equal(summary.diagnosticOnly, true);
+    assert.equal(summary.releaseEligible, false);
+    assert.equal(summary.repeatability.initialScreenOnly, true);
+    assert.equal(summary.repeatability.absoluteRegressionMs, 17);
+    if (baseline === 0) assert.equal(summary.cells[0].deltaPercent, null);
+    if (next === 50) assert.equal(summary.cells[0].relativeVariationOverTenPercent, true);
+  }
+});
+
+test("current diagnostic rejects historic five-sample inputs without rewriting them", () => {
+  const first = fixture(1), second = fixture(2);
+  first.samples = first.samples.filter(row => row.run < 5);
+  const raw = bytes(first), copy = Buffer.from(raw);
+  assert.throws(() => summarizePair(raw, bytes(second)), /exact full lab matrix/);
+  assert.deepEqual(raw, copy);
 });

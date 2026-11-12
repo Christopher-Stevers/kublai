@@ -3,7 +3,7 @@
 import fs from "node:fs";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { budgets, checkRepeatability, validateReport } from "./check.mjs";
+import { budgets, checkRepeatability, timingFails, validateReport } from "./check.mjs";
 
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const protocolId = (report) =>
@@ -186,7 +186,7 @@ export function summarizePair(firstBytes, secondBytes) {
     errors.push("Pair requires distinct independent captures");
   if (errors.length) throw new Error([...new Set(errors)].join("\n"));
 
-  // This existing validator is the sole authority for repeatability failure.
+  // Initial diagnostic screen only: no calibration, prospective plan or confirmation is evaluated.
   const repeatabilityErrors = checkRepeatability(first, second);
   const cells = budgets.journeys.flatMap((journey) =>
     Object.keys(budgets.links).map((link) => {
@@ -211,20 +211,24 @@ export function summarizePair(firstBytes, secondBytes) {
         deltaMs: absoluteDeltaMs,
         deltaPercent:
           old === 0 ? (next === 0 ? 0 : null) : (absoluteDeltaMs / old) * 100,
-        withinNoiseBand: Math.abs(absoluteDeltaMs) <= old * budgets.noiseRatio,
+        initialTimingFailure: timingFails(old, next),
+        relativeVariationOverTenPercent:
+          Math.abs(absoluteDeltaMs) > old * budgets.noiseRatio,
         browserStages: stages(a, b),
       };
     }),
   );
   return {
-    version: 1,
+    version: 2,
     kind: "supplemental-pair-summary",
+    diagnosticOnly: true,
+    releaseEligible: false,
     method:
-      "Every original sample retained. Per-cell automation wallclock median is the existing five-run gate metric. Descriptive nearest-rank stage p50/p95 use every recorded stage occurrence; missing stages are explicit, never zero-filled. No pooling of the two runs.",
+      "Every original sample retained. Per-cell automation wallclock median uses fifteen samples (sorted index 7). Initial directional timing flags require both >10% and >17ms slower. Descriptive nearest-rank stage p50/p95 use every recorded stage occurrence; missing stages are explicit, never zero-filled. No pooling of the two runs.",
     limitations: [
-      "Five samples do not establish a stable p95. Browser stages are paint-opportunity proxies, not physical same-frame proof.",
+      "Fifteen samples do not establish a stable p95. Browser stages are paint-opportunity proxies, not physical same-frame proof.",
       "Database observedAt is not asserted to be exact capture completion; completion stays null if unrecorded.",
-      "This summary is not activation or Phase0 acceptance. Canonical artifact binding and all other release gates remain separate.",
+      "This is an initial diagnostic screen, not calibrated release approval: no 20-run calibration, prospective confirmation plan or sole failed-cell remeasurement is validated. Canonical artifact binding and all release gates remain separate.",
     ],
     reports: [
       reportMetadata(first, firstBytes, "first"),
@@ -234,6 +238,9 @@ export function summarizePair(firstBytes, secondBytes) {
       passes: repeatabilityErrors.length === 0,
       errors: repeatabilityErrors,
       noiseRatio: budgets.noiseRatio,
+      absoluteRegressionMs: 17,
+      policyId: budgets.timingPolicy.id,
+      initialScreenOnly: true,
     },
     cells,
   };
