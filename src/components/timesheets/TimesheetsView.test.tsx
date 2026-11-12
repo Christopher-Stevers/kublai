@@ -19,6 +19,24 @@ const state = vi.hoisted(() => ({
   },
   calls: [] as Array<[string, unknown]>,
 }));
+// Control-only fixtures do not emulate transport/cache; the dedicated read suite
+// supplies a real QueryClient and actual refresh-behind hook.
+vi.mock("~/components/jobs/DrawingAccountProvider", () => ({
+  useDrawingAccount: () => ({
+    userId: "me",
+    accountKey: "org:me",
+    organizationId: "org",
+    store: null,
+  }),
+}));
+vi.mock("~/hooks/use-tier-one-read-options", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("~/hooks/use-tier-one-read-options")>();
+  return {
+    ...actual,
+    useTierOneReadOptions: () => ({ enabled: state.online }),
+  };
+});
 vi.mock("~/hooks/use-online-status", () => ({
   useOnlineStatus: () => state.online,
 }));
@@ -70,11 +88,12 @@ vi.mock("~/trpc/react", () => {
           }),
         },
         period: {
-          useQuery: () => ({
+          _def: () => ({ path: ["timesheets", "period"] }),
+          useQuery: (input: { userId?: string }) => ({
             data: {
               start: "2026-10-05",
               end: "2026-10-11",
-              userId: "me",
+              userId: input.userId ?? "me",
               sheet: state.empty
                 ? null
                 : {

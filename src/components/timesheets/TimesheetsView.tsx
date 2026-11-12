@@ -1,5 +1,15 @@
 "use client";
-import { setPageInterval as setInterval, clearPageInterval as clearInterval } from "~/lib/app-page-activity";
+import {
+  setPageInterval as setInterval,
+  clearPageInterval as clearInterval,
+} from "~/lib/app-page-activity";
+
+import { getQueryKey } from "@trpc/react-query";
+import {
+  useTierOneReadOptions,
+  blocksCachedRead,
+} from "~/hooks/use-tier-one-read-options";
+import { DeviceReadNotice } from "~/components/ui/device-read-notice";
 
 import { useDrawingAccount } from "~/components/jobs/DrawingAccountProvider";
 import { useTimesheetLive } from "~/hooks/use-timesheet-live";
@@ -68,12 +78,27 @@ export function TimesheetsView() {
     refetchInterval: online ? 30000 : false,
   });
   useTimesheetLive({
-    online: online && !!context.data && !context.error && context.data.me === account?.userId,
+    online:
+      online &&
+      !!context.data &&
+      !context.error &&
+      context.data.me === account?.userId,
     expectedAccount: account?.accountKey ?? "",
-    authorityScope: JSON.stringify([context.data?.me, context.data?.canEdit, context.data?.canManage, context.data?.canConfigure]),
+    authorityScope: JSON.stringify([
+      context.data?.me,
+      context.data?.canEdit,
+      context.data?.canManage,
+      context.data?.canConfigure,
+    ]),
     refresh: () => utils.timesheets.invalidate(),
   });
-  if (!context.data)
+  // Context remains an unpersisted authority read. Never paint a saved period
+  // for a denied or different current account, even before the global fence runs.
+  if (
+    !context.data ||
+    blocksCachedRead(context) ||
+    context.data.me !== account?.userId
+  )
     return (
       <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6">
         <PageHeader title="Timesheets" />
@@ -104,11 +129,20 @@ function TimesheetsContent({
   >("timesheets:tab", "my");
   const [date, setDate] = usePageViewState("timesheets:date", info.today);
   const [person, setPerson] = useState<string | undefined>();
-  const [from, setFrom] = usePageViewState("timesheets:from", addDays(info.today, -28)),
+  const [from, setFrom] = usePageViewState(
+      "timesheets:from",
+      addDays(info.today, -28),
+    ),
     [to, setTo] = usePageViewState("timesheets:to", info.today);
+  const periodUser = person ?? info.me;
+  const periodAllowed = periodUser === info.me || info.canManage;
+  const periodInput = { date, userId: periodUser };
   const detail = api.timesheets.period.useQuery(
-    { date, userId: person },
-    { enabled: online && !!info && (tab === "my" || tab === "detail") },
+    periodInput,
+    useTierOneReadOptions(
+      getQueryKey(api.timesheets.period, periodInput, "query"),
+      online && periodAllowed && (tab === "my" || tab === "detail"),
+    ),
   );
   const [status, setStatus] = usePageViewState<
     "all" | "draft" | "submitted" | "approved" | "returned"
@@ -124,7 +158,10 @@ function TimesheetsContent({
     },
     { enabled: online && !!info && (tab === "team" || tab === "my") },
   );
-  const [approvedOnly, setApprovedOnly] = usePageViewState("timesheets:approvedOnly", true),
+  const [approvedOnly, setApprovedOnly] = usePageViewState(
+      "timesheets:approvedOnly",
+      true,
+    ),
     [reportJob, setReportJob] = usePageViewState("timesheets:reportJob", "");
   const report = api.timesheets.report.useQuery(
     {
@@ -140,9 +177,19 @@ function TimesheetsContent({
     { team: info?.canManage ?? false, offset },
     { enabled: online && !!info && tab === "activity" },
   );
+  const periodReadBlocked =
+    !periodAllowed ||
+    blocksCachedRead(detail) ||
+    (detail.data !== undefined && detail.data.userId !== periodUser);
   const [draft, setDraft] = useState<Draft | null>(null),
     [error, setError] = useState<string | null>(null);
   const [returnReason, setReturnReason] = useState<string | null>(null);
+  useEffect(() => {
+    if (periodReadBlocked) {
+      setDraft(null);
+      setReturnReason(null);
+    }
+  }, [periodReadBlocked]);
   const [clockJob, setClockJob] = useState(""),
     [clockNote, setClockNote] = useState("");
   const [settingsDraft, setSettingsDraft] = useState<{
@@ -219,8 +266,11 @@ function TimesheetsContent({
     configure.isPending ||
     start.isPending ||
     clockAction.isPending;
-  const selected = detail.data,
-    sheet = selected?.sheet;
+  const selected =
+    !periodReadBlocked && detail.data?.userId === periodUser
+      ? detail.data
+      : undefined;
+  const sheet = selected?.sheet;
   const editable =
     online &&
     !busy &&
@@ -563,13 +613,22 @@ function TimesheetsContent({
               </Button>
             </div>
           )}
-          {detail.error && (
+          {selected && <DeviceReadNotice query={detail} />}
+          {detail.error && blocksCachedRead(detail) && (
             <p role="alert" className="text-destructive">
               {detail.error.message}
             </p>
           )}
           {detail.isLoading ? (
             <p role="status">Loading period…</p>
+          ) : !selected ? (
+            <p role="alert" className="text-muted-foreground text-sm">
+              {!periodAllowed
+                ? "You no longer have access to this timesheet."
+                : online
+                  ? "This timesheet period is unavailable. Reopen it to retry."
+                  : "This timesheet period is unavailable offline. Connect to load it."}
+            </p>
           ) : (
             selected && (
               <>
@@ -1110,7 +1169,7 @@ function TimesheetsContent({
         </form>
       )}
       <Dialog
-        open={draft !== null}
+        open={draft !== null && !periodReadBlocked}
         onOpenChange={(open) => {
           if (!open && !saveEntry.isPending) setDraft(null);
         }}
@@ -1253,7 +1312,7 @@ function TimesheetsContent({
         </DialogContent>
       </Dialog>
       <Dialog
-        open={returnReason !== null}
+        open={returnReason !== null && !periodReadBlocked}
         onOpenChange={(open) => {
           if (!open && !review.isPending) setReturnReason(null);
         }}
