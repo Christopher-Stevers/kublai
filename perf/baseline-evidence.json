@@ -1722,5 +1722,37 @@
     "acceptedReferenceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
     "sameSource": false,
     "requirement": "Do not relabel the original Phase0 baseline pair as the new active source. The current activation gate requires baseline/repeat to match the actual active build; future release evidence must satisfy that binding and measure deployment bytes against actual active fastlane. No new baseline run requested by this fastlane task."
+  },
+  "phase1Continuation": {
+    "startedAt": "2026-11-12T01:32:00Z",
+    "scope": "Continue Phase1 in small active-source increments; original broad R20 failure remains",
+    "assetRequestReadCommit": "431edff6",
+    "assetRequestFocusedTestsPassed": 14,
+    "assetRequestRuntimeFiles": 2,
+    "assetRequestActivated": false,
+    "notificationSource": "/home/tim/.openclaw/workspace/releases/speed-phase1-notification-owner-20261112",
+    "notificationSourceFingerprint": "2c5a75daf1d3bcc2aa3468ce5877da8b0311ce8b15a70d0098a7ea7747a87421",
+    "notificationRuntimePaths": [
+      "src/components/notifications/NotificationCenter.tsx",
+      "src/hooks/use-notification-account.ts"
+    ],
+    "notificationBuildStarted": false,
+    "notificationInlineProof": "preparing source-bound real inline UI test; newer lazy-panel fixture is not a substitute",
+    "activeSourceRepeat": {
+      "fixedFirstReport": "perf/artifacts/wizard-fastlane-ready-then-pinch-v2-2026-11-12/report.json",
+      "fixedFirstSha256": "50a18a58409e9db3b19c5a3e2211fd7c4228437e8c65f7b0668f5db79eae6583",
+      "plan": "perf/artifacts/active-wizard-baseline-repeat-preparation-2026-11-12/plan.json",
+      "planSha256": "453c74002c20b5817bef052937c743658ac4f3e8a470ba2f74fdecd372b4910b",
+      "startedAt": "2026-11-12T01:42:17Z",
+      "status": "running-single-independent-repeat",
+      "sampleCountRequired": 120,
+      "idleDurationMs": 600000,
+      "postCaptureChecks": [
+        "repeatability-both-directions",
+        "original-regression-comparison"
+      ],
+      "doesNotClearR20": true,
+      "noRetriesOrExclusions": true
+    }
   }
 }

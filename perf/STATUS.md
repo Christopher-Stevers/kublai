@@ -1285,3 +1285,33 @@ relabeled as this new active source. Future activation must satisfy the existing
 gate's active-build/baseline binding and use the actual active fastlane for its
 deployment delta. No new baseline run is part of this request. Broader R20,
 notification, receiving, photo, assets, sync and drawing work remain separate.
+
+## Phase 1 continuation — 2026-11-12
+
+Tim requested a plain-language Phase 0 recap and continuation into Phase 1. The
+next increments remain based on the exact active source, with the wizard fix
+preserved. The asset-request read slice is committed at `431edff6`: two runtime
+callers retain exact cached rows behind a refresh, suppress known denials and
+distinguish unknown offline data from a cached empty list. Fourteen focused
+tests and scoped lint pass. This is prepared source, not activated or durable
+offline-write coverage.
+
+A separate two-file notification ownership candidate is frozen from active
+fastlane (`2c5a75da…87421`, 2201 inputs). It preserves the older inline inbox
+and moves only authoritative overview/identity ownership into the reviewed hook.
+The newer lazy-panel fixture is insufficient for this exact older UI: source-bound
+inline filter/settings/dialog/read tests are being prepared. No canonical build
+or poll-saving claim exists yet. New hook bytes may fail the shared ratchet;
+any failure remains a failure. A possible optional-panel split is only a scoped
+conditional proposal, not an implemented or measured remedy.
+
+At 01:42:17 UTC one independent active-source repeat started. Its fixed first
+is the sole untrimmed successful fastlane capture, selected prospectively before
+this repeat. Same source9aae/34f, retained compiled lab, frozen f9/v2 method,
+120 samples and ten-minute idle. Both two-sided repeatability and original
+comparison run after capture; either failure is retained. Static predecessor
+remains c25 to match the first report. Future candidate deltas use active9aae.
+The new first's 33690 deployment/502616 shared/758529 heaviest/80 idle values
+are not silently replaced by the older, looser values. Source-only work proceeds
+during quiet; all other runtime is held. This does not clear R20 or finish the
+20 unchanged-build validation, field/phone checks, or Phase 1.
