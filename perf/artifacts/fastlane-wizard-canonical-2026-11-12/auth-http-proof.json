@@ -1,0 +1,8 @@
+{
+  "sourceBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+  "endpoint": "/api/trpc/user.getMe",
+  "status": 401,
+  "cookieFreeGet": true,
+  "requestBody": false,
+  "responseBodyLogged": false
+}

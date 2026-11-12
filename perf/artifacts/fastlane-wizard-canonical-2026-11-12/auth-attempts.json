@@ -1,0 +1,15 @@
+{
+  "preparationAttempt1": {
+    "passed": false,
+    "reason": "Proof-name replacement also renamed source directory to nonexistent speed-phase0-wizard-auth-fastlane-20261112; candidate release read failed before DATABASE_URL client creation or server start",
+    "originalVariantReconstructible": "Replace speed-phase0-wizard-fastlane-20261112 with speed-phase0-wizard-auth-fastlane-20261112 in archived auth-http-supervisor.mjs",
+    "rawFailureLog": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/phase0-wizard-auth-supervisor.log"
+  },
+  "attempt2": {
+    "passed": true,
+    "singleCookieFreeProtectedGet": 401,
+    "serverExit": 0,
+    "pidAbsent": true,
+    "portClosed": true
+  }
+}
