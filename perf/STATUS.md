@@ -13,8 +13,10 @@ one-file catalogue wizard fix (`9aaeabbe…355b0`), activated only after all fas
 gates passed. Its full matrix passes 24/24 cells, and its update is 33,690 gzip
 bytes. No broad Phase 1 changes were included. Phase 0 has a working synthetic lab, repeatable
 desktop baselines and live telemetry, but controlled phone/Safari and remaining
-field targets are unproved. Tim deferred further Pixel debugging; independent
-work continues without requesting that connection again.
+field targets are unproved. The independent repeat of the current active source
+failed one material-list cell, so there is no accepted baseline pair for the next
+activation. Tim deferred further Pixel debugging; independent work continues
+without requesting that connection again.
 
 The latest broad Phase 1 candidate (R20) passed 23 of 24 timing cells and was not
 activated. Opening a job on the Basement profile measured 98.4 ms against the
@@ -1352,3 +1354,17 @@ this is behavior evidence, not full-app idle savings, physical-phone speed or
 activation eligibility. The failed active-source baseline repeat still blocks
 release. A separate canonical build/byte check is authorized after capacity
 preflight; no additional timing matrix or activation is authorized.
+
+## Notification byte gate rejected — 2026-11-12
+
+The single canonical build of the two-file ownership candidate passed production
+TypeScript and prerender, with exact source, public assets and retained history.
+It failed every applicable byte ratchet: shared 503,676, heaviest 759,589 and
+changed deployment 135,597 gzip bytes. The independent strict 100,000-byte update
+limit also failed. The rejection is preserved at `6bc1e9d8`; all owned build
+processes were cleaned and no HTTP test, full matrix or activation followed.
+
+A separate source proposal will move optional inbox content into a deferred
+panel. It must earn its own behavior and byte evidence; it does not repair or
+waive this failure. The supplemental material-list timing diagnostic remains
+source preparation only, with the original failed reports untouched.

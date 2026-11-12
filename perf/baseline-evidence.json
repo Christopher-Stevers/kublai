@@ -1771,6 +1771,14 @@
     "notificationInlineBrowserReportSha256": "7f25453004f4fe0931b37bc03255776a6df9e0b34d8812c7723b00e7acb5803e",
     "notificationInlineBrowserCleanupPassed": true,
     "notificationInlineBrowserIsAcceptanceEvidence": false,
-    "notificationCanonicalStatus": "one attempt in progress; no activation"
+    "notificationCanonicalStatus": "compiled but rejected by all formal byte ratchets and strict 100000-byte update limit",
+    "notificationCanonicalProofCommit": "6bc1e9d8",
+    "notificationCanonicalBuild": "939be58f87e4b945e27d0079bac28b60249f6236c08f7bb44bdbe93324a806ff",
+    "notificationCanonicalMetrics": {
+      "sharedGzipBytes": 503676,
+      "screenGzipBytes": 759589,
+      "deployGzipBytes": 135597
+    },
+    "notificationActivated": false
   }
 }
