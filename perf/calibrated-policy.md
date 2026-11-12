@@ -1,26 +1,35 @@
-# Timing calibration source preparation
+# Timing calibration
 
-Source and narrow unit validation only; no actual calibration or candidate capture exists.
-The user's later instruction kept all byte limits unchanged and superseded the
-unadopted300KB proposal, whose diff was retained outside active code. Timing rule:
-median of15, reject only delta>baseline×0.10 AND delta>17ms, then one fresh
-predeclared15 per exact failed set; no pooling/reset/second confirmation.
+The approved timing rule uses the median of 15 samples. Flag a cell only when
+its median exceeds the fixed baseline by **both more than 10% and more than
+17 ms**. A flagged cell gets exactly one fresh, prospectively declared set of
+15 samples. Reject it only if that confirmation also fails. Preserve both sets;
+never pool samples, reset the baseline or take a second confirmation.
 
-`calibrated-policy.mjs` validates completed20-full-run method calibration and a
-separate active-source reference pair plus candidate. Exact raw report and plan
-SHA256, prospective seal times, capture IDs, roles, source/build/protocol/toolchain,
-source transforms/static provenance, private DB health and complete requested
-cells are checked. Every control remains the same source/build as calibration B;
-future reference source may differ but method must match. Calibration rejects
-started/incomplete/duplicate/mismatched records, and all19 controls must pass the
-final directional rule. Fresh candidate references are not a source waiver.
+Byte limits and polling checks are unchanged. The proposed 300 KB allowance was
+withdrawn and is not part of this policy.
 
-The operational capture plan/driver is separately owned and reviewed. In
-particular fixturePrelude must declare equivalent initial and confirmation cell
-state before capture. No fake sample or field telemetry substitutes for these
-new method-bound measurements. Historical f9/v2 captures remain untouched.
+`calibrated-policy.mjs` requires the plan's 20 unchanged full runs: one fixed
+baseline and 19 independent controls. All controls must pass the final rule.
+Candidate acceptance also requires an active-source baseline/reference pair and
+a candidate capture made after calibration finishes. A later active source can
+use the completed method calibration, but its reference pair must still match
+that source and the calibrated method.
 
-Prepared tests cover median index7, strict equality, missing/incomplete calibration,
-all20 raw runs, faster controls, independent active source, exact sole confirmation,
-failed subset/duplicate run/stale plan/wrongsource/second retry/raw tampering,
-negative duration and unchanged byte non-growth. Narrow units are now32unique passing cases (15policy,7existing checker,5activation,4switch,1small-change). Initial run29/30passed; one planted activation fixture had not rebound changed rawreport evidence and was corrected to reach the intended regression check. A later chronology fixture needed its certificate timestamps moved coherently; both failed logs remain. Impacted reruns passed,9ownedMJS syntax checks plus3updated checks clean. Byte small-change script/tests and all budgets.targets remain exact preproposal HEAD. No DB/browser/matrix or candidate activation. Root still reviews integration and prospective state contracts before any collection.
+Validation binds raw reports and prospective plans by SHA256, capture identity,
+source, build, protocol and toolchain. Every requested cell needs evidence of
+the private fixture restore, application shutdown, state verification, restart
+and 14 read preflights. Incomplete, duplicate, stale or malformed evidence fails
+closed. Health or byte failures cannot be cured by timing confirmation.
+
+The original journey definitions and timed intervals remain unchanged. New
+fixture preparation and process supervision are part of the newly calibrated
+method. Historical five-sample reports remain untouched and keep their original
+verdicts.
+
+The checker, activation and small-change unit suite passes 32 cases; nine MJS
+syntax checks pass. Coverage includes strict boundaries, median index 7, exact
+failed-cell confirmation, raw-data binding and unchanged byte limits. Two early
+test-fixture failures and their fixes are preserved with the final passing log in
+`artifacts/calibrated-policy-focused-2026-11-12/`. These are software tests, not
+unchanged-build timing evidence. See `STATUS.md` for actual calibration progress.

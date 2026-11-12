@@ -7,6 +7,26 @@ Authorized by Tim on 2026-11-10, including Sol 6.1 delegation.
 
 ## Current checkpoint — 2026-11-12
 
+Tim has since approved a new timing rule: 15 samples per cell, strict slowdown
+greater than both 10% and 17 ms, and exactly one fresh confirmation of each
+initially failed cell against the same fixed baseline. Byte limits remain
+unchanged. All 52 focused checker, summary and orchestration tests pass, and the
+private fixture restore smoke passes. The plan's 20 unchanged-build runs started
+at 2026-11-12 03:44:45 UTC. Until those finish successfully, no candidate can be
+accepted under the new rule. Historical captures below retain their original
+verdicts and do not substitute for new calibration evidence.
+
+The running batch is fixed baseline B plus 19 independent controls, each with
+360 samples. It uses frozen method `ad23c121…a2794` and prospective session plan
+`f26b7942…4a537`. Raw output and the incrementally saved calibration bundle are
+under `/tmp/foremanhq-calibration15-20261112-session`; durable launcher metadata
+and the outer log are under
+`/home/tim/.openclaw/workspace/releases/speed-proof-20261110/calibration15-20261112-session/`.
+The owned supervisor has a 50-hour bound; expected runtime is roughly a day.
+It stops on a confirmed timing failure or any invalid health, source or byte
+evidence. It has no candidate or deployment stage. Keep builds and other lab
+work out of this timing window. This is running evidence, not a calibration pass.
+
 The work is in Phase 1 preparation; no broad Phase 1 candidate has passed the
 release gate. Production runs the Phase 0 measurement bootstrap plus the approved
 one-file catalogue wizard fix (`9aaeabbe…355b0`), activated only after all fastlane
@@ -87,9 +107,10 @@ retained. This is an observed stop decision, not a completed drawing workstream.
 
 ## Gates still required
 
-Phase 0 remains open until all target rows have real baselines and repeat runs
-vary by less than 10%. The eight exact journeys need five runs on all three link
-profiles, with 4x CPU slowdown. The physical reference phone, Safari, real field
+Phase 0 remains open until all target rows have real baselines and the newly
+approved timing rule passes unchanged-build calibration. The eight exact
+journeys now need 15 samples on all three link profiles, with 4x CPU slowdown.
+The physical reference phone, Safari, real field
 INP, and sign-in startup are not replaced by desktop emulation or stub auth.
 
 Do not activate unmeasured broad changes, label gates passed, or advance to a

@@ -18,7 +18,8 @@
     "R7 focused20-sample diagnostic stays supplemental; subsequent unchanged full R7 matrix fails4/24cells. R6 failure remains preserved; LOCAL phone-v2 smoke 3 samples remains nonphysical/nongate.",
     "The complete R7 candidate retains all 120 samples and fails openjob on all 3 links plus Basement material-list against predeclared baseline 1; no extra run, metric/threshold change or waiver.",
     "Physical session methods remain separate: v2 one partial60ms read, physicalv3zero, physicalv4two partial46.9/46.2ms reads; all protocols failed before six intended samples. No accepted physical gate; furtherphone work deferred per user.",
-    "Corrected R17 v2 attempt2 completed120 with valid method/source/fixture and zeroPGerrors;22/24cells pass, Site andOffice openjob fail unchanged10% regression gate. No activation/retry/threshold waiver. Original protocol-error capture remains separate."
+    "Corrected R17 v2 attempt2 completed120 with valid method/source/fixture and zeroPGerrors;22/24cells pass, Site andOffice openjob fail unchanged10% regression gate. No activation/retry/threshold waiver. Original protocol-error capture remains separate.",
+    "The newly approved15-sample dual-threshold protocol is running its own20 unchanged-build calibration; historical five-sample verdicts are unchanged and cannot authorize new candidates under this policy."
   ],
   "sources": [
     "perf/SPEED_PLAN.md",
@@ -65,7 +66,8 @@
     "perf/artifacts/wizard-fastlane-ready-then-pinch-v2-2026-11-12/report.json",
     "perf/artifacts/wizard-fastlane-ready-then-pinch-v2-2026-11-12/root-review.json",
     "perf/artifacts/wizard-fastlane-ready-then-pinch-v2-2026-11-12/activation.json",
-    "perf/artifacts/wizard-fastlane-ready-then-pinch-v2-2026-11-12/public-edge.json"
+    "perf/artifacts/wizard-fastlane-ready-then-pinch-v2-2026-11-12/public-edge.json",
+    "perf/artifacts/calibration15-root-review-2026-11-12.json"
   ],
   "rows": [
     {
@@ -176,7 +178,7 @@
       "state": "controlled-proof-only",
       "controlledSmallEditGzipBytes": 39423,
       "phase1FoundationGzipBytes": 947890,
-      "evidence": "The separate R2\u2192R3 controlled one-runtime-file edit changes 5/283 scripts and totals 22,739 gzip bytes, passing strict <100,000. The earlier Phase0 title edit remains 39,423 bytes. The R3\u2192R4 photo-feature update changes 28/283 scripts and totals 283,891 bytes, exceeding that diagnostic; formal Phase0 byte ratchets separately pass for prepared R4. These are canonical changed-file bounds, not phone download traces. No candidate activation or accepted timing comparison. The later full R6 payload is 1,275,529 gzip bytes: its formal byte ratchets pass separately, while the unchanged full timing gate fails two openjob cells. No activation. R7 full payload is 1,278,937 gzip bytes with formal byte ratchets passing, while full timing fails 4 cells. R6\u2192R7 broad feature delta 252,295 bytes is separate from the controlled 22,739-byte edit proof and exceeds 100 KB. No activation.",
+      "evidence": "The separate R2→R3 controlled one-runtime-file edit changes 5/283 scripts and totals 22,739 gzip bytes, passing strict <100,000. The earlier Phase0 title edit remains 39,423 bytes. The R3→R4 photo-feature update changes 28/283 scripts and totals 283,891 bytes, exceeding that diagnostic; formal Phase0 byte ratchets separately pass for prepared R4. These are canonical changed-file bounds, not phone download traces. No candidate activation or accepted timing comparison. The later full R6 payload is 1,275,529 gzip bytes: its formal byte ratchets pass separately, while the unchanged full timing gate fails two openjob cells. No activation. R7 full payload is 1,278,937 gzip bytes with formal byte ratchets passing, while full timing fails 4 cells. R6→R7 broad feature delta 252,295 bytes is separate from the controlled 22,739-byte edit proof and exceeds 100 KB. No activation.",
       "reviewedCandidateGzipBytes": 1236327,
       "historicalEvidence": {
         "source": "Earlier Phase0 controlled title edit and reviewed foundation artifacts",
@@ -354,7 +356,7 @@
     "allInputAndReadyEventsObserved": true,
     "browserPointerdownToDomReadyMedianMs": {
       "baseline": {
-        "Basement": 11.0,
+        "Basement": 11,
         "Office": 10.8
       },
       "candidate": {
@@ -373,12 +375,12 @@
       "allInputAndHiddenDestinationPreconditionsPassed": true,
       "browserClickToDomReadyMedianMs": {
         "baseline": {
-          "Basement": 9.0,
+          "Basement": 9,
           "Office": 9.3
         },
         "candidate": {
           "Basement": 8.9,
-          "Office": 9.0
+          "Office": 9
         }
       },
       "driverTotalMedianMs": {
@@ -436,7 +438,7 @@
       "physicalV2": {
         "samples": 1,
         "openjobBrowserMs": [
-          60.0
+          60
         ],
         "failedAt": "second openjob source readiness"
       },
@@ -495,7 +497,7 @@
     "source": "perf/artifacts/openjob-actionability-diagnostic-2026-11-11-assessment.json",
     "samples": 20,
     "link": "Office",
-    "conditions": "baseline/R7 \u00d7 default/force \u00d75, balanced rotated order",
+    "conditions": "baseline/R7 × default/force ×5, balanced rotated order",
     "target": "Exact frozen first job-name locator/default point algorithm in both modes; explicit target/ancestry and input/readiness guards passed.",
     "requestToPointerdownMedianMs": {
       "baseline": {
@@ -1810,5 +1812,23 @@
       "strictSmallChangePassed": false,
       "cleanupPassed": true
     }
+  },
+  "timingCalibration": {
+    "policyId": "ready-then-pinch-v2-calibrated-15-v1",
+    "status": "running-not-accepted",
+    "samplesPerCell": 15,
+    "relativeSlowdownExclusive": 0.1,
+    "absoluteSlowdownMsExclusive": 17,
+    "combination": "AND",
+    "confirmationAttempts": 1,
+    "requiredUnchangedFullRuns": 20,
+    "completedFullRunsAtReview": 0,
+    "accepted": false,
+    "byteLimitsUnchanged": true,
+    "startedAt": "2026-11-12T03:44:45.375716+00:00",
+    "sessionPlanSha256": "f26b794225fbe527d5ea55a7b2a598283e133561a1b3208ff1f7ceec4204a537",
+    "harnessFingerprint": "ad23c121cc009c84e1c805d5caa99bdcf38536f06637bada178b9cd1af0a2794",
+    "outputRoot": "/tmp/foremanhq-calibration15-20261112-session",
+    "rootReview": "perf/artifacts/calibration15-root-review-2026-11-12.json"
   }
 }

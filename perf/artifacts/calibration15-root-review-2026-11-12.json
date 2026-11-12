@@ -1,0 +1,56 @@
+{
+  "recordedAt": "2026-11-12T03:45:43.946Z",
+  "status": "running-not-accepted",
+  "approval": "Tim explicitly approved strict >10% AND >17ms, median of15, exactlyone fresh confirmation, calibration before candidates; bytes unchanged.",
+  "policyId": "ready-then-pinch-v2-calibrated-15-v1",
+  "sourceCommits": [
+    "c52fd3d8",
+    "4f2430d1",
+    "6ad21dba"
+  ],
+  "focusedTests": {
+    "checkerAndActivation": 32,
+    "summary": 8,
+    "orchestrationAndPlans": 12,
+    "total": 52,
+    "passed": true
+  },
+  "privateFixtureSmoke": {
+    "passed": true,
+    "exactSeedRestored": true,
+    "readPreflightPerStart": 14,
+    "unexpectedPgErrors": 0,
+    "allRecordedPidsAbsent": true,
+    "portClosed": true,
+    "privateSocketRemoved": true,
+    "finalSmokeSha256": "181bec889d16bbed269bab85df480e83b51c410da0048d1dbadd083b9e554823"
+  },
+  "rootByteAudit": {
+    "referenceCommit": "5cdc9ed1",
+    "allTargetsUnchanged": true,
+    "smallChangeScriptAndTestsUnchanged": true,
+    "deployGzipBytes": 100000
+  },
+  "calibration": {
+    "supervisorPid": 183210,
+    "startedAt": "2026-11-12T03:44:45.375716+00:00",
+    "commandSha256": "79ca8ae5ce70e254598fbf8387b04f5a64f84eb98f3156026cfa25359cb6946f",
+    "sessionPlanSha256": "f26b794225fbe527d5ea55a7b2a598283e133561a1b3208ff1f7ceec4204a537",
+    "methodFingerprint": "ad23c121cc009c84e1c805d5caa99bdcf38536f06637bada178b9cd1af0a2794",
+    "durableLog": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/calibration15-20261112-session/outer.log",
+    "ownershipRecord": "/tmp/foremanhq-calibration15-20261112-session-outer-processes.json",
+    "outputRoot": "/tmp/foremanhq-calibration15-20261112-session",
+    "detached": true,
+    "fullRuns": 20,
+    "primarySamples": 7200,
+    "completedFullRunsAtReview": 0,
+    "accepted": false,
+    "candidateEligible": false
+  },
+  "liveRelease": {
+    "unchanged": true,
+    "sourceBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+    "serviceActive": true,
+    "nRestarts": 0
+  }
+}

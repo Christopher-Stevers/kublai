@@ -1,5 +1,29 @@
 # Speed evidence
 
+## Current timing policy — authorized 2026-11-12
+
+Tim approved 15 samples per cell, using the median. A timing cell is initially
+flagged only when it is **both more than 10% and more than 17 ms slower** than
+the fixed baseline. Each flagged cell gets one prospectively declared fresh
+15-sample confirmation against that same baseline. Only a second failure rejects
+the timing cell. Keep both raw results; never pool samples or reset the baseline.
+Byte limits and polling checks are unchanged and cannot be repaired by a timing
+confirmation.
+
+The new method must first pass the plan's 20 unchanged-build runs (one fixed
+baseline plus 19 independent controls). Candidate acceptance is blocked until
+that calibration is complete. See [calibrated-policy.md](calibrated-policy.md)
+for the implementation and [STATUS.md](STATUS.md) for actual execution evidence.
+Use the frozen `calibration-orchestrator.mjs` and sealed capture plans; the old
+direct driver commands below are historical instructions, not current launch
+commands. The release gate now also requires `--calibration`, `--reference` and
+`--capture`, as documented in `scripts/release/ACTIVATION.md`.
+
+## Historical five-sample protocol
+
+The following records describe the original five-sample method. Archived results
+keep their original verdicts; they cannot establish the new calibration.
+
 `node --test perf/check.test.mjs` proves the gate catches planted +30 KB script, +100 ms interaction, and a new polling query. It does not prove app speed.
 
 `PERF_SHEET_PROTOCOL=ready-then-pinch-v2 PERF_BASE_URL=http://127.0.0.1:3481 PERF_JOURNEY_ADAPTER=./perf/journeys.mjs PERF_OUTPUT=before.json node perf/run.mjs` drives the eight named journeys at Basement (50,000 B/s, 400 ms), Site (300,000 B/s, 150 ms), Office, with CPU slowdown 4 and five independent contexts per cell. The adapter must implement all eight exports plus optional prepare, and resolve each only after observing its actual result. `staticMetrics()` returns measured sharedGzipBytes, screenGzipBytes, deployGzipBytes and idlePolls. The app must attest isolated seeded data at /api/perf-lab. The driver refuses remote origins, blocks outgoing browser requests, and provides no production-data fallback.
