@@ -1,0 +1,36 @@
+{
+  "status": "units-and-one-inline-browser-passed",
+  "source": "/home/tim/.openclaw/workspace/releases/speed-phase1-notification-owner-20261112",
+  "sourceFingerprint": "2c5a75daf1d3bcc2aa3468ce5877da8b0311ce8b15a70d0098a7ea7747a87421",
+  "sourceFileCount": 2201,
+  "files": {
+    "prepare.mjs": "5931253d2faf5564bf84b5477e146c0bca8fe61c2e5c6a9553d7e6aab166e3b0",
+    "inline.test.tsx": "5155a00bcedd65bc77f7c3d876c77ff674c50eb2fbcc09b018debd1d8f525a95",
+    "api.jsx": "4f6b4e882e8d2a37b377a3e1497dcc3b343e2fe2795c5eea25a7f1d904d1d5cf",
+    "app.jsx": "d1238f07fb26c888ff025cf241bc9211dde19a8050449476883ebc7c588cc23f",
+    "browser.mjs": "d308d6929bb13ce51f18b8f26fc48c1ba48faf7265b4df7bf825f3ff3451d0ee",
+    "README.md": "ffc814b0dd15335cdfeaad3fec149afd8a415b538efb1704f87390525780e823"
+  },
+  "runtimeChanged": false,
+  "executed": true,
+  "browserBoundSeconds": 90,
+  "timerCadenceMs": 30000,
+  "responseDelayMs": 250,
+  "cycleMinimumGapMs": 29000,
+  "cycleMinimumSpanMs": 59000,
+  "operationalSetup": {
+    "ref": "669d7f83:vitest.setup.ts",
+    "sha256": "91a3c8962a0edcb956206a501d943fe99e1c78c6d4d8b5c9a948a3362c75978c",
+    "outsideFrozen": true
+  },
+  "browserExecuted": true,
+  "unitTests": {
+    "passed": 29,
+    "files": 3,
+    "owner": 13,
+    "presentation": 10,
+    "inline": 6
+  },
+  "unitEvidence": "perf/artifacts/notification-inline-units-2026-11-12",
+  "browserEvidence": "perf/artifacts/notification-inline-http-attempt-4o5LwR"
+}

@@ -1,0 +1,24 @@
+{
+  "source": "/home/tim/.openclaw/workspace/releases/speed-phase1-notification-owner-20261112",
+  "sourceFingerprint": "2c5a75daf1d3bcc2aa3468ce5877da8b0311ce8b15a70d0098a7ea7747a87421",
+  "sourceFileCount": 2201,
+  "runtime": {
+    "src/components/notifications/NotificationCenter.tsx": "446166895108e67d02d81421e2aa5d0d481672d73bfcb7b561ef5a4dd02031fe",
+    "src/hooks/use-notification-account.ts": "3d1d0bbc15bb85e9ac3d1afd820b73c3b85148d189d3ec15385b80f0b122bdc5"
+  },
+  "fingerprintHelperSha256": "896edf22bdc46654b07f9788f9594b94f07702df5e92659649265c1b9b85c5a9",
+  "directory": "/tmp/foremanhq-notification-inline-unit-74N0hq",
+  "scope": "Exact frozen runtime/dependencies; no tests executed by prepare",
+  "operationalSetup": {
+    "ref": "669d7f83:vitest.setup.ts",
+    "sha256": "91a3c8962a0edcb956206a501d943fe99e1c78c6d4d8b5c9a948a3362c75978c",
+    "outsideFrozen": true
+  },
+  "files": {
+    "owner.test.tsx": "c06fbb77a68ab8ef86eac52cfa8496499696682bde7355ef43629cff25b12a13",
+    "phase0-presentation.test.tsx": "36b3e1d77c13511e225e1c12f901e10ee1bfa08d65263be3d1e052301721e158",
+    "inline.test.tsx": "d42a1a178dcad8c4c97062c95642f9abbfddbf627aab54dd6fbb25941e1d49ec",
+    "vitest.config.mjs": "166ec81946afd3340c3556c411233ec3407c5e2cb9ec0ee6cbd3f75aa6efe70c",
+    "vitest.setup.ts": "91a3c8962a0edcb956206a501d943fe99e1c78c6d4d8b5c9a948a3362c75978c"
+  }
+}

@@ -1,0 +1,40 @@
+perf/notification-inline-proof/inline.test.tsx(18,825): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(options: DefinedInitialDataInfiniteOptions<any, Error, InfiniteData<any, unknown>, (string[] | { input: unknown; type: string; })[], null>, queryClient?: QueryClient | undefined): DefinedUseInfiniteQueryResult<...>', gave the following error.
+    Argument of type '{ queryKey: (string[] | { input: unknown; type: string; })[]; queryFn: () => any; initialPageParam: null; }' is not assignable to parameter of type 'DefinedInitialDataInfiniteOptions<any, Error, InfiniteData<any, unknown>, (string[] | { input: unknown; type: string; })[], null>'.
+      Property 'getNextPageParam' is missing in type '{ queryKey: (string[] | { input: unknown; type: string; })[]; queryFn: () => any; initialPageParam: null; }' but required in type 'UseInfiniteQueryOptions<any, Error, InfiniteData<any, unknown>, (string[] | { input: unknown; type: string; })[], null>'.
+  Overload 2 of 3, '(options: UndefinedInitialDataInfiniteOptions<any, Error, InfiniteData<any, unknown>, (string[] | { input: unknown; type: string; })[], null>, queryClient?: QueryClient | undefined): UseInfiniteQueryResult<...>', gave the following error.
+    Argument of type '{ queryKey: (string[] | { input: unknown; type: string; })[]; queryFn: () => any; initialPageParam: null; }' is not assignable to parameter of type 'UndefinedInitialDataInfiniteOptions<any, Error, InfiniteData<any, unknown>, (string[] | { input: unknown; type: string; })[], null>'.
+      Property 'getNextPageParam' is missing in type '{ queryKey: (string[] | { input: unknown; type: string; })[]; queryFn: () => any; initialPageParam: null; }' but required in type 'UseInfiniteQueryOptions<any, Error, InfiniteData<any, unknown>, (string[] | { input: unknown; type: string; })[], null>'.
+  Overload 3 of 3, '(options: UseInfiniteQueryOptions<any, Error, InfiniteData<any, unknown>, (string[] | { input: unknown; type: string; })[], null>, queryClient?: QueryClient | undefined): UseInfiniteQueryResult<...>', gave the following error.
+    Argument of type '{ queryKey: (string[] | { input: unknown; type: string; })[]; queryFn: () => any; initialPageParam: null; }' is not assignable to parameter of type 'UseInfiniteQueryOptions<any, Error, InfiniteData<any, unknown>, (string[] | { input: unknown; type: string; })[], null>'.
+      Property 'getNextPageParam' is missing in type '{ queryKey: (string[] | { input: unknown; type: string; })[]; queryFn: () => any; initialPageParam: null; }' but required in type 'UseInfiniteQueryOptions<any, Error, InfiniteData<any, unknown>, (string[] | { input: unknown; type: string; })[], null>'.
+perf/notification-inline-proof/inline.test.tsx(31,70): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions | undefined): HTMLElement', gave the following error.
+    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.
+  Overload 2 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions | undefined): HTMLElement', gave the following error.
+    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.
+perf/notification-inline-proof/inline.test.tsx(32,582): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions | undefined): HTMLElement', gave the following error.
+    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.
+  Overload 2 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions | undefined): HTMLElement', gave the following error.
+    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.
+perf/notification-inline-proof/inline.test.tsx(33,980): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions | undefined): HTMLElement', gave the following error.
+    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.
+  Overload 2 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions | undefined): HTMLElement', gave the following error.
+    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.
+perf/notification-inline-proof/inline.test.tsx(46,885): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions | undefined): HTMLElement', gave the following error.
+    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.
+  Overload 2 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions | undefined): HTMLElement', gave the following error.
+    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.
+perf/notification-inline-proof/inline.test.tsx(46,994): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions | undefined): HTMLElement', gave the following error.
+    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.
+  Overload 2 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions | undefined): HTMLElement', gave the following error.
+    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.
+perf/notification-inline-proof/inline.test.tsx(47,438): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions | undefined): HTMLElement', gave the following error.
+    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.
+  Overload 2 of 2, '(role: ByRoleMatcher, options?: ByRoleOptions | undefined): HTMLElement', gave the following error.
+    Object literal may only specify known properties, and 'exact' does not exist in type 'ByRoleOptions'.

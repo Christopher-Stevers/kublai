@@ -1,0 +1,9 @@
+
+ RUN  v4.1.4 /tmp/foremanhq-notification-inline-unit-d16mBX
+
+
+ Test Files  3 passed (3)
+      Tests  29 passed (29)
+   Start at  21:12:21
+   Duration  3.82s (transform 107ms, setup 64ms, import 1.23s, tests 1.59s, environment 747ms)
+

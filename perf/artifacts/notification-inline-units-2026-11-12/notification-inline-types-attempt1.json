@@ -1,0 +1,27 @@
+{
+  "extends": "/home/tim/.openclaw/workspace/releases/speed-phase1-notification-owner-20261112/tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "noEmit": true,
+    "baseUrl": "/home/tim/.openclaw/workspace/releases/speed-phase1-notification-owner-20261112",
+    "paths": {
+      "~/*": [
+        "/home/tim/.openclaw/workspace/releases/speed-phase1-notification-owner-20261112/src/*"
+      ]
+    }
+  },
+  "include": [
+    "/home/tim/.openclaw/workspace/releases/speed-phase1-notification-owner-20261112/next-env.d.ts",
+    "/home/tim/.openclaw/workspace/releases/speed-phase1-notification-owner-20261112/src/components/notifications/NotificationCenter.tsx",
+    "/home/tim/.openclaw/workspace/releases/speed-phase1-notification-owner-20261112/src/hooks/use-notification-account.ts",
+    "/home/tim/.openclaw/workspace/kublai/perf/notification-inline-proof/inline.test.tsx",
+    "/tmp/foremanhq-notification-inline-unit-d16mBX/owner.test.tsx",
+    "/tmp/foremanhq-notification-inline-unit-d16mBX/phase0-presentation.test.tsx",
+    "/tmp/foremanhq-notification-inline-unit-d16mBX/vitest.setup.ts",
+    "/home/tim/.openclaw/workspace/releases/speed-phase1-notification-owner-20261112/src/**/*.d.ts"
+  ],
+  "exclude": [
+    "/home/tim/.openclaw/workspace/releases/speed-phase1-notification-owner-20261112/node_modules",
+    "/home/tim/.openclaw/workspace/kublai/node_modules"
+  ]
+}

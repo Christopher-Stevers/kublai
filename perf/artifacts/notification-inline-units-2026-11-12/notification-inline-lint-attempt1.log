@@ -1,0 +1,9 @@
+
+/home/tim/.openclaw/workspace/kublai/perf/notification-inline-proof/inline.test.tsx
+  17:201   error  Unsafe return of a value of type `any`  @typescript-eslint/no-unsafe-return
+  18:888   error  Unsafe return of a value of type `any`  @typescript-eslint/no-unsafe-return
+  18:996   error  Unsafe return of a value of type `any`  @typescript-eslint/no-unsafe-return
+  18:1092  error  Unsafe return of a value of type `any`  @typescript-eslint/no-unsafe-return
+
+✖ 4 problems (4 errors, 0 warnings)
+
