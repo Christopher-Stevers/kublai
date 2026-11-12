@@ -18,11 +18,52 @@ node scripts/release/activate.mjs \
   --candidate /absolute/path/to/candidate-build \
   --baseline /absolute/path/to/baseline-1.json \
   --repeat /absolute/path/to/baseline-2.json \
-  --report /absolute/path/to/candidate-lab.json
+  --report /absolute/path/to/candidate-lab.json \
+  --calibration /absolute/path/to/calibration.json \
+  --reference /absolute/path/to/active-reference.json \
+  --capture /absolute/path/to/candidate-capture.json \
+  --review-batch /absolute/path/to/reviewed-batch.json
 ```
 
 For inspection without switching anything, use `activation-gate.mjs` with those
 same arguments and `--active /absolute/path/to/current-build`.
+
+### Required production review record
+
+`activate.mjs` additionally requires `--review-batch` with a structured record,
+independent of the human-readable dev queue. It must identify the exact canonical
+candidate build, frozen source fingerprint and SHA-256 of the **raw initial
+candidate report bytes** (`capture.report.sha256`), carry `status: "reviewed"`
+with a completed review date, and list every finding. For example:
+
+```json
+{
+  "version": 1,
+  "batchId": "receiving-web-2026-11-12",
+  "status": "reviewed",
+  "reviewedAt": "2026-11-12T12:00:00.000Z",
+  "candidate": {
+    "build": "<64 lowercase hex characters>",
+    "sourceFingerprint": "<64 lowercase hex characters>",
+    "reportSha256": "<64 lowercase hex characters>"
+  },
+  "findings": [
+    { "id": "receiving-example", "severity": "minor", "status": "open" }
+  ]
+}
+```
+
+An explicit empty `findings` list records no findings. Severity must be `info`,
+`minor` or `serious`; status must be `open` or `resolved`. An open serious
+finding, missing/unreviewed record, malformed/duplicate finding or mismatched
+candidate/report blocks promotion before switching. Keep the reviewed record
+with its batch evidence; the validator does not infer review from Markdown or
+claim that a finding was resolved merely because a timing result passed.
+The validated review identity is written into `activation-preflight.json`.
+This is an additional production condition; it replaces none of the calibrated
+timing, confirmation, byte, asset or health gates and adds no dev-deploy gate.
+`activation-gate.mjs` alone inspects measurement/assets; the switching command
+also validates this mandatory review record.
 
 Before any switch, the gate requires two independent complete baseline matrices
 at 4x CPU and matching active source, a completed method calibration, and a

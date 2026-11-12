@@ -11,6 +11,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { checkActivation } from "./activation-gate.mjs";
 import { switchRelease } from "./activation-switch.mjs";
+import { validateReviewedBatch } from "./review-batch.mjs";
 
 const arg = (name) => {
   const index = process.argv.indexOf(name);
@@ -59,6 +60,7 @@ try {
   await mkdir(lock);
   locked = true;
   const previous = await realpath(activeLink);
+  const capture = await read("--capture");
   const evidence = await checkActivation({
     activeDir: previous,
     candidateDir,
@@ -67,7 +69,12 @@ try {
     candidate: await read("--report"),
     calibration: await read("--calibration"),
     reference: await read("--reference"),
-    capture: await read("--capture"),
+    capture,
+  });
+  const review = validateReviewedBatch(await read("--review-batch"), {
+    candidateBuild: evidence.candidateBuild,
+    candidateSourceFingerprint: evidence.candidateSourceFingerprint,
+    reportSha256: capture.report.sha256,
   });
   const command = execFileSync(
     "systemctl",
@@ -99,7 +106,7 @@ try {
   await writeFile(
     path.join(candidateDir, "activation-preflight.json"),
     JSON.stringify(
-      { ...evidence, checkedAt: new Date().toISOString(), previous },
+      { ...evidence, review, checkedAt: new Date().toISOString(), previous },
       null,
       2,
     ) + "\n",
