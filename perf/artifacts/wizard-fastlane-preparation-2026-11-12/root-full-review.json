@@ -1,0 +1,50 @@
+{
+  "checkedAt": "2026-11-12T00:47:31.218Z",
+  "planHash": "803de39660e89e3114d7cfb317754a3d7a80245cc5305d54fb0b026c4642c192",
+  "canonicalBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+  "fullActualFiles": [
+    {
+      "archive": "full-command.sh",
+      "actual": "/tmp/foremanhq-wizard-fastlane-full-command.sh",
+      "sha256": "e23170ae550bf371175b9479bfd198a5c7947392359971655733e0eabf1273b8",
+      "actualHash": "e23170ae550bf371175b9479bfd198a5c7947392359971655733e0eabf1273b8",
+      "archiveHash": "e23170ae550bf371175b9479bfd198a5c7947392359971655733e0eabf1273b8"
+    },
+    {
+      "archive": "orchestration.sh",
+      "actual": "/tmp/foremanhq-wizard-fastlane-candidate120-ready-v2.sh",
+      "sha256": "ad6fe0cc5729f9e5d939e9da82f81a12b6a7524ee6aa8c477c3b0f7cdee8d7b7",
+      "actualHash": "ad6fe0cc5729f9e5d939e9da82f81a12b6a7524ee6aa8c477c3b0f7cdee8d7b7",
+      "archiveHash": "ad6fe0cc5729f9e5d939e9da82f81a12b6a7524ee6aa8c477c3b0f7cdee8d7b7"
+    },
+    {
+      "archive": "reuse-helper.mjs",
+      "actual": "/tmp/foremanhq-wizard-fastlane-reuse-frozen-app.mjs",
+      "sha256": "039ab45b886bc6dfcecedbe4022b376992fe6e35c673527f1466d7d144ff04fb",
+      "actualHash": "039ab45b886bc6dfcecedbe4022b376992fe6e35c673527f1466d7d144ff04fb",
+      "archiveHash": "039ab45b886bc6dfcecedbe4022b376992fe6e35c673527f1466d7d144ff04fb"
+    },
+    {
+      "archive": "protocol-guard.mjs",
+      "actual": "/tmp/foremanhq-wizard-fastlane-protocol-guard.mjs",
+      "sha256": "7f5a18a71547b0d967aa670e3f2a26c8c6d9ababbf9d466be98c27c500d9ed85",
+      "actualHash": "7f5a18a71547b0d967aa670e3f2a26c8c6d9ababbf9d466be98c27c500d9ed85",
+      "archiveHash": "7f5a18a71547b0d967aa670e3f2a26c8c6d9ababbf9d466be98c27c500d9ed85"
+    },
+    {
+      "archive": "source-after.mjs",
+      "actual": "/tmp/foremanhq-wizard-fastlane-source-after.mjs",
+      "sha256": "0717c3190e0cb8a5938689b3a73b4770f4cb20fa12563177723b374925f4eb45",
+      "actualHash": "0717c3190e0cb8a5938689b3a73b4770f4cb20fa12563177723b374925f4eb45",
+      "archiveHash": "0717c3190e0cb8a5938689b3a73b4770f4cb20fa12563177723b374925f4eb45"
+    },
+    {
+      "archive": "storage-preflight.mjs",
+      "actual": "/tmp/foremanhq-wizard-fastlane-storage-preflight.mjs",
+      "sha256": "24f2ec879693efa1cd6f905b7f21ea45aa72cf5497d2f6656f375f415dacecc4",
+      "actualHash": "24f2ec879693efa1cd6f905b7f21ea45aa72cf5497d2f6656f375f415dacecc4",
+      "archiveHash": "24f2ec879693efa1cd6f905b7f21ea45aa72cf5497d2f6656f375f415dacecc4"
+    }
+  ],
+  "allMatch": true
+}

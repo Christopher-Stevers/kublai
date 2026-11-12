@@ -1,0 +1,92 @@
+{
+  "status": "private-compile-preflight-cleaned-full-prepared-not-executed",
+  "source": "/home/tim/.openclaw/workspace/releases/speed-phase0-wizard-fastlane-20261112",
+  "sourceFingerprint": "34f0c1508584e40382ad25955b3aa2b5703bdd78ced4e6ef2536e902fd82281d",
+  "sourceFileCount": 2200,
+  "unchangedFilesChecked": 2195,
+  "canonicalBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+  "newPrivateLabRequired": true,
+  "sourceChangeOnly": "src/components/catalogue/CatalogueVisibility.tsx@669d7f83",
+  "harness": "/tmp/foremanhq-perf-method-f9bHR6",
+  "harnessFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "protocol": "ready-then-pinch-v2",
+  "sampleCount": 120,
+  "cells": 24,
+  "runsPerCell": 5,
+  "cpuSlowdown": 4,
+  "idleDurationMs": 600000,
+  "outerBoundMinutes": 45,
+  "compileBoundSeconds": 360,
+  "baselineComparator": "baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+  "stabilityReference": "baseline-ready-then-pinch-v2-rerun-2026-11-11-2.json",
+  "staticPreviousBuild": "/home/tim/.openclaw/workspace/releases/speed-phase0-bootstrap-20261110/.next-canonical-a",
+  "staticPreviousBuildId": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+  "fullMatrixRequiredEvenIfStaticFails": true,
+  "activationRequiresAllGates": true,
+  "files": {
+    "compile-command.sh": "6504fc3e767003dc98e512eddbbb9eeba69fa44387c55f6a47d73901029153cb",
+    "compile-only.sh": "8c63795fa81c2f6c1dd133e07a5f06b9c8955b2db76248b65c01ce25d4812c96",
+    "full-command.sh": "e23170ae550bf371175b9479bfd198a5c7947392359971655733e0eabf1273b8",
+    "orchestration.sh": "ad6fe0cc5729f9e5d939e9da82f81a12b6a7524ee6aa8c477c3b0f7cdee8d7b7",
+    "reuse-helper.mjs": "039ab45b886bc6dfcecedbe4022b376992fe6e35c673527f1466d7d144ff04fb",
+    "protocol-guard.mjs": "7f5a18a71547b0d967aa670e3f2a26c8c6d9ababbf9d466be98c27c500d9ed85",
+    "source-after.mjs": "0717c3190e0cb8a5938689b3a73b4770f4cb20fa12563177723b374925f4eb45",
+    "storage-preflight.mjs": "24f2ec879693efa1cd6f905b7f21ea45aa72cf5497d2f6656f375f415dacecc4"
+  },
+  "canonicalStatic": {
+    "sharedGzipBytes": 502616,
+    "screenGzipBytes": 758529,
+    "deployGzipBytes": 33690
+  },
+  "compileActualFiles": [
+    {
+      "archive": "compile-command.sh",
+      "actual": "/tmp/foremanhq-wizard-fastlane-compile-command.sh",
+      "sha256": "6504fc3e767003dc98e512eddbbb9eeba69fa44387c55f6a47d73901029153cb"
+    },
+    {
+      "archive": "compile-only.sh",
+      "actual": "/tmp/foremanhq-wizard-fastlane-compile-only.sh",
+      "sha256": "8c63795fa81c2f6c1dd133e07a5f06b9c8955b2db76248b65c01ce25d4812c96"
+    },
+    {
+      "archive": "storage-preflight.mjs",
+      "actual": "/tmp/foremanhq-wizard-fastlane-storage-preflight.mjs",
+      "sha256": "24f2ec879693efa1cd6f905b7f21ea45aa72cf5497d2f6656f375f415dacecc4"
+    }
+  ],
+  "lab": "/tmp/foremanhq-speed-app-fxHxrn",
+  "labBuild": "wTBAqKGVn-GRqajiTebMf",
+  "fullActualFiles": [
+    {
+      "archive": "full-command.sh",
+      "actual": "/tmp/foremanhq-wizard-fastlane-full-command.sh",
+      "sha256": "e23170ae550bf371175b9479bfd198a5c7947392359971655733e0eabf1273b8"
+    },
+    {
+      "archive": "orchestration.sh",
+      "actual": "/tmp/foremanhq-wizard-fastlane-candidate120-ready-v2.sh",
+      "sha256": "ad6fe0cc5729f9e5d939e9da82f81a12b6a7524ee6aa8c477c3b0f7cdee8d7b7"
+    },
+    {
+      "archive": "reuse-helper.mjs",
+      "actual": "/tmp/foremanhq-wizard-fastlane-reuse-frozen-app.mjs",
+      "sha256": "039ab45b886bc6dfcecedbe4022b376992fe6e35c673527f1466d7d144ff04fb"
+    },
+    {
+      "archive": "protocol-guard.mjs",
+      "actual": "/tmp/foremanhq-wizard-fastlane-protocol-guard.mjs",
+      "sha256": "7f5a18a71547b0d967aa670e3f2a26c8c6d9ababbf9d466be98c27c500d9ed85"
+    },
+    {
+      "archive": "source-after.mjs",
+      "actual": "/tmp/foremanhq-wizard-fastlane-source-after.mjs",
+      "sha256": "0717c3190e0cb8a5938689b3a73b4770f4cb20fa12563177723b374925f4eb45"
+    },
+    {
+      "archive": "storage-preflight.mjs",
+      "actual": "/tmp/foremanhq-wizard-fastlane-storage-preflight.mjs",
+      "sha256": "24f2ec879693efa1cd6f905b7f21ea45aa72cf5497d2f6656f375f415dacecc4"
+    }
+  ]
+}

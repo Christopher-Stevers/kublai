@@ -1,0 +1,25 @@
+{
+  "checkedAt": "2026-11-12T00:43:09.520Z",
+  "planHash": "ddcbae54e1b8783919fced2b63442d912edb4c8272643895a2132aca771c3622",
+  "pairs": [
+    {
+      "file": "compile-command.sh",
+      "expected": "6504fc3e767003dc98e512eddbbb9eeba69fa44387c55f6a47d73901029153cb",
+      "archive": "6504fc3e767003dc98e512eddbbb9eeba69fa44387c55f6a47d73901029153cb",
+      "actual": "6504fc3e767003dc98e512eddbbb9eeba69fa44387c55f6a47d73901029153cb"
+    },
+    {
+      "file": "compile-only.sh",
+      "expected": "8c63795fa81c2f6c1dd133e07a5f06b9c8955b2db76248b65c01ce25d4812c96",
+      "archive": "8c63795fa81c2f6c1dd133e07a5f06b9c8955b2db76248b65c01ce25d4812c96",
+      "actual": "8c63795fa81c2f6c1dd133e07a5f06b9c8955b2db76248b65c01ce25d4812c96"
+    },
+    {
+      "file": "storage-preflight.mjs",
+      "expected": "24f2ec879693efa1cd6f905b7f21ea45aa72cf5497d2f6656f375f415dacecc4",
+      "archive": "24f2ec879693efa1cd6f905b7f21ea45aa72cf5497d2f6656f375f415dacecc4",
+      "actual": "24f2ec879693efa1cd6f905b7f21ea45aa72cf5497d2f6656f375f415dacecc4"
+    }
+  ],
+  "allMatch": true
+}

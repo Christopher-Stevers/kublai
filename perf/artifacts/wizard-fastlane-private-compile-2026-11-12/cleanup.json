@@ -1,0 +1,12 @@
+{
+  "exitCode": 0,
+  "nextPid": 123634,
+  "nextAbsent": true,
+  "postgresPid": 122069,
+  "postgresAbsent": true,
+  "socketDirectory": "/tmp/foremanhq-perf-pg.GAp4Iy",
+  "socketRemoved": true,
+  "port3483Closed": true,
+  "unexpectedPgErrors": 0,
+  "observedAt": "2026-11-12T00:46:12Z"
+}

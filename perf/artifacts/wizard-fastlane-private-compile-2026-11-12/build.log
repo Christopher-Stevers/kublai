@@ -1,0 +1,141 @@
+▲ Next.js 16.1.1 (webpack)
+- Experiments (use with caution):
+  · proxyClientMaxBodySize: 53477376
+  · serverActions
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+(node:122238) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✓ Compiled successfully in 33.8s
+  Running TypeScript ...
+
+  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
+  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+
+  	- include was updated to add '.next/dev/types/**/*.ts'
+
+  Collecting page data using 27 workers ...
+  Generating static pages using 27 workers (0/44) ...
+  Generating static pages using 27 workers (11/44) 
+  Generating static pages using 27 workers (22/44) 
+  Generating static pages using 27 workers (33/44) 
+✓ Generating static pages using 27 workers (44/44) in 301.7ms
+  Finalizing page optimization ...
+  Collecting build traces ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /admin
+├ ƒ /api/account-simulation
+├ ƒ /api/auth/signin
+├ ƒ /api/auth/signout
+├ ƒ /api/catalogue/images
+├ ƒ /api/catalogue/images/[filename]
+├ ƒ /api/chat/attachments
+├ ƒ /api/chat/attachments/[id]
+├ ƒ /api/conversations/events
+├ ƒ /api/debug/client-console-error
+├ ƒ /api/diagnostics
+├ ƒ /api/drawings/attachments
+├ ƒ /api/drawings/attachments/[jobId]/[fileId]
+├ ƒ /api/drawings/ocr
+├ ƒ /api/estimating/[id]/export
+├ ƒ /api/health
+├ ƒ /api/job-chat/attachments
+├ ƒ /api/job-chat/attachments/[id]
+├ ƒ /api/job-chat/events
+├ ƒ /api/job-documents
+├ ƒ /api/job-documents/editor
+├ ƒ /api/job-documents/editor/new
+├ ƒ /api/job-documents/editor/save
+├ ƒ /api/job-documents/files/[versionId]
+├ ƒ /api/job-documents/files/[versionId]/source-text
+├ ƒ /api/job-documents/packing-slips
+├ ƒ /api/job-documents/packing-slips/analysis
+├ ƒ /api/job-documents/packing-slips/find
+├ ƒ /api/job-documents/packing-slips/page-check
+├ ƒ /api/job-documents/packing-slips/queue
+├ ƒ /api/job-documents/packing-slips/test-review
+├ ƒ /api/job-documents/packing-slips/trials
+├ ƒ /api/job-documents/pages/[versionId]/[page]
+├ ƒ /api/job-documents/upload
+├ ƒ /api/job-documents/wopi/[documentId]
+├ ƒ /api/job-documents/wopi/[documentId]/contents
+├ ƒ /api/job-rooms/files/[...path]
+├ ƒ /api/job-rooms/upload
+├ ƒ /api/material-lists/[id]/events
+├ ƒ /api/material-lists/events
+├ ƒ /api/models/files/[modelId]
+├ ƒ /api/models/kernel/manifold-3.5.4.js
+├ ƒ /api/models/upload
+├ ƒ /api/models/upload/[uploadId]/[part]
+├ ƒ /api/models/wasm/manifold-3.5.4.wasm
+├ ƒ /api/models/wasm/web-ifc.wasm
+├ ƒ /api/pdfjs-assets/[...path]
+├ ƒ /api/perf
+├ ƒ /api/perf-lab
+├ ƒ /api/replicache/catalogue/pull
+├ ƒ /api/replicache/catalogue/push
+├ ƒ /api/replicache/material-lists/pull
+├ ƒ /api/replicache/material-lists/push
+├ ƒ /api/trpc/[trpc]
+├ ƒ /api/voice
+├ ƒ /api/webhooks/clerk
+├ ƒ /api/webhooks/stripe
+├ ƒ /beta
+├ ƒ /jobs
+├ ƒ /jobs/[jobId]
+├ ƒ /jobs/[jobId]/chat
+├ ƒ /jobs/[jobId]/documents
+├ ƒ /jobs/[jobId]/drawings
+├ ƒ /jobs/[jobId]/material-lists
+├ ƒ /jobs/[jobId]/models
+├ ƒ /jobs/[jobId]/pricing
+├ ƒ /jobs/[jobId]/receiving
+├ ƒ /jobs/[jobId]/rooms
+├ ƒ /jobs/[jobId]/systems
+├ ƒ /jobs/[jobId]/tool-requests
+├ ƒ /jobs/account
+├ ƒ /jobs/account/settings
+├ ƒ /jobs/assets
+├ ƒ /jobs/assets/activity
+├ ƒ /jobs/assets/counts
+├ ƒ /jobs/assets/counts/[countId]
+├ ƒ /jobs/assets/labels
+├ ƒ /jobs/assets/requests
+├ ƒ /jobs/assets/requests/[orderId]
+├ ƒ /jobs/assets/scan/[tag]
+├ ƒ /jobs/assets/tools
+├ ƒ /jobs/assets/tools/[id]
+├ ƒ /jobs/assets/types
+├ ƒ /jobs/assets/where
+├ ƒ /jobs/assets/where/[type]/[id]
+├ ƒ /jobs/assist
+├ ƒ /jobs/catalogue
+├ ƒ /jobs/chat
+├ ƒ /jobs/draws
+├ ƒ /jobs/draws/[jobId]
+├ ƒ /jobs/estimating
+├ ƒ /jobs/estimating/[id]
+├ ƒ /jobs/material-lists/[id]
+├ ƒ /jobs/orders
+├ ƒ /jobs/organization
+├ ƒ /jobs/quotes
+├ ƒ /jobs/suppliers
+├ ƒ /jobs/timesheets
+├ ƒ /join/[token]
+├ ○ /licenses
+├ ƒ /onboarding
+├ ƒ /pending-approval
+├ ○ /pricing
+├ ƒ /sign-in/[[...sign-in]]
+└ ƒ /sign-up/[[...sign-up]]
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

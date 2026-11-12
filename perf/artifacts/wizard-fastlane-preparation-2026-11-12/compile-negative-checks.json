@@ -1,0 +1,12 @@
+[
+  {
+    "expectedBuild": null,
+    "exitCode": 1,
+    "databaseStarted": false
+  },
+  {
+    "expectedBuild": "bad",
+    "exitCode": 1,
+    "databaseStarted": false
+  }
+]

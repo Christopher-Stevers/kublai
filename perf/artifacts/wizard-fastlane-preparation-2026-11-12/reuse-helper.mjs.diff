@@ -1,0 +1,21 @@
+--- perf/artifacts/candidate-r20-ready-then-pinch-v2-2026-11-11-preparation/reuse-helper.mjs	2026-11-11 18:10:55.368466418 -0500
++++ perf/artifacts/wizard-fastlane-preparation-2026-11-12/reuse-helper.mjs	2026-11-11 19:47:01.863651346 -0500
+@@ -3,15 +3,15 @@
+ import {execFileSync} from 'node:child_process';
+ import {pathToFileURL} from 'node:url';
+ const target=fs.realpathSync(process.env.PERF_REUSE_SNAPSHOT??'');
+-if(target!=='/tmp/foremanhq-speed-app-l6aTWB'||!fs.existsSync(path.join(target,'PERF_LAB_ONLY')))throw Error('Exact marked R20 compiled snapshot required');
+-if(fs.readFileSync(path.join(target,'.next/BUILD_ID'),'utf8').trim()!=='3c6Lvo7KDnEDe_Bzts7L-')throw Error('Unexpected compiled R20 lab artifact');
++if(target!=='/tmp/foremanhq-speed-app-fxHxrn'||!fs.existsSync(path.join(target,'PERF_LAB_ONLY')))throw Error('Exact marked wizard fastlane compiled snapshot required');
++if(fs.readFileSync(path.join(target,'.next/BUILD_ID'),'utf8').trim()!=='wTBAqKGVn-GRqajiTebMf')throw Error('Unexpected compiled wizard fastlane lab artifact');
+ if(!fs.readFileSync(path.join(target,'next.config.js'),'utf8').includes('const labDatabase = new URL(process.env.PERF_LAB_DATABASE_URL'))throw Error('Runtime private socket guard missing');
+ const database=new URL(process.env.PERF_LAB_DATABASE_URL??'http://invalid'),socket=database.searchParams.get('host');
+ if(database.pathname!=='/foremanhq_perf_lab'||!socket?.startsWith('/tmp/foremanhq-perf-pg.')||!fs.existsSync(socket+'/.s.PGSQL.55463'))throw Error('Fresh private socket required');
+ const {sourceEvidence}=await import(pathToFileURL(path.join(process.env.PERF_HARNESS_DIR,'scripts/release/source-fingerprint.mjs')));
+ const source=fs.realpathSync(process.env.PERF_SOURCE_ROOT),build=fs.readFileSync(path.join(process.env.PERF_SOURCE_BUILD_DIST,'BUILD_ID'),'utf8').trim();
+ const current=await sourceEvidence(source,target,build,'after-lab-transforms'),prior=JSON.parse(fs.readFileSync(path.join(target,'source-evidence.json')));
+-if(build!=='e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c'||current.sourceFingerprint!=='b6f4093d05deb01c23630d6fcb223fa04a6dacf46625414a5d1ffcafa891ca4f'||current.sourceFileCount!==2318||current.sourceVerification.unchangedFilesChecked!==2313||prior.sourceBuild!==build||prior.sourceFingerprint!==current.sourceFingerprint)throw Error('R20 exact source verification failed');
++if(build!=='9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0'||current.sourceFingerprint!=='34f0c1508584e40382ad25955b3aa2b5703bdd78ced4e6ef2536e902fd82281d'||current.sourceFileCount!==2200||current.sourceVerification.unchangedFilesChecked!==2195||prior.sourceBuild!==build||prior.sourceFingerprint!==current.sourceFingerprint)throw Error('wizard fastlane exact source verification failed');
+ const fixture=JSON.parse(fs.readFileSync(process.env.PERF_LAB_FIXTURES));
+ if(fixture.provenance!=='isolated-seeded-app'||fixture.productionDatabase!==false)throw Error('Synthetic fixture attestation required');
+ fs.copyFileSync(process.env.PERF_LAB_FIXTURES,path.join(target,'perf/fixtures.json'));

@@ -1,0 +1,11 @@
+--- perf/artifacts/candidate-r20-ready-then-pinch-v2-2026-11-11-preparation/protocol-guard.mjs	2026-11-11 18:10:55.368580943 -0500
++++ perf/artifacts/wizard-fastlane-preparation-2026-11-12/protocol-guard.mjs	2026-11-11 19:47:01.863896150 -0500
+@@ -3,6 +3,8 @@
+ import { pathToFileURL } from "node:url";
+ export const CONFIG_KEYS = [
+   "PERF_SHEET_PROTOCOL",
++  "PERF_DIAGNOSTICS",
++  "CHROMIUM_PATH",
+   "PERF_HARNESS_DIR",
+   "PERF_SOURCE_ROOT",
+   "PERF_SOURCE_BUILD_DIST",

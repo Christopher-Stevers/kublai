@@ -1,0 +1,1 @@
+PERF_EXPECTED_SOURCE_BUILD=9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0 bash /tmp/foremanhq-wizard-fastlane-compile-command.sh

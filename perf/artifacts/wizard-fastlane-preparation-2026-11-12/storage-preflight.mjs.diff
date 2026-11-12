@@ -1,0 +1,15 @@
+--- perf/lab/r20-storage-preflight.mjs	2026-11-11 18:07:10.656034525 -0500
++++ perf/artifacts/wizard-fastlane-preparation-2026-11-12/storage-preflight.mjs	2026-11-11 19:41:44.073359950 -0500
+@@ -4,9 +4,9 @@
+ import { execFileSync } from "node:child_process";
+ import { createHash } from "node:crypto";
+ const mode = process.argv[2];
+-if (!["compile", "full"].includes(mode)) throw Error("R20 storage phase required");
+-const root = `/tmp/foremanhq-r20-${mode}-storage`;
+-if (fs.existsSync(root)) throw Error("Fresh R20 storage output required");
++if (!["compile", "full"].includes(mode)) throw Error("wizard fastlane storage phase required");
++const root = `/tmp/foremanhq-wizard-fastlane-${mode}-storage`;
++if (fs.existsSync(root)) throw Error("Fresh wizard fastlane storage output required");
+ fs.mkdirSync(root,{mode:0o700});
+ const cache = "/tmp/foremanhq-speed-app-5h2kmq";
+ if (!fs.existsSync(cache + "/PERF_LAB_ONLY"))

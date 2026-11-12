@@ -1,0 +1,14 @@
+[
+  {
+    "value": null,
+    "accepted": false
+  },
+  {
+    "value": "early-pinch-v1",
+    "accepted": false
+  },
+  {
+    "value": "ready-then-pinch-v2",
+    "accepted": true
+  }
+]

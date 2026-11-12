@@ -1,0 +1,26 @@
+[
+  {
+    "path": "/tmp/foremanhq-wizard-fastlane-full-command.sh",
+    "sha256": "e23170ae550bf371175b9479bfd198a5c7947392359971655733e0eabf1273b8"
+  },
+  {
+    "path": "/tmp/foremanhq-wizard-fastlane-candidate120-ready-v2.sh",
+    "sha256": "ad6fe0cc5729f9e5d939e9da82f81a12b6a7524ee6aa8c477c3b0f7cdee8d7b7"
+  },
+  {
+    "path": "/tmp/foremanhq-wizard-fastlane-reuse-frozen-app.mjs",
+    "sha256": "039ab45b886bc6dfcecedbe4022b376992fe6e35c673527f1466d7d144ff04fb"
+  },
+  {
+    "path": "/tmp/foremanhq-wizard-fastlane-protocol-guard.mjs",
+    "sha256": "7f5a18a71547b0d967aa670e3f2a26c8c6d9ababbf9d466be98c27c500d9ed85"
+  },
+  {
+    "path": "/tmp/foremanhq-wizard-fastlane-source-after.mjs",
+    "sha256": "0717c3190e0cb8a5938689b3a73b4770f4cb20fa12563177723b374925f4eb45"
+  },
+  {
+    "path": "/tmp/foremanhq-wizard-fastlane-storage-preflight.mjs",
+    "sha256": "24f2ec879693efa1cd6f905b7f21ea45aa72cf5497d2f6656f375f415dacecc4"
+  }
+]

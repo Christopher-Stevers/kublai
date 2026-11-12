@@ -1,0 +1,36 @@
+{
+  "status": "passed-lab-comparison-pending-root-activation-review",
+  "sampleCount": 120,
+  "cells": 24,
+  "validationErrors": [],
+  "acceptedBaselineRepeatabilityErrors": [],
+  "comparisonErrors": [],
+  "baseline": "baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+  "stabilityReference": "baseline-ready-then-pinch-v2-rerun-2026-11-11-2.json",
+  "protocol": "ready-then-pinch-v2",
+  "harnessFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "sourceBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+  "sourceFingerprint": "34f0c1508584e40382ad25955b3aa2b5703bdd78ced4e6ef2536e902fd82281d",
+  "sourceFileCount": 2200,
+  "unchangedFilesChecked": 2195,
+  "static": {
+    "sharedGzipBytes": 502616,
+    "screenGzipBytes": 758529,
+    "deployGzipBytes": 33690,
+    "idlePolls": 80
+  },
+  "staticPreviousBuild": "/home/tim/.openclaw/workspace/releases/speed-phase0-bootstrap-20261110/.next-canonical-a",
+  "staticPreviousBuildId": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+  "noRetriesOrExclusions": true,
+  "activationPerformed": false,
+  "host": "No declared agent-driven heavy work/ADB during quiet; production web/worker and ordinary OS background activity remained running.",
+  "limitations": [
+    "Stub Clerk excludes real authentication startup",
+    "Desktop Chromium mobile emulation, not physical Pixel/Safari",
+    "Stock next start transport, not production Brotli wrapper",
+    "Nonhex isolated build disables private SW-binding/reload branches",
+    "Two-rAF paint opportunity, not physical every-frame or same-frame evidence",
+    "Jobs-only idle HTTP request lifetime is not SSE heartbeat proof",
+    "Passing ratchets do not establish final120KB/180KB targets or week-long soak"
+  ]
+}
