@@ -1,0 +1,75 @@
+{
+  "rows": [
+    {
+      "capture": "fixed-first",
+      "run": 1,
+      "outerMs": 204.49554000003263,
+      "browserTapToPaintMs": 153,
+      "descriptiveOuterMinusBrowserMs": 51.49554000003263
+    },
+    {
+      "capture": "fixed-first",
+      "run": 2,
+      "outerMs": 203.7929249999579,
+      "browserTapToPaintMs": 152.2000002861023,
+      "descriptiveOuterMinusBrowserMs": 51.59292471385561
+    },
+    {
+      "capture": "fixed-first",
+      "run": 3,
+      "outerMs": 262.1710899999598,
+      "browserTapToPaintMs": 192,
+      "descriptiveOuterMinusBrowserMs": 70.1710899999598
+    },
+    {
+      "capture": "fixed-first",
+      "run": 4,
+      "outerMs": 233.11124100000598,
+      "browserTapToPaintMs": 158.7000002861023,
+      "descriptiveOuterMinusBrowserMs": 74.41124071390368
+    },
+    {
+      "capture": "fixed-first",
+      "run": 5,
+      "outerMs": 205.81705700000748,
+      "browserTapToPaintMs": 154.80000019073486,
+      "descriptiveOuterMinusBrowserMs": 51.01705680927262
+    },
+    {
+      "capture": "independent-repeat",
+      "run": 1,
+      "outerMs": 232.02931200002786,
+      "browserTapToPaintMs": 157.2000002861023,
+      "descriptiveOuterMinusBrowserMs": 74.82931171392556
+    },
+    {
+      "capture": "independent-repeat",
+      "run": 2,
+      "outerMs": 233.0149209999945,
+      "browserTapToPaintMs": 157.69999980926514,
+      "descriptiveOuterMinusBrowserMs": 75.31492119072936
+    },
+    {
+      "capture": "independent-repeat",
+      "run": 3,
+      "outerMs": 230.83792200009339,
+      "browserTapToPaintMs": 158,
+      "descriptiveOuterMinusBrowserMs": 72.83792200009339
+    },
+    {
+      "capture": "independent-repeat",
+      "run": 4,
+      "outerMs": 233.59752099995967,
+      "browserTapToPaintMs": 160.7999997138977,
+      "descriptiveOuterMinusBrowserMs": 72.79752128606196
+    },
+    {
+      "capture": "independent-repeat",
+      "run": 5,
+      "outerMs": 220.11583299993072,
+      "browserTapToPaintMs": 168.40000009536743,
+      "descriptiveOuterMinusBrowserMs": 51.715832904563285
+    }
+  ],
+  "qualification": "Descriptive arithmetic only; boundaries differ, never a replacement gate or isolated overhead."
+}
