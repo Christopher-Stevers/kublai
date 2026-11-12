@@ -1,0 +1,29 @@
+{
+  "status": "source-only-unexecuted",
+  "baseSource": "/home/tim/.openclaw/workspace/releases/speed-phase0-wizard-fastlane-20261112",
+  "baseBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+  "baseFingerprint": "34f0c1508584e40382ad25955b3aa2b5703bdd78ced4e6ef2536e902fd82281d",
+  "runtimePaths": {
+    "src/components/notifications/NotificationCenter.tsx": {
+      "preimage": "52cc3407e9c40b36249e4fa67688f7e5c284ce9f085e46e59cad09b359c3bf42",
+      "postimage": "efdf9cad11995a834f4c2174b6014fb10e74bb853f94a077d332a73643302d24"
+    }
+  },
+  "ownershipReferenceCommit": "acca100ac6b17b01f56e05fa306e9799d4d373ad",
+  "ownershipSourceSha256": "3d1d0bbc15bb85e9ac3d1afd820b73c3b85148d189d3ec15385b80f0b122bdc5",
+  "ownershipFunctionVerbatimExceptExport": true,
+  "existingInlineBodyAndHelpersVerbatim": true,
+  "newRuntimeFiles": 0,
+  "configChanged": false,
+  "buildRecipeChanged": false,
+  "buildStarted": false,
+  "byteOutcomeUnproven": true,
+  "sharedGrowthBarrierBytes": 1060,
+  "limits": {
+    "shared": 502616,
+    "heaviest": 758529,
+    "deploy": 33690,
+    "strictChangedJsExclusive": 100000
+  },
+  "patchSha256": "f7a6bbcfb2bb8955ba2f02e4ce994c719407056ee42597b1fba5ad8444aff5fc"
+}

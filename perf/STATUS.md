@@ -27,6 +27,13 @@ It stops on a confirmed timing failure or any invalid health, source or byte
 evidence. It has no candidate or deployment stage. Keep builds and other lab
 work out of this timing window. This is running evidence, not a calibration pass.
 
+Independent source work continues during the batch: model/timesheet cached-read
+handling, preferences live-refresh failure recovery, and a one-file notification
+ownership proposal aimed at reducing update churn. These are source preparations
+with authored tests, not newly passed checks or live improvements. See
+`phase1-quiet-work-2026-11-12.md` for scope, remaining polling coverage and the
+post-calibration validation order. Frozen calibration inputs remain unchanged.
+
 The work is in Phase 1 preparation; no broad Phase 1 candidate has passed the
 release gate. Production runs the Phase 0 measurement bootstrap plus the approved
 one-file catalogue wizard fix (`9aaeabbe…355b0`), activated only after all fastlane
