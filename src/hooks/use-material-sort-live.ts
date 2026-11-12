@@ -43,18 +43,30 @@ export function useMaterialSortLive(
         pending = false;
         busy = true;
         const startedEpoch = epoch;
-        void callback
-          .current()
+        const ownsRefresh = () =>
+          active &&
+          connected &&
+          epoch === startedEpoch &&
+          isAppPageActive();
+        // The refresh may reject or throw before returning a promise. Either
+        // failure must restore fallback polling and release the busy latch.
+        void Promise.resolve()
+          .then(() => {
+            if (ownsRefresh()) return callback.current();
+          })
           .then((result) => {
             const success =
               !!result &&
               typeof result === "object" &&
               "isSuccess" in result &&
               result.isSuccess === true;
-            if (active && connected && topicReady && epoch === startedEpoch)
+            if (ownsRefresh() && topicReady)
               setHealth({ account: expectedAccount, binding, ready: success });
           })
-          .catch(() => undefined)
+          .catch(() => {
+            if (ownsRefresh())
+              setHealth({ account: expectedAccount, binding, ready: false });
+          })
           .finally(() => {
             busy = false;
             if (pending) schedule();
