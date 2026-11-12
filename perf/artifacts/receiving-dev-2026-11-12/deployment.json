@@ -1,0 +1,29 @@
+{
+  "at": "2026-11-12T11:27:24.717Z",
+  "build": "ce8f5414e212bc7ac0f3ee01ec75d93812b298e96742f50f72a36a24bf4e10e3",
+  "sourceFingerprint": "f62224056be1245581c9a440a5777a921d8d36f3076e33156214ae78008785c3",
+  "health": {
+    "changedScriptsVerified": 19,
+    "signIn": 200,
+    "protected": 401
+  },
+  "receivingTests": 251,
+  "releaseToolTests": 8,
+  "productionReviewTests": 7,
+  "canonicalBuildAndTypesPassed": true,
+  "byteReview": {
+    "baselineBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+    "candidateBuild": "ce8f5414e212bc7ac0f3ee01ec75d93812b298e96742f50f72a36a24bf4e10e3",
+    "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+    "currentScripts": 255,
+    "reusedScripts": 236,
+    "changedScripts": 19,
+    "changedRawBytes": 657629,
+    "changedGzipBytes": 214148,
+    "budgetGzipBytes": 100000,
+    "passes": false
+  },
+  "fullTimingReview": "queued",
+  "workerReleased": false,
+  "databaseChanged": false
+}
