@@ -1,0 +1,16 @@
+✔ correct independent active-source reference accepted (0.48794ms)
+✔ missing/wrong protocol rejected (0.139721ms)
+✔ old source report cannot represent active source (0.078385ms)
+✔ different comparator rejected (0.071866ms)
+✔ selfzero static comparison rejected (0.079421ms)
+✔ subset selector rejected (0.101869ms)
+✔ new diagnostic/browser selector rejected (0.084775ms)
+✔ first static values must stay unchanged (0.066958ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 37.137403

@@ -1,0 +1,63 @@
+{
+  "status": "prepared-not-executed",
+  "purpose": "one-independent-active-source-repeatability-capture",
+  "fixedFirst": "/home/tim/.openclaw/workspace/kublai/perf/artifacts/wizard-fastlane-ready-then-pinch-v2-2026-11-12/report.json",
+  "fixedFirstSha256": "50a18a58409e9db3b19c5a3e2211fd7c4228437e8c65f7b0668f5db79eae6583",
+  "firstAttemptCount": 1,
+  "firstReportSelection": "First and only fastlane full capture; no reruns or sample exclusions. Declared now before independent repeat. Its successful old-source comparison is preserved, not retroactively changed.",
+  "sourceBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+  "sourceFingerprint": "34f0c1508584e40382ad25955b3aa2b5703bdd78ced4e6ef2536e902fd82281d",
+  "sourceFileCount": 2200,
+  "lab": "/tmp/foremanhq-speed-app-fxHxrn",
+  "labBuild": "wTBAqKGVn-GRqajiTebMf",
+  "harnessFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "protocol": "ready-then-pinch-v2",
+  "sampleCount": 120,
+  "cells": 24,
+  "runsPerCell": 5,
+  "cpuSlowdown": 4,
+  "idleDurationMs": 600000,
+  "boundMinutes": 45,
+  "noRetriesOrExclusions": true,
+  "doesNotClearR20": true,
+  "repeatStaticPreviousBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+  "futureCandidateStaticPreviousBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+  "files": [
+    {
+      "archive": "full-command.sh",
+      "actual": "/tmp/foremanhq-active-wizard-repeat-full-command.sh",
+      "sha256": "c572dc5ac0fbf93cb6d0a0a38aba1ae60fa3634fcc5a337e1e64a62abdd921b8"
+    },
+    {
+      "archive": "orchestration.sh",
+      "actual": "/tmp/foremanhq-active-wizard-repeat-candidate120-ready-v2.sh",
+      "sha256": "e71513e911a5c389b025f8a3bcd202306daa3cf3274c8d7912d1c8d850ed3ef1"
+    },
+    {
+      "archive": "reuse-helper.mjs",
+      "actual": "/tmp/foremanhq-active-wizard-repeat-reuse-frozen-app.mjs",
+      "sha256": "039ab45b886bc6dfcecedbe4022b376992fe6e35c673527f1466d7d144ff04fb"
+    },
+    {
+      "archive": "protocol-guard.mjs",
+      "actual": "/tmp/foremanhq-active-wizard-repeat-protocol-guard.mjs",
+      "sha256": "7f5a18a71547b0d967aa670e3f2a26c8c6d9ababbf9d466be98c27c500d9ed85"
+    },
+    {
+      "archive": "reference-guard.mjs",
+      "actual": "/tmp/foremanhq-active-wizard-repeat-reference-guard.mjs",
+      "sha256": "9dd9c22e1ae85639de13f2f1e9802f52fb03b4c6e40130a42e366ee214d0445c"
+    },
+    {
+      "archive": "source-after.mjs",
+      "actual": "/tmp/foremanhq-active-wizard-repeat-source-after.mjs",
+      "sha256": "0717c3190e0cb8a5938689b3a73b4770f4cb20fa12563177723b374925f4eb45"
+    },
+    {
+      "archive": "storage-preflight.mjs",
+      "actual": "/tmp/foremanhq-active-wizard-repeat-storage-preflight.mjs",
+      "sha256": "d9a8db085d0c71342579eae0cdbb15b0f5d8b1c0e042cd4f182f19a0d9041b5d"
+    }
+  ],
+  "postCaptureValidation": "Both repeatability and default regression always run, separate logs/status; either failure rejects."
+}

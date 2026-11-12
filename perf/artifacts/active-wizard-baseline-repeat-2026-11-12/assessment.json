@@ -1,0 +1,36 @@
+{
+  "status": "rejected-active-source-repeatability",
+  "acceptedBaselinePair": false,
+  "sampleCount": 120,
+  "cells": 24,
+  "passingRepeatabilityCells": 23,
+  "fixedFirst": "/home/tim/.openclaw/workspace/kublai/perf/artifacts/wizard-fastlane-ready-then-pinch-v2-2026-11-12/report.json",
+  "fixedFirstSha256": "50a18a58409e9db3b19c5a3e2211fd7c4228437e8c65f7b0668f5db79eae6583",
+  "repeatabilityErrors": [
+    "openmateriallist/Office: independent-run medians differ by more than 10% (205.81705700000748 vs 232.02931200002786ms)"
+  ],
+  "comparisonErrors": [
+    "openmateriallist/Office: median 232.0ms exceeds 205.8ms baseline +10%"
+  ],
+  "validationErrors": [],
+  "sourceBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+  "sourceFingerprint": "34f0c1508584e40382ad25955b3aa2b5703bdd78ced4e6ef2536e902fd82281d",
+  "sourceFileCount": 2200,
+  "unchangedFilesChecked": 2195,
+  "harnessFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "protocol": "ready-then-pinch-v2",
+  "noRetriesOrExclusions": true,
+  "doesNotClearR20": true,
+  "liveChanged": false,
+  "qualification": "Independent same-source pair failed the unchanged threshold; it must not be treated as an accepted active-source pair. No causal attribution from medians or frame-sized differences.",
+  "host": "No declared agent-driven heavy work/ADB during quiet; production web/worker and ordinary OS background activity remained running.",
+  "limitations": [
+    "StubClerk excludes real authentication startup",
+    "DesktopChromium mobileemulation not physicalPixel/Safari",
+    "Stock next start not production Brotli wrapper",
+    "Nonhexisolatedbuild disables privateSWbinding/reload branches",
+    "Two-rAF paintopportunity not physicalsameframe",
+    "Jobs-only idle HTTP request lifetime not SSEheartbeat proof",
+    "Does not establish20-run falsealarm calibration"
+  ]
+}

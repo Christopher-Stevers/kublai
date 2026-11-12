@@ -1,0 +1,11 @@
+--- perf/artifacts/wizard-fastlane-preparation-2026-11-12/storage-preflight.mjs	2026-11-11 19:47:01.863753237 -0500
++++ perf/artifacts/active-wizard-baseline-repeat-preparation-2026-11-12/storage-preflight.mjs	2026-11-11 20:37:56.149324233 -0500
+@@ -5,7 +5,7 @@
+ import { createHash } from "node:crypto";
+ const mode = process.argv[2];
+ if (!["compile", "full"].includes(mode)) throw Error("wizard fastlane storage phase required");
+-const root = `/tmp/foremanhq-wizard-fastlane-${mode}-storage`;
++const root = `/tmp/foremanhq-active-wizard-repeat-${mode}-storage`;
+ if (fs.existsSync(root)) throw Error("Fresh wizard fastlane storage output required");
+ fs.mkdirSync(root,{mode:0o700});
+ const cache = "/tmp/foremanhq-speed-app-5h2kmq";

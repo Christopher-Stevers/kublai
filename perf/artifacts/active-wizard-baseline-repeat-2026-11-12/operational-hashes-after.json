@@ -1,0 +1,30 @@
+[
+  {
+    "path": "/tmp/foremanhq-active-wizard-repeat-full-command.sh",
+    "sha256": "c572dc5ac0fbf93cb6d0a0a38aba1ae60fa3634fcc5a337e1e64a62abdd921b8"
+  },
+  {
+    "path": "/tmp/foremanhq-active-wizard-repeat-candidate120-ready-v2.sh",
+    "sha256": "e71513e911a5c389b025f8a3bcd202306daa3cf3274c8d7912d1c8d850ed3ef1"
+  },
+  {
+    "path": "/tmp/foremanhq-active-wizard-repeat-reuse-frozen-app.mjs",
+    "sha256": "039ab45b886bc6dfcecedbe4022b376992fe6e35c673527f1466d7d144ff04fb"
+  },
+  {
+    "path": "/tmp/foremanhq-active-wizard-repeat-protocol-guard.mjs",
+    "sha256": "7f5a18a71547b0d967aa670e3f2a26c8c6d9ababbf9d466be98c27c500d9ed85"
+  },
+  {
+    "path": "/tmp/foremanhq-active-wizard-repeat-reference-guard.mjs",
+    "sha256": "9dd9c22e1ae85639de13f2f1e9802f52fb03b4c6e40130a42e366ee214d0445c"
+  },
+  {
+    "path": "/tmp/foremanhq-active-wizard-repeat-source-after.mjs",
+    "sha256": "0717c3190e0cb8a5938689b3a73b4770f4cb20fa12563177723b374925f4eb45"
+  },
+  {
+    "path": "/tmp/foremanhq-active-wizard-repeat-storage-preflight.mjs",
+    "sha256": "d9a8db085d0c71342579eae0cdbb15b0f5d8b1c0e042cd4f182f19a0d9041b5d"
+  }
+]

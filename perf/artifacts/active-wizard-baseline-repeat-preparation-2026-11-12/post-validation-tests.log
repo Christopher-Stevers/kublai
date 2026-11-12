@@ -1,0 +1,11 @@
+✔ both validations execute and statuses propagate (1/0) (7.214992ms)
+✔ both validations execute and statuses propagate (0/1) (4.854682ms)
+✔ both validations execute and statuses propagate (0/0) (4.850748ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 49.108739

@@ -1,0 +1,25 @@
+{
+  "observedAt": "2026-11-12T02:11:43Z",
+  "runnerExitCode": 1,
+  "next": [
+    {
+      "pid": 142622,
+      "exitCode": 0,
+      "absent": true
+    },
+    {
+      "pid": 144873,
+      "exitCode": 0,
+      "absent": true
+    }
+  ],
+  "postgresPid": 142412,
+  "postgresAbsent": true,
+  "privateSocketDirectory": "/tmp/foremanhq-perf-pg.x0oztB",
+  "privateSocketRemoved": true,
+  "port3481Closed": true,
+  "unexpectedPgErrors": 0,
+  "shutdownFailed": 0,
+  "evidenceCopyFailed": 0,
+  "qualification": "PG log copied before helper shutdown; process/socket absence independently verified after helper exit."
+}

@@ -1,0 +1,10 @@
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import{validateReference,firstPath}from'/tmp/foremanhq-active-wizard-repeat-reference-guard.mjs';
+const first=JSON.parse(fs.readFileSync(firstPath));const good={PERF_SHEET_PROTOCOL:'ready-then-pinch-v2',PERF_COMPARISON_BASELINE:firstPath,PERF_SOURCE_ROOT:'/home/tim/.openclaw/workspace/releases/speed-phase0-wizard-fastlane-20261112',PERF_SOURCE_BUILD_DIST:'/home/tim/.openclaw/workspace/releases/speed-phase0-wizard-fastlane-20261112/.next-web',PERF_BASELINE_DIST:'/home/tim/.openclaw/workspace/releases/speed-phase0-bootstrap-20261110/.next-canonical-a',PERF_REUSE_SNAPSHOT:'/tmp/foremanhq-speed-app-fxHxrn',PERF_HARNESS_DIR:'/tmp/foremanhq-perf-method-f9bHR6',PERF_IDLE_DURATION_MS:'600000',PERF_DIAGNOSTICS:'0',CHROMIUM_PATH:'/usr/bin/chromium'};
+test('correct independent active-source reference accepted',()=>assert.equal(validateReference(good,first).doesNotClearR20,true));
+test('missing/wrong protocol rejected',()=>{for(const v of[undefined,'early-pinch-v1'])assert.throws(()=>validateReference({...good,PERF_SHEET_PROTOCOL:v},first));});
+test('old source report cannot represent active source',()=>assert.throws(()=>validateReference(good,{...first,sourceBuild:'c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d'})));
+test('different comparator rejected',()=>assert.throws(()=>validateReference({...good,PERF_COMPARISON_BASELINE:'other'},first)));
+test('selfzero static comparison rejected',()=>assert.throws(()=>validateReference({...good,PERF_BASELINE_DIST:good.PERF_SOURCE_BUILD_DIST},first)));
+test('subset selector rejected',()=>{for(const k of['PERF_PILOT','PERF_LINKS','PERF_JOURNEYS','PERF_RUNS'])assert.throws(()=>validateReference({...good,[k]:'1'},first));});
+test('new diagnostic/browser selector rejected',()=>{for(const[k,v]of[['PERF_DIAGNOSTICS','1'],['CHROMIUM_PATH','other']])assert.throws(()=>validateReference({...good,[k]:v},first));});
+test('first static values must stay unchanged',()=>assert.throws(()=>validateReference(good,{...first,static:{...first.static,deployGzipBytes:0}})));

@@ -1,0 +1,1 @@
+Speed regression budgets pass (lab evidence only; field/Phase 0 gate remains separate).

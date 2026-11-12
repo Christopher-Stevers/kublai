@@ -1,0 +1,162 @@
+[
+  {
+    "capture": "fixed-first",
+    "sample": {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 153
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 204.49554000003263,
+      "variant": "visited"
+    }
+  },
+  {
+    "capture": "fixed-first",
+    "sample": {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 152.2000002861023
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 203.7929249999579,
+      "variant": "visited"
+    }
+  },
+  {
+    "capture": "fixed-first",
+    "sample": {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 192
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 262.1710899999598,
+      "variant": "visited"
+    }
+  },
+  {
+    "capture": "fixed-first",
+    "sample": {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 158.7000002861023
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 233.11124100000598,
+      "variant": "visited"
+    }
+  },
+  {
+    "capture": "fixed-first",
+    "sample": {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 154.80000019073486
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 205.81705700000748,
+      "variant": "visited"
+    }
+  },
+  {
+    "capture": "independent-repeat",
+    "sample": {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 157.2000002861023
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Office",
+      "run": 0,
+      "durationMs": 232.02931200002786,
+      "variant": "visited"
+    }
+  },
+  {
+    "capture": "independent-repeat",
+    "sample": {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 157.69999980926514
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Office",
+      "run": 1,
+      "durationMs": 233.0149209999945,
+      "variant": "visited"
+    }
+  },
+  {
+    "capture": "independent-repeat",
+    "sample": {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 158
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Office",
+      "run": 2,
+      "durationMs": 230.83792200009339,
+      "variant": "visited"
+    }
+  },
+  {
+    "capture": "independent-repeat",
+    "sample": {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 160.7999997138977
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Office",
+      "run": 3,
+      "durationMs": 233.59752099995967,
+      "variant": "visited"
+    }
+  },
+  {
+    "capture": "independent-repeat",
+    "sample": {
+      "browserMeasures": [
+        {
+          "name": "tap-to-paint",
+          "durationMs": 168.40000009536743
+        }
+      ],
+      "journey": "openmateriallist",
+      "link": "Office",
+      "run": 4,
+      "durationMs": 220.11583299993072,
+      "variant": "visited"
+    }
+  }
+]

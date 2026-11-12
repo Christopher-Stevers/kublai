@@ -1,0 +1,61 @@
+--- perf/artifacts/wizard-fastlane-preparation-2026-11-12/orchestration.sh	2026-11-11 19:47:01.863533276 -0500
++++ perf/artifacts/active-wizard-baseline-repeat-preparation-2026-11-12/orchestration.sh	2026-11-11 20:41:38.253808102 -0500
+@@ -8,7 +8,7 @@
+ : "${PERF_BASELINE_DIST:?Set actual previous canonical release build directory}"
+ : "${PERF_SOURCE_BUILD_DIST:?Set actual canonical source release build directory}"
+ if [[ -n "${PERF_REUSE_SNAPSHOT:-}" ]]; then
+-  snapshot=$(node /tmp/foremanhq-wizard-fastlane-reuse-frozen-app.mjs)
++  snapshot=$(node /tmp/foremanhq-active-wizard-repeat-reuse-frozen-app.mjs)
+ else
+   snapshot=$(node "$harness_root/perf/create-lab-snapshot.mjs")
+ fi
+@@ -40,19 +40,19 @@
+ preserve_evidence() {
+   local destination=${PERF_RUN_EVIDENCE_DIR:?}
+   local failed=0
+-  [[ "$destination" == /tmp/foremanhq-wizard-fastlane-full-v2-evidence ]] || return 1
++  [[ "$destination" == /tmp/foremanhq-active-wizard-repeat-full-v2-evidence ]] || return 1
+   [[ "${PERF_LAB_SOCKET:-}" == /tmp/foremanhq-perf-pg.* ]] || return 1
+   # Explicit status handling: callers may invoke this function in an OR-list,
+   # where bash disables errexit even inside the function. Try all safe copies.
+   cp "$PERF_LAB_SOCKET/schema-inventory.json" "$destination/schema-inventory.json" || failed=1
+   cp "$PERF_LAB_SOCKET/server.log" "$destination/private-pg-before-helper-shutdown.log" || failed=1
+   cp "$PERF_LAB_FIXTURES" "$destination/fixtures.json" || failed=1
+-  for name in preflight.json source-evidence.json idle.json static-bytes.json lab-static-bytes.json static.json candidate.json candidate-regression.txt server.log; do
++  for name in preflight.json source-evidence.json idle.json static-bytes.json lab-static-bytes.json static.json candidate.json candidate-regression.txt baseline-repeatability.txt validation-status.json server.log; do
+     if [[ -f "$snapshot/$name" ]]; then
+       cp "$snapshot/$name" "$destination/$name" || failed=1
+     fi
+   done
+-  node /tmp/foremanhq-wizard-fastlane-source-after.mjs || failed=1
++  node /tmp/foremanhq-active-wizard-repeat-source-after.mjs || failed=1
+   return "$failed"
+ }
+ final_cleanup() {
+@@ -84,7 +84,7 @@
+ node "$harness_root/scripts/release/static-metrics.mjs" "$snapshot/.next" "$PERF_BASELINE_DIST" > "$snapshot/lab-static-bytes.json"
+ start_server
+ node "$harness_root/perf/preflight.mjs"
+-node /tmp/foremanhq-wizard-fastlane-protocol-guard.mjs > "$PERF_RUN_EVIDENCE_DIR/effective-environment-before-idle.json"
++node /tmp/foremanhq-active-wizard-repeat-reference-guard.mjs > "$PERF_RUN_EVIDENCE_DIR/effective-environment-before-idle.json"
+ PERF_IDLE_OUTPUT="$snapshot/idle.json" node "$harness_root/perf/idle.mjs"
+ node --input-type=module -e 'import fs from "node:fs";const bytes=JSON.parse(fs.readFileSync("static-bytes.json"));const idle=JSON.parse(fs.readFileSync("idle.json"));if(bytes.build!==idle.sourceBuild)throw Error("Canonical static and idle source build mismatch");fs.writeFileSync("static.json",JSON.stringify({...bytes,idlePolls:idle.idlePolls,idleEvidence:idle},null,2));'
+ export PERF_STATIC_REPORT="$snapshot/static.json"
+@@ -93,8 +93,15 @@
+ cleanup; server_pid=
+ node "$harness_root/perf/lab/reset-writes.mjs"
+ start_server
+-node /tmp/foremanhq-wizard-fastlane-protocol-guard.mjs > "$PERF_RUN_EVIDENCE_DIR/effective-environment-before-matrix.json"
++node /tmp/foremanhq-active-wizard-repeat-reference-guard.mjs > "$PERF_RUN_EVIDENCE_DIR/effective-environment-before-matrix.json"
+ PERF_OUTPUT="$snapshot/candidate.json" node "$harness_root/perf/run.mjs"
+ printf '%s\n' "Independent complete candidate capture finished."
+-node "$harness_root/perf/check.mjs" --baseline "$PERF_COMPARISON_BASELINE" --report "$snapshot/candidate.json" > "$snapshot/candidate-regression.txt" 2>&1 || { cat "$snapshot/candidate-regression.txt"; exit 1; }
++# Both post-capture validations run even if either fails.
++repeat_status=0
++comparison_status=0
++node "$harness_root/perf/check.mjs" --baseline "$PERF_COMPARISON_BASELINE" --report "$snapshot/candidate.json" --repeatability > "$snapshot/baseline-repeatability.txt" 2>&1 || repeat_status=$?
++node "$harness_root/perf/check.mjs" --baseline "$PERF_COMPARISON_BASELINE" --report "$snapshot/candidate.json" > "$snapshot/candidate-regression.txt" 2>&1 || comparison_status=$?
++printf '{"repeatabilityExitCode":%s,"comparisonExitCode":%s}\n' "$repeat_status" "$comparison_status" > "$snapshot/validation-status.json"
++cat "$snapshot/baseline-repeatability.txt"
+ cat "$snapshot/candidate-regression.txt"
++if [[ "$repeat_status" != 0 || "$comparison_status" != 0 ]];then exit 1;fi
