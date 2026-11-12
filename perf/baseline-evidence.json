@@ -1798,8 +1798,17 @@
       "scopedLintTypesPassed": true,
       "browserPassed": false,
       "actualNetworkChunkRetryProven": false,
-      "canonicalBytesStatus": "new source canonical preparation authorized",
-      "activated": false
+      "canonicalBytesStatus": "compiled, shared/heaviest improved, rejected by deployment byte ratchet and strict 100000-byte limit",
+      "activated": false,
+      "canonicalProofCommit": "1d5d8cb2",
+      "canonicalBuild": "691e09fdbca897d0e0bf4d03f70f67fa7829b6c457b8605977f04cc3315d233a",
+      "metrics": {
+        "sharedGzipBytes": 502103,
+        "screenGzipBytes": 758016,
+        "deployGzipBytes": 268670
+      },
+      "strictSmallChangePassed": false,
+      "cleanupPassed": true
     }
   }
 }

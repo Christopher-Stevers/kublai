@@ -1386,3 +1386,20 @@ import transport. Actual browser chunk retry and new canonical bytes are not yet
 proved. This source is separate from the rejected two-file candidate and the
 live app. One canonical byte attempt is authorized to assess the new proposal;
 no full matrix or activation is authorized by this checkpoint.
+
+## Revised notification byte result — 2026-11-12
+
+The separate three-path panel build passed production types/prerender and exact
+source/public/history checks on its first attempt (`1d5d8cb2`). Shared/heaviest
+bytes each improved by 513, to 502,103/758,016 gzip bytes. Changed deployment
+bytes rose to 268,670 across 27 scripts, failing the active deployment ratchet
+and strict 100,000-byte limit. This candidate is also rejected. No HTTP check,
+new full matrix or activation followed; all owned build processes are stopped.
+
+This continuation delivered the tested asset-request read slice, exact inline
+notification proof, tested optional-panel proposal and a ten-operation timing
+diagnostic. The next engineering problems are stable shared-code boundaries
+that avoid update churn and a separately reviewed input-to-ready timing method
+with new calibration evidence. Neither failed candidate nor the failed active
+baseline repeat is waived. Production remains the previously approved fastlane
+release; Phase 1 and full Phase 0 sign-off remain incomplete.
