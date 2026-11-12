@@ -1308,9 +1308,16 @@ it("numbers comparisons in displayed order and keeps the number on completed bad
   expect(badges[1]!.querySelector("svg")).not.toBeNull();
 });
 
+it("treats a short line confirmed as read as settled; the rest stays due", async () => {
+  Object.assign(state.review.lines[0]!, { checked: true, quantity: 6 });
+  render(<ReceivingWorkspace jobId="job" />);
+  const row = (await screen.findByRole("heading", { name: "Valve" })).closest("li")!;
+  expect(row.querySelector("[data-comparison-state]")).toHaveAttribute("data-comparison-state", "complete");
+  expect(within(row).getByText("2 short")).toBeInTheDocument();
+});
+
 it.each([
   { checked: false, quantity: 8, orderItemId: "item" },
-  { checked: true, quantity: 6, orderItemId: "item" },
   { checked: true, quantity: 9, orderItemId: "item" },
   { checked: true, quantity: null, orderItemId: "item" },
   { checked: true, quantity: 8, orderItemId: null },
@@ -1467,11 +1474,14 @@ it("saves a Resolve correction for review without confirming or approving", asyn
   expect(posts.some((p) => p.action === "approve")).toBe(false);
 });
 
-it("keeps unresolved absent-order-item notes in the review count", async () => {
+it.each([
+  ["unresolved", "1 still to review"],
+  ["cancel-requested", "2 still to review"],
+] as const)("counts only a cancellation of an absent order item in the review count (%s)", async (disposition, text) => {
   Object.assign(state.review, {
     orderResolutions: {
       absent: {
-        disposition: "unresolved",
+        disposition,
         note: "Ask supplier",
         by: "user",
         at: "now",
@@ -1479,7 +1489,7 @@ it("keeps unresolved absent-order-item notes in the review count", async () => {
     },
   });
   render(<ReceivingWorkspace jobId="job" />);
-  await screen.findByText("2 still to review");
+  await screen.findByText(text);
 });
 
 it("shows what's needed from Resolve on the line's row", async () => {
@@ -1885,7 +1895,7 @@ it("does not offer adding parts to a reviewer without creation permission", asyn
   expect(await screen.findByRole("menuitem", {name:"View on slip"})).toBeVisible();
   expect(screen.queryByRole("menuitem", {name:"Add this part to material list"})).not.toBeInTheDocument();
 });
-it.each([10, 9, null])("only offers Accept With Backorder when printed BO accounts for the full shortage (%s)", async (bo) => {
+it.each([10, 9, null])("offers one Accept for a line where nothing came, whatever the printed BO (%s)", async (bo) => {
   state.items[0]!.received = 0;
   state.review.lines[0]!.quantity = 0;
   Object.assign(state.review, { analysisRunId: "run" });
@@ -1904,14 +1914,17 @@ it.each([10, 9, null])("only offers Accept With Backorder when printed BO accoun
     expect(backorder?.parentElement?.querySelectorAll("dt")[1]).toHaveTextContent("Received");
     expect(screen.queryByText(/accounts for the shortage/)).not.toBeInTheDocument();
   }
-  const accept = screen.queryByRole("button", { name: "Accept With Backorder" });
-  if (bo !== 10) { expect(accept).toBeNull(); return; }
-  expect(accept).toBeEnabled();
-  fireEvent.click(accept!);
+  // A BO figure that disagrees is a note on the line, not a block.
+  if (bo === 9) expect(screen.getByText(/BO mismatch/)).toBeInTheDocument();
+  if (bo === null) expect(screen.getByText(/BO quantity not found/)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Accept With Backorder" })).toBeNull();
+  const accept = screen.getByRole("button", { name: "Accept" });
+  fireEvent.click(accept);
   await waitFor(() => expect(posts).toHaveLength(1));
   expect(posts[0]).toMatchObject({ action: "resolve", lineId: "0",
     delivery: "short", siteQuantity: 0, acceptedQuantity: 0,
-    remainder: "backordered", match: "confirmed", quantity: "confirmed" });
+    remainder: bo === 10 ? "backordered" : null, match: "confirmed", quantity: "confirmed" });
+  expect(state.items[0]!.received).toBe(0);
   expect(state.items[0]!.received).toBe(0);
 });
 it("uses the same confirmation action with standard wording for a matching delivery", async () => {
@@ -2036,8 +2049,9 @@ it("accepts a matching comparison with the animated button", async () => {
 });
 it("offers Accept only when it settles the row", async () => {
   confirmSetup();
+  state.review.lines[0]!.quantity = 9;
   render(<ReceivingWorkspace jobId="job" />);
-  // 6 of the 8 still due, and a line with no quantity.
+  // 9 for the 8 still due, and a line with no quantity.
   const valve = (await screen.findByRole("heading", { name: "Valve" })).closest(
     "li",
   )!;
@@ -2394,7 +2408,20 @@ it("opens selection from a long press on an empty slip half", async () => {
 });
 
 
-it.each([3, 12])("accepts a part match independently when the slip quantity is %s", async (quantity) => {
+it("accepts a short line without a backorder question; the rest stays due", async () => {
+  confirmSetup();
+  render(<ReceivingWorkspace jobId="job" />);
+  // 6 of the 8 still due.
+  const row = (await screen.findByRole("heading", { name: "Valve" })).closest("li")!;
+  expect(within(row).queryByRole("button", { name: "Accept Match" })).toBeNull();
+  fireEvent.click(confirmButton(row)!);
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toMatchObject({ action: "resolve", lineId: "0", match: "confirmed",
+    quantity: "confirmed", delivery: "confirmed", siteQuantity: 6, acceptedQuantity: 6, remainder: null });
+  expect(state.review.lines[0]!.approved).toBeUndefined();
+});
+
+it.each([12])("accepts a part match independently when the slip quantity is %s", async (quantity) => {
   confirmSetup();
   state.review.lines[0]!.quantity = quantity;
   render(<ReceivingWorkspace jobId="job" />);
@@ -2453,4 +2480,13 @@ it.each([1, 0])("queue separates unchecked lines from ready receipts (%s uncheck
   render(<ReceivingWorkspace jobId="job" />);
   expect(await screen.findByText(toReview ? "1 to check" : "10 ready to approve")).toBeInTheDocument();
   expect(screen.queryByText("10 to check")).not.toBeInTheDocument();
+});
+
+it("marks a part-received order as still waiting and says what Accept means", async () => {
+  render(<ReceivingWorkspace jobId="job" />);
+  const match = await screen.findByRole("region", { name: "Step 2: Match" });
+  expect(within(match).getByRole("button", { name: "Still waiting for material: 1 item" })).toHaveAttribute(
+    "title", "Still waiting for material\n8 · Valve");
+  const lines = screen.getByRole("region", { name: "Step 3: Line By Line Matching" });
+  expect(within(lines).getByText(/Accept when the slip was read correctly and matched to the right order item\. It does not mean everything arrived\./)).toBeInTheDocument();
 });

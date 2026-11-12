@@ -3,6 +3,8 @@ import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
 import { ChevronDownIcon } from "lucide-react";
 import { cn } from "~/lib/utils";
 import type { ReceiptOrderItem, SlipAnalysis } from "~/lib/packing-slip-review";
+import { orderStillWaiting } from "~/lib/order-waiting";
+import { OrderWaitingWarning } from "./OrderWaitingWarning";
 
 const round = (n: number) => Math.round(n * 1e6) / 1e6;
 
@@ -48,7 +50,13 @@ export function DeliveryTracker({
       <summary className="cursor-pointer list-none space-y-2 p-3 sm:p-4">
         <span className="flex items-center gap-3">
           <span className="min-w-0 flex-1">
-            <span className="block font-medium">Order receiving</span>
+            <span className="flex items-center gap-1 font-medium">
+              Order receiving
+              <OrderWaitingWarning
+                className="-my-1"
+                items={orderStillWaiting(items)}
+              />
+            </span>
             <span className="text-muted-foreground block text-xs">
               {complete} of {items.length} items fully received ·{" "}
               {deliveries.length}{" "}

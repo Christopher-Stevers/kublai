@@ -69,6 +69,7 @@ export function MaterialListSheet({
             count={section.items.length}
             orderId={section.orderId}
             sectionKey={section.key}
+            waiting={section.waiting}
             className={`sticky left-0 px-3 pb-2 ${index ? "pt-5" : "pt-3"}`}
           />
         )}

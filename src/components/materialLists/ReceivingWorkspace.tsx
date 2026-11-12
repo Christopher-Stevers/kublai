@@ -14,6 +14,8 @@ import { missingPagesWarning, readSlipText } from "~/lib/slip-pages";
 import { supplierClaim } from "~/lib/supplier-claim";
 import { SupplierClaimDialog } from "./SupplierClaimDialog";
 import { AutopilotNotice } from "./AutopilotNotice";
+import { OrderWaitingWarning } from "./OrderWaitingWarning";
+import { orderStillWaiting } from "~/lib/order-waiting";
 import { materialIssueLabels, materialMarkedForReturn } from "~/lib/receiving-resolution";
 import {
   receivingDisplayUnit,
@@ -1112,13 +1114,16 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                   }
                   action={
                     orderStep === "done" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setChangingOrder(true)}
-                      >
-                        Change
-                      </Button>
+                      <>
+                        <OrderWaitingWarning items={orderStillWaiting(detail.items)} />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setChangingOrder(true)}
+                        >
+                          Change
+                        </Button>
+                      </>
                     )
                   }
                 >
@@ -1188,6 +1193,13 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                             }}
                           />
                         </div>
+                      )}
+                      {!linesDone && detail.items.length > 0 && (
+                        <p className="text-muted-foreground px-4 pt-3 pb-1 text-xs">
+                          Accept when the slip was read correctly and matched
+                          to the right order item. It does not mean everything
+                          arrived. Anything still to come stays on the order.
+                        </p>
                       )}
                       {(detail.items.length > 0 || r.lines.length > 0) && (
                         <OrderComparison
@@ -2156,7 +2168,10 @@ function QuantityPair({
     </dl>
   );
 }
-type Verdict = { ok: boolean; label: string; text: string };
+type Verdict = { ok: boolean; label: string; text: string; short?: boolean };
+/** A short count is right information: the rest stays due on the order. */
+const settlesOrder = (v: Verdict | null | undefined) =>
+  v?.ok === true || v?.short === true;
 /** Whether a count, already in the order's unit, covers what is still due.
  * Parts counted by hand on the order may be the slip's own, so a count they
  * cover is not more than needed. */
@@ -2187,6 +2202,7 @@ function dueVerdict(
           ok: false,
           label: `${receivingQuantity(qtyRound(due - got), item.unit)} short`,
           text: amber.text,
+          short: true,
         }
       : {
           ok: false,
@@ -2815,11 +2831,13 @@ function OrderComparison({
           line.checked === true &&
           resolutionBlockers(line, item, r.lines, r.kind).length === 0,
       ) &&
-      compareToOrder(
-        item,
-        live.map(({ line }) => line),
-        byHand,
-      )?.ok === true &&
+      settlesOrder(
+        compareToOrder(
+          item,
+          live.map(({ line }) => line),
+          byHand,
+        ),
+      ) &&
       status !== "correction";
     const disposition = item ? r.orderResolutions?.[item.id] : undefined;
     const complete =
@@ -2837,7 +2855,8 @@ function OrderComparison({
   // What Accept saves for a row: each slip line
   // linked to the order item and confirmed as read, or an order item no slip
   // line covers marked still due. Null unless that alone settles the row, so
-  // a short count or an open decision still goes through Resolve.
+  // an excess, a unit question or an open decision still goes through
+  // Resolve. A short count settles: the rest stays due on the order.
   type Plan = {
     actions: Action[];
     fit?: { fit: PartFit; unit: string; index: number };
@@ -2988,7 +3007,7 @@ function OrderComparison({
       (l) =>
         l.checked === true &&
         resolutionBlockers(l, item, all, r.kind).length === 0,
-    ) && compareToOrder(item, settled, byHand)?.ok === true
+    ) && settlesOrder(compareToOrder(item, settled, byHand))
       ? { actions, fit: fits.length === 1 ? fits[0] : undefined }
       : null;
   };
@@ -3381,53 +3400,56 @@ function OrderComparison({
             });
           };
           const main = copies[0]!;
-          const backorderLine = live.length === 1 ? live[0]!.line : undefined;
-          const canAcceptBackorder = !sourceChanged && !complete && !!item && !!backorderLine &&
-            (backorderLine.kind ?? r.kind) === "delivery" &&
-            !backorderLine.approved && !backorderLine.resolution?.materialIssue &&
-            backorderLine.orderItemId === item.id && backorderLine.quantity === 0 &&
-            receivedLineQuantity(backorderLine) === 0 &&
-            receiptUnit(backorderLine.unit) === receiptUnit(item.unit) &&
-            due > 0 && backorderLine.ordered !== null && Math.abs(backorderLine.ordered - due) < 1e-6 &&
-            !!main.backorderChecks?.length && main.backorderChecks.every(check => check.ok) &&
-            !approvable(backorderLine, r.kind, item, r.lines);
-          const canConfirmInformation = canAcceptBackorder || (
-            !sourceChanged && !complete && !!item && !!backorderLine &&
-            (backorderLine.kind ?? r.kind) === "delivery" &&
-            !backorderLine.approved && !backorderLine.checked && !backorderLine.resolution?.materialIssue &&
-            backorderLine.orderItemId === item.id && backorderLine.quantity !== null && backorderLine.quantity > 0 &&
-            receivedLineQuantity(backorderLine) === backorderLine.quantity &&
-            compareToOrder(item, [backorderLine], byHand)?.ok === true &&
-            !main.backorderChecks?.some(check => !check.ok)
-          );
+          const single = live.length === 1 ? live[0]!.line : undefined;
+          // Accept confirms the slip was read right and matched to this
+          // item. A short count is fine; the rest stays due on the order.
+          // A slip BO figure is recorded when it accounts for the shortage,
+          // and shown as a note when it does not.
+          const canConfirmInformation =
+            !sourceChanged && !complete && !!item && !!single &&
+            (single.kind ?? r.kind) === "delivery" &&
+            !single.approved && !single.resolution?.materialIssue &&
+            single.orderItemId === item.id && single.quantity !== null &&
+            receivedLineQuantity(single) === single.quantity &&
+            (single.quantity > 0
+              ? !single.checked &&
+                settlesOrder(compareToOrder(item, [single], byHand))
+              : due > 0 &&
+                receiptUnit(single.unit) === receiptUnit(item.unit) &&
+                !approvable(single, r.kind, item, r.lines));
+          const nothingCame = single?.quantity === 0;
+          const slipBackorder =
+            !!single && single.quantity !== null && due - single.quantity > 1e-6 &&
+            !!main.backorderChecks?.length && main.backorderChecks.every((check) => check.ok);
           // One Accept button: the slip's own confirmation when it fits,
           // otherwise the links and decisions that settle the row.
           const plan: Plan | null =
             complete || mine || cheer
               ? null
-              : canConfirmInformation && backorderLine && item
+              : canConfirmInformation && single && item
                 ? {
                     actions: [{
                       action: "resolve",
-                      lineId: backorderLine.id,
-                      evidenceFingerprint: resolutionEvidenceFingerprint(backorderLine),
+                      lineId: single.id,
+                      evidenceFingerprint: resolutionEvidenceFingerprint(single),
                       counterpartFingerprint: resolutionCounterpartFingerprint(item),
                       match: "confirmed",
                       specification: "confirmed",
                       quantity: "confirmed",
-                      delivery: canAcceptBackorder ? "short" : "confirmed",
-                      siteQuantity: backorderLine.quantity,
-                      acceptedQuantity: backorderLine.quantity,
-                      remainder: canAcceptBackorder ? "backordered" : null,
+                      delivery: nothingCame ? "short" : "confirmed",
+                      siteQuantity: single.quantity,
+                      acceptedQuantity: single.quantity,
+                      remainder: slipBackorder ? "backordered" : null,
                       skipped: false,
-                      note: canAcceptBackorder ? "Nothing delivered; the slip BO accounts for the full outstanding quantity." : "Reviewer confirmed the displayed information is correct.",
+                      note: nothingCame
+                        ? slipBackorder
+                          ? "Nothing delivered; the slip BO accounts for the outstanding quantity."
+                          : "Nothing delivered on this slip; the quantity stays outstanding."
+                        : "Reviewer confirmed the displayed information is correct.",
                     }],
-                    label: canAcceptBackorder ? "Accept With Backorder" : "Accept",
-                    message: canAcceptBackorder ? "Backorder accepted. Nothing received; the full quantity remains outstanding." : undefined,
+                    message: nothingCame ? "Information confirmed. Nothing received; the quantity stays outstanding." : undefined,
                   }
-                : main.backorderChecks?.some((check) => !check.ok)
-                  ? null
-                  : linkPlan;
+                : linkPlan;
 
 
           // Confirming the identity of a part is independent of how many arrived.

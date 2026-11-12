@@ -514,7 +514,7 @@ export function MaterialListScreen({
                 <div data-tutorial="material-items" className="space-y-4">
                   {sections.map((section) => (
                   <MaterialFocusSection focused={!verifyOrderId && section.key === focusedSection?.key} key={section.key} aria-label={section.label ? `${section.label} parts` : undefined} data-order-id={section.orderId} className="space-y-3">
-                    {section.label && <MaterialSectionHeading label={section.label} detail={section.detail} href={section.href} count={section.items.length} orderId={section.orderId} sectionKey={section.key} />}
+                    {section.label && <MaterialSectionHeading label={section.label} detail={section.detail} href={section.href} count={section.items.length} orderId={section.orderId} sectionKey={section.key} waiting={section.waiting} />}
                     <div className="grid items-stretch grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-3">
                       {section.items.map((item) => {
                         const verifyOrderItem = verifyOrder?.items.find((orderItem) =>

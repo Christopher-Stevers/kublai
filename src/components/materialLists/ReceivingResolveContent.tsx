@@ -1468,9 +1468,7 @@ export function ReceivingResolve({
                   <option value="">No decision</option>
                   <option value="backordered">Backordered, still due</option>
                   <option value="cancelled">Cancellation requested</option>
-                  <option value="unexplained">
-                    Unexplained, keep unresolved
-                  </option>
+                  <option value="unexplained">Unexplained, still due</option>
                 </select>
               </Field>
               <Field name="Excess quantity">

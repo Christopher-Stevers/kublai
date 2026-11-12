@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { orderStillWaiting, type WaitingItem } from "~/lib/order-waiting";
+import { OrderWaitingWarning } from "./OrderWaitingWarning";
 
 /** Divides a material list into its orders and the parts not ordered yet. */
 export function MaterialSectionHeading({
@@ -8,6 +10,7 @@ export function MaterialSectionHeading({
   count,
   orderId,
   sectionKey,
+  waiting,
   className = "",
 }: {
   label: string;
@@ -18,6 +21,8 @@ export function MaterialSectionHeading({
    * once the heading scrolls up. */
   orderId?: string;
   sectionKey?: string;
+  /** What the order still waits for once receiving has begun. */
+  waiting?: WaitingItem[];
   className?: string;
 }) {
   return (
@@ -35,6 +40,9 @@ export function MaterialSectionHeading({
           label
         )}
       </h2>
+      {waiting && (
+        <OrderWaitingWarning className="-my-1 -ml-2" items={waiting} />
+      )}
       {detail && (
         <span className="text-muted-foreground text-xs">{detail}</span>
       )}
@@ -48,7 +56,15 @@ export function MaterialSectionHeading({
 
 type SectionItem = {
   sentOrderItemId?: string | null;
-  sentOrder?: { id: string; number: string | null; status: string; receivedQuantity?: string | number | null } | null;
+  sentOrder?: {
+    id: string;
+    number: string | null;
+    status: string;
+    quantity?: string | number | null;
+    receivedQuantity?: string | number | null;
+  } | null;
+  descriptionSnapshot?: string | null;
+  partDefinition?: { displayName?: string | null } | null;
   supplierPart?: { supplier?: { name: string } | null } | null;
 };
 export type MaterialSection<T> = {
@@ -59,6 +75,8 @@ export type MaterialSection<T> = {
   ordered: boolean;
   /** Outstanding quantities are only back ordered after receiving has begun. */
   hasReceivedItems?: boolean;
+  /** Parts on this list the order still waits for, once receiving began. */
+  waiting?: WaitingItem[];
   /** The order these parts were sent on, when it is still open. */
   orderId?: string;
   items: T[];
@@ -104,6 +122,26 @@ export function materialSections<T extends SectionItem>(
     if (order?.status !== "cancelled" && Number(order?.receivedQuantity) > 0) {
       section.hasReceivedItems = true;
     }
+  }
+  for (const section of orders.values()) {
+    if (!section.hasReceivedItems) continue;
+    const waiting = orderStillWaiting(
+      section.items.flatMap((item) =>
+        item.sentOrder?.quantity != null
+          ? [
+              {
+                description:
+                  item.partDefinition?.displayName ??
+                  item.descriptionSnapshot ??
+                  "Part",
+                ordered: Number(item.sentOrder.quantity),
+                received: Number(item.sentOrder.receivedQuantity ?? 0),
+              },
+            ]
+          : [],
+      ),
+    );
+    if (waiting.length) section.waiting = waiting;
   }
   return [
     ...(notOrdered.length
