@@ -1,5 +1,5 @@
 "use client";
-import { useCatalogueVisibility } from "~/components/catalogue/CatalogueVisibility";
+import { swallowTapClick, useCatalogueVisibility } from "~/components/catalogue/CatalogueVisibility";
 
 import { useArcScrollerOptions } from "~/components/ui/arc-scroller";
 import { wizardSizeOptions } from "~/lib/wizard-size-options";
@@ -114,6 +114,7 @@ function SizeCard({
   const finishSubSizeSelection = () => {
     const selectedSubSize = subSizes[selectedIndexRef.current];
     if (selectedSubSize) {
+      swallowTapClick();
       onSizeSelect({ nominal: size.nominal, unit: size.unit, sizeLabel: selectedSubSize.label });
     }
     onPreviewChange(null);
@@ -217,7 +218,8 @@ function SizeCard({
     updateSelectedIndex(event.clientY);
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (activePointerIdRef.current === null || activePointerIdRef.current !== event.pointerId) return;
     clearTimer();
     if (longPressTriggeredRef.current) {
       if (activePointerTypeRef.current === "touch") {
@@ -227,8 +229,12 @@ function SizeCard({
       finishSubSizeSelection();
       return;
     }
-    if (!movedRef.current)
+    if (!movedRef.current) {
+      // Choosing on lift replaces this card before the browser sends its
+      // click. Keep that trailing click off the next step's category cards.
+      swallowTapClick();
       onSizeSelect({ nominal: size.nominal, unit: size.unit, sizeLabel: null });
+    }
     resetInteraction();
   };
 
@@ -402,6 +408,7 @@ export function SizeStage({
       const selectedSubSize = preview?.size.subSizes?.[preview.selectedIndex];
 
       if (preview && selectedSubSize) {
+        swallowTapClick();
         onSizeSelect({
           nominal: preview.size.nominal,
           unit: preview.size.unit,

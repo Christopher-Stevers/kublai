@@ -44,10 +44,11 @@ export function hidesCriteria(
  * fires. A pick made on lift has already swapped in the next step by then, so
  * that click must not reach the card that appeared there.
  */
-function swallowTapClick() {
+export function swallowTapClick() {
   const done = () => {
     clearTimeout(timer);
     window.removeEventListener("click", swallow, true);
+    window.removeEventListener("pointerdown", done, true);
   };
   const swallow = (event: MouseEvent) => {
     if (event.detail === 0) return;
@@ -57,6 +58,9 @@ function swallowTapClick() {
   };
   const timer = setTimeout(done, 400);
   window.addEventListener("click", swallow, true);
+  // If the browser omits the compatibility click, a new gesture is still a
+  // deliberate choice. Do not consume that user's next tap instead.
+  window.addEventListener("pointerdown", done, true);
 }
 export function useCatalogueVisibility(
   criteria: CatalogueHideCriteria | CatalogueHideCriteria[] | undefined,
