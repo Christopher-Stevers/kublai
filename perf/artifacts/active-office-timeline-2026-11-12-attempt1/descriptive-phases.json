@@ -1,0 +1,725 @@
+{
+  "rows": [
+    {
+      "id": "block1-run1",
+      "adapterMs": 245.54744200000005,
+      "clickMs": 71.34900000000016,
+      "assertMs": 157.4000000000001,
+      "twoRafEvaluationMs": 15.804999999999836,
+      "browserMeasureMs": 165.2000002861023,
+      "anchorRoundtripMs": 1.9076139999997395,
+      "finishRoundtripMs": 19.501386999999795,
+      "inputHandlerDeltaMs": 1.1000003814697266,
+      "actionabilityLogs": [
+        {
+          "kind": "actionability",
+          "time": 2439.998
+        },
+        {
+          "kind": "actionability",
+          "time": 2463.53
+        },
+        {
+          "kind": "stable",
+          "time": 2496.435
+        },
+        {
+          "kind": "scroll",
+          "time": 2496.452
+        },
+        {
+          "kind": "input",
+          "time": 2499.542
+        },
+        {
+          "kind": "done",
+          "time": 2506.344
+        },
+        {
+          "kind": "navigation",
+          "time": 2506.348
+        }
+      ],
+      "apiSpans": {
+        "click": {
+          "start": 2435.223,
+          "end": 2506.572,
+          "duration": 71.34900000000016,
+          "callId": "call@120"
+        },
+        "assertion": {
+          "start": 2506.881,
+          "end": 2664.281,
+          "duration": 157.4000000000001,
+          "callId": "call@124"
+        },
+        "finalRafEvaluation": {
+          "start": 2664.692,
+          "end": 2680.497,
+          "duration": 15.804999999999836,
+          "callId": "call@130"
+        }
+      },
+      "browserMarkRaw": {
+        "name": "foremenhq:tap-to-paint",
+        "startTime": 2182.8999996185303,
+        "duration": 165.2000002861023,
+        "endTime": 2348.0999999046326
+      },
+      "pointerRaw": {
+        "type": "pointerdown",
+        "eventTimeStamp": 2180.699999809265,
+        "at": 2182.8999996185303,
+        "trusted": true,
+        "targetIsLocator": true
+      },
+      "clockQualification": "Browser-to-Node mapping is bounded by anchor RPC; API trace uses its own recorded monotonic/wall anchor. Do not subtract as corrected acceptance time."
+    },
+    {
+      "id": "block1-run2",
+      "adapterMs": 224.67917699999998,
+      "clickMs": 38.097999999999956,
+      "assertMs": 150.71200000000044,
+      "twoRafEvaluationMs": 34.64800000000014,
+      "browserMeasureMs": 157.5,
+      "anchorRoundtripMs": 2.1593710000006467,
+      "finishRoundtripMs": 4.064087000000654,
+      "inputHandlerDeltaMs": 0.5,
+      "actionabilityLogs": [
+        {
+          "kind": "actionability",
+          "time": 4540.191
+        },
+        {
+          "kind": "stable",
+          "time": 4563.325
+        },
+        {
+          "kind": "scroll",
+          "time": 4563.339
+        },
+        {
+          "kind": "input",
+          "time": 4566.283
+        },
+        {
+          "kind": "done",
+          "time": 4574.278
+        },
+        {
+          "kind": "navigation",
+          "time": 4574.286
+        }
+      ],
+      "apiSpans": {
+        "click": {
+          "start": 4536.907,
+          "end": 4575.005,
+          "duration": 38.097999999999956,
+          "callId": "call@259"
+        },
+        "assertion": {
+          "start": 4575.418,
+          "end": 4726.13,
+          "duration": 150.71200000000044,
+          "callId": "call@263"
+        },
+        "finalRafEvaluation": {
+          "start": 4726.523,
+          "end": 4761.171,
+          "duration": 34.64800000000014,
+          "callId": "call@271"
+        }
+      },
+      "browserMarkRaw": {
+        "name": "foremenhq:tap-to-paint",
+        "startTime": 1786.5,
+        "duration": 157.5,
+        "endTime": 1944
+      },
+      "pointerRaw": {
+        "type": "pointerdown",
+        "eventTimeStamp": 1783.4000000953674,
+        "at": 1786.5,
+        "trusted": true,
+        "targetIsLocator": true
+      },
+      "clockQualification": "Browser-to-Node mapping is bounded by anchor RPC; API trace uses its own recorded monotonic/wall anchor. Do not subtract as corrected acceptance time."
+    },
+    {
+      "id": "block1-run3",
+      "adapterMs": 234.30667600000015,
+      "clickMs": 41.292999999999665,
+      "assertMs": 161.4980000000005,
+      "twoRafEvaluationMs": 30.788000000000466,
+      "browserMeasureMs": 169.59999990463257,
+      "anchorRoundtripMs": 1.184306000000106,
+      "finishRoundtripMs": 3.641958000000159,
+      "inputHandlerDeltaMs": 0.8999996185302734,
+      "actionabilityLogs": [
+        {
+          "kind": "actionability",
+          "time": 6886.427
+        },
+        {
+          "kind": "stable",
+          "time": 6912.778
+        },
+        {
+          "kind": "scroll",
+          "time": 6912.785
+        },
+        {
+          "kind": "input",
+          "time": 6915.129
+        },
+        {
+          "kind": "done",
+          "time": 6923.633
+        },
+        {
+          "kind": "navigation",
+          "time": 6923.637
+        }
+      ],
+      "apiSpans": {
+        "click": {
+          "start": 6882.993,
+          "end": 6924.286,
+          "duration": 41.292999999999665,
+          "callId": "call@398"
+        },
+        "assertion": {
+          "start": 6924.57,
+          "end": 7086.068,
+          "duration": 161.4980000000005,
+          "callId": "call@402"
+        },
+        "finalRafEvaluation": {
+          "start": 7086.33,
+          "end": 7117.118,
+          "duration": 30.788000000000466,
+          "callId": "call@408"
+        }
+      },
+      "browserMarkRaw": {
+        "name": "foremenhq:tap-to-paint",
+        "startTime": 2089.6000003814697,
+        "duration": 169.59999990463257,
+        "endTime": 2259.2000002861023
+      },
+      "pointerRaw": {
+        "type": "pointerdown",
+        "eventTimeStamp": 2086,
+        "at": 2089.6000003814697,
+        "trusted": true,
+        "targetIsLocator": true
+      },
+      "clockQualification": "Browser-to-Node mapping is bounded by anchor RPC; API trace uses its own recorded monotonic/wall anchor. Do not subtract as corrected acceptance time."
+    },
+    {
+      "id": "block1-run4",
+      "adapterMs": 209.64068099999895,
+      "clickMs": 38.33899999999994,
+      "assertMs": 155.07799999999952,
+      "twoRafEvaluationMs": 14.23700000000099,
+      "browserMeasureMs": 163.40000009536743,
+      "anchorRoundtripMs": 1.784895000000688,
+      "finishRoundtripMs": 4.631327000000965,
+      "inputHandlerDeltaMs": 0.6999998092651367,
+      "actionabilityLogs": [
+        {
+          "kind": "actionability",
+          "time": 8924.1
+        },
+        {
+          "kind": "stable",
+          "time": 8945.946
+        },
+        {
+          "kind": "scroll",
+          "time": 8945.954
+        },
+        {
+          "kind": "input",
+          "time": 8949.066
+        },
+        {
+          "kind": "done",
+          "time": 8957.88
+        },
+        {
+          "kind": "navigation",
+          "time": 8957.887
+        }
+      ],
+      "apiSpans": {
+        "click": {
+          "start": 8920.206,
+          "end": 8958.545,
+          "duration": 38.33899999999994,
+          "callId": "call@537"
+        },
+        "assertion": {
+          "start": 8959.832,
+          "end": 9114.91,
+          "duration": 155.07799999999952,
+          "callId": "call@541"
+        },
+        "finalRafEvaluation": {
+          "start": 9115.265,
+          "end": 9129.502,
+          "duration": 14.23700000000099,
+          "callId": "call@549"
+        }
+      },
+      "browserMarkRaw": {
+        "name": "foremenhq:tap-to-paint",
+        "startTime": 1760.2999997138977,
+        "duration": 163.40000009536743,
+        "endTime": 1923.6999998092651
+      },
+      "pointerRaw": {
+        "type": "pointerdown",
+        "eventTimeStamp": 1757.0999999046326,
+        "at": 1760.4000000953674,
+        "trusted": true,
+        "targetIsLocator": true
+      },
+      "clockQualification": "Browser-to-Node mapping is bounded by anchor RPC; API trace uses its own recorded monotonic/wall anchor. Do not subtract as corrected acceptance time."
+    },
+    {
+      "id": "block1-run5",
+      "adapterMs": 227.89113800000086,
+      "clickMs": 36.917999999999665,
+      "assertMs": 153.26699999999983,
+      "twoRafEvaluationMs": 36.65799999999945,
+      "browserMeasureMs": 161.40000009536743,
+      "anchorRoundtripMs": 1.5951629999999568,
+      "finishRoundtripMs": 12.399916000000303,
+      "inputHandlerDeltaMs": 1.200000286102295,
+      "actionabilityLogs": [
+        {
+          "kind": "actionability",
+          "time": 10958.515
+        },
+        {
+          "kind": "stable",
+          "time": 10979.816
+        },
+        {
+          "kind": "scroll",
+          "time": 10979.831
+        },
+        {
+          "kind": "input",
+          "time": 10982.534
+        },
+        {
+          "kind": "done",
+          "time": 10990.521
+        },
+        {
+          "kind": "navigation",
+          "time": 10990.528
+        }
+      ],
+      "apiSpans": {
+        "click": {
+          "start": 10954.071,
+          "end": 10990.989,
+          "duration": 36.917999999999665,
+          "callId": "call@676"
+        },
+        "assertion": {
+          "start": 10991.369,
+          "end": 11144.636,
+          "duration": 153.26699999999983,
+          "callId": "call@680"
+        },
+        "finalRafEvaluation": {
+          "start": 11144.986,
+          "end": 11181.644,
+          "duration": 36.65799999999945,
+          "callId": "call@686"
+        }
+      },
+      "browserMarkRaw": {
+        "name": "foremenhq:tap-to-paint",
+        "startTime": 1765.5,
+        "duration": 161.40000009536743,
+        "endTime": 1926.9000000953674
+      },
+      "pointerRaw": {
+        "type": "pointerdown",
+        "eventTimeStamp": 1762.8000001907349,
+        "at": 1765.5,
+        "trusted": true,
+        "targetIsLocator": true
+      },
+      "clockQualification": "Browser-to-Node mapping is bounded by anchor RPC; API trace uses its own recorded monotonic/wall anchor. Do not subtract as corrected acceptance time."
+    },
+    {
+      "id": "block2-run1",
+      "adapterMs": 226.01574900000014,
+      "clickMs": 39.836999999999534,
+      "assertMs": 150.7009999999991,
+      "twoRafEvaluationMs": 34.5679999999993,
+      "browserMeasureMs": 156.80000019073486,
+      "anchorRoundtripMs": 2.052447000000029,
+      "finishRoundtripMs": 2.892122000001109,
+      "inputHandlerDeltaMs": 0.5,
+      "actionabilityLogs": [
+        {
+          "kind": "actionability",
+          "time": 12972.013
+        },
+        {
+          "kind": "stable",
+          "time": 12996.13
+        },
+        {
+          "kind": "scroll",
+          "time": 12996.144
+        },
+        {
+          "kind": "input",
+          "time": 12998.697
+        },
+        {
+          "kind": "done",
+          "time": 13007.039
+        },
+        {
+          "kind": "navigation",
+          "time": 13007.045
+        }
+      ],
+      "apiSpans": {
+        "click": {
+          "start": 12967.745,
+          "end": 13007.582,
+          "duration": 39.836999999999534,
+          "callId": "call@815"
+        },
+        "assertion": {
+          "start": 13007.843,
+          "end": 13158.544,
+          "duration": 150.7009999999991,
+          "callId": "call@819"
+        },
+        "finalRafEvaluation": {
+          "start": 13158.876,
+          "end": 13193.444,
+          "duration": 34.5679999999993,
+          "callId": "call@827"
+        }
+      },
+      "browserMarkRaw": {
+        "name": "foremenhq:tap-to-paint",
+        "startTime": 1742.2999997138977,
+        "duration": 156.80000019073486,
+        "endTime": 1899.0999999046326
+      },
+      "pointerRaw": {
+        "type": "pointerdown",
+        "eventTimeStamp": 1738.7999997138977,
+        "at": 1742.3999996185303,
+        "trusted": true,
+        "targetIsLocator": true
+      },
+      "clockQualification": "Browser-to-Node mapping is bounded by anchor RPC; API trace uses its own recorded monotonic/wall anchor. Do not subtract as corrected acceptance time."
+    },
+    {
+      "id": "block2-run2",
+      "adapterMs": 226.8217769999992,
+      "clickMs": 41.77000000000044,
+      "assertMs": 150.23799999999937,
+      "twoRafEvaluationMs": 33.637000000000626,
+      "browserMeasureMs": 157.59999990463257,
+      "anchorRoundtripMs": 1.8927549999989424,
+      "finishRoundtripMs": 3.4667260000005626,
+      "inputHandlerDeltaMs": 1.0999999046325684,
+      "actionabilityLogs": [
+        {
+          "kind": "actionability",
+          "time": 14988.367
+        },
+        {
+          "kind": "stable",
+          "time": 15012.691
+        },
+        {
+          "kind": "scroll",
+          "time": 15012.708
+        },
+        {
+          "kind": "input",
+          "time": 15016.475
+        },
+        {
+          "kind": "done",
+          "time": 15025.331
+        },
+        {
+          "kind": "navigation",
+          "time": 15025.341
+        }
+      ],
+      "apiSpans": {
+        "click": {
+          "start": 14984.131,
+          "end": 15025.901,
+          "duration": 41.77000000000044,
+          "callId": "call@954"
+        },
+        "assertion": {
+          "start": 15026.338,
+          "end": 15176.576,
+          "duration": 150.23799999999937,
+          "callId": "call@958"
+        },
+        "finalRafEvaluation": {
+          "start": 15176.973,
+          "end": 15210.61,
+          "duration": 33.637000000000626,
+          "callId": "call@966"
+        }
+      },
+      "browserMarkRaw": {
+        "name": "foremenhq:tap-to-paint",
+        "startTime": 1750.1000003814697,
+        "duration": 157.59999990463257,
+        "endTime": 1907.7000002861023
+      },
+      "pointerRaw": {
+        "type": "pointerdown",
+        "eventTimeStamp": 1746.8000001907349,
+        "at": 1750.1000003814697,
+        "trusted": true,
+        "targetIsLocator": true
+      },
+      "clockQualification": "Browser-to-Node mapping is bounded by anchor RPC; API trace uses its own recorded monotonic/wall anchor. Do not subtract as corrected acceptance time."
+    },
+    {
+      "id": "block2-run3",
+      "adapterMs": 244.66876000000047,
+      "clickMs": 50.44300000000294,
+      "assertMs": 158.60900000000038,
+      "twoRafEvaluationMs": 34.86899999999878,
+      "browserMeasureMs": 171.69999980926514,
+      "anchorRoundtripMs": 1.6560819999976957,
+      "finishRoundtripMs": 2.2744329999986803,
+      "inputHandlerDeltaMs": 2.0,
+      "actionabilityLogs": [
+        {
+          "kind": "actionability",
+          "time": 17019.175
+        },
+        {
+          "kind": "stable",
+          "time": 17045.71
+        },
+        {
+          "kind": "scroll",
+          "time": 17045.724
+        },
+        {
+          "kind": "input",
+          "time": 17048.618
+        },
+        {
+          "kind": "done",
+          "time": 17064.854
+        },
+        {
+          "kind": "navigation",
+          "time": 17064.864
+        }
+      ],
+      "apiSpans": {
+        "click": {
+          "start": 17015.313,
+          "end": 17065.756,
+          "duration": 50.44300000000294,
+          "callId": "call@1093"
+        },
+        "assertion": {
+          "start": 17066.077,
+          "end": 17224.686,
+          "duration": 158.60900000000038,
+          "callId": "call@1097"
+        },
+        "finalRafEvaluation": {
+          "start": 17224.951,
+          "end": 17259.82,
+          "duration": 34.86899999999878,
+          "callId": "call@1105"
+        }
+      },
+      "browserMarkRaw": {
+        "name": "foremenhq:tap-to-paint",
+        "startTime": 1766.2000002861023,
+        "duration": 171.69999980926514,
+        "endTime": 1937.9000000953674
+      },
+      "pointerRaw": {
+        "type": "pointerdown",
+        "eventTimeStamp": 1761.4000000953674,
+        "at": 1766.3000001907349,
+        "trusted": true,
+        "targetIsLocator": true
+      },
+      "clockQualification": "Browser-to-Node mapping is bounded by anchor RPC; API trace uses its own recorded monotonic/wall anchor. Do not subtract as corrected acceptance time."
+    },
+    {
+      "id": "block2-run4",
+      "adapterMs": 212.5531579999988,
+      "clickMs": 36.473000000001775,
+      "assertMs": 158.70700000000215,
+      "twoRafEvaluationMs": 16.41400000000067,
+      "browserMeasureMs": 167.30000019073486,
+      "anchorRoundtripMs": 1.4819820000011532,
+      "finishRoundtripMs": 20.83830300000045,
+      "inputHandlerDeltaMs": 1.3000001907348633,
+      "actionabilityLogs": [
+        {
+          "kind": "actionability",
+          "time": 19174.194
+        },
+        {
+          "kind": "stable",
+          "time": 19195.267
+        },
+        {
+          "kind": "scroll",
+          "time": 19195.273
+        },
+        {
+          "kind": "input",
+          "time": 19198.084
+        },
+        {
+          "kind": "done",
+          "time": 19206.539
+        },
+        {
+          "kind": "navigation",
+          "time": 19206.548
+        }
+      ],
+      "apiSpans": {
+        "click": {
+          "start": 19170.566,
+          "end": 19207.039,
+          "duration": 36.473000000001775,
+          "callId": "call@1232"
+        },
+        "assertion": {
+          "start": 19207.438,
+          "end": 19366.145,
+          "duration": 158.70700000000215,
+          "callId": "call@1236"
+        },
+        "finalRafEvaluation": {
+          "start": 19366.493,
+          "end": 19382.907,
+          "duration": 16.41400000000067,
+          "callId": "call@1242"
+        }
+      },
+      "browserMarkRaw": {
+        "name": "foremenhq:tap-to-paint",
+        "startTime": 1864.5999999046326,
+        "duration": 167.30000019073486,
+        "endTime": 2031.9000000953674
+      },
+      "pointerRaw": {
+        "type": "pointerdown",
+        "eventTimeStamp": 1861.5,
+        "at": 1864.5999999046326,
+        "trusted": true,
+        "targetIsLocator": true
+      },
+      "clockQualification": "Browser-to-Node mapping is bounded by anchor RPC; API trace uses its own recorded monotonic/wall anchor. Do not subtract as corrected acceptance time."
+    },
+    {
+      "id": "block2-run5",
+      "adapterMs": 225.35263399999894,
+      "clickMs": 40.692000000002736,
+      "assertMs": 149.94000000000233,
+      "twoRafEvaluationMs": 33.617999999998574,
+      "browserMeasureMs": 158.80000019073486,
+      "anchorRoundtripMs": 2.631732000001648,
+      "finishRoundtripMs": 3.460809000000154,
+      "inputHandlerDeltaMs": 0.7000002861022949,
+      "actionabilityLogs": [
+        {
+          "kind": "actionability",
+          "time": 21289.84
+        },
+        {
+          "kind": "stable",
+          "time": 21312.55
+        },
+        {
+          "kind": "scroll",
+          "time": 21312.562
+        },
+        {
+          "kind": "input",
+          "time": 21315.247
+        },
+        {
+          "kind": "done",
+          "time": 21325.291
+        },
+        {
+          "kind": "navigation",
+          "time": 21325.302
+        }
+      ],
+      "apiSpans": {
+        "click": {
+          "start": 21285.242,
+          "end": 21325.934,
+          "duration": 40.692000000002736,
+          "callId": "call@1371"
+        },
+        "assertion": {
+          "start": 21326.352,
+          "end": 21476.292,
+          "duration": 149.94000000000233,
+          "callId": "call@1375"
+        },
+        "finalRafEvaluation": {
+          "start": 21476.645,
+          "end": 21510.263,
+          "duration": 33.617999999998574,
+          "callId": "call@1383"
+        }
+      },
+      "browserMarkRaw": {
+        "name": "foremenhq:tap-to-paint",
+        "startTime": 1841.5,
+        "duration": 158.80000019073486,
+        "endTime": 2000.3000001907349
+      },
+      "pointerRaw": {
+        "type": "pointerdown",
+        "eventTimeStamp": 1838.1999998092651,
+        "at": 1842.1999998092651,
+        "trusted": true,
+        "targetIsLocator": true
+      },
+      "clockQualification": "Browser-to-Node mapping is bounded by anchor RPC; API trace uses its own recorded monotonic/wall anchor. Do not subtract as corrected acceptance time."
+    }
+  ],
+  "medians": {
+    "adapterMs": 226.41876299999967,
+    "clickMs": 40.264500000001135,
+    "assertMs": 154.17249999999967,
+    "twoRafEvaluationMs": 33.6274999999996,
+    "browserMeasureMs": 162.40000009536743
+  }
+}

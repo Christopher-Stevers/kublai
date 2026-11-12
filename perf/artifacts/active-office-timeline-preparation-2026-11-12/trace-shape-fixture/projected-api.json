@@ -1,0 +1,125 @@
+[
+  {
+    "type": "context-options",
+    "monotonicTime": 296.472,
+    "wallTime": 1794450843669
+  },
+  {
+    "type": "before",
+    "callId": "call@9",
+    "startTime": 297.391,
+    "class": "Frame",
+    "method": "click"
+  },
+  {
+    "type": "log",
+    "callId": "call@9",
+    "time": 298.503
+  },
+  {
+    "type": "log",
+    "callId": "call@9",
+    "time": 309.108
+  },
+  {
+    "type": "log",
+    "callId": "call@9",
+    "time": 309.597
+  },
+  {
+    "type": "log",
+    "callId": "call@9",
+    "time": 309.75,
+    "logKind": "actionability"
+  },
+  {
+    "type": "log",
+    "callId": "call@9",
+    "time": 357.009,
+    "logKind": "stable"
+  },
+  {
+    "type": "log",
+    "callId": "call@9",
+    "time": 357.027,
+    "logKind": "scroll"
+  },
+  {
+    "type": "log",
+    "callId": "call@9",
+    "time": 358.626
+  },
+  {
+    "type": "input",
+    "callId": "call@9"
+  },
+  {
+    "type": "log",
+    "callId": "call@9",
+    "time": 360.401,
+    "logKind": "input"
+  },
+  {
+    "type": "log",
+    "callId": "call@9",
+    "time": 364.595,
+    "logKind": "done"
+  },
+  {
+    "type": "log",
+    "callId": "call@9",
+    "time": 364.608,
+    "logKind": "navigation"
+  },
+  {
+    "type": "log",
+    "callId": "call@9",
+    "time": 364.779
+  },
+  {
+    "type": "after",
+    "callId": "call@9",
+    "endTime": 364.829
+  },
+  {
+    "type": "before",
+    "callId": "call@11",
+    "evaluationKind": "other-evaluation",
+    "startTime": 366.324,
+    "class": "Frame",
+    "method": "expect"
+  },
+  {
+    "type": "log",
+    "callId": "call@11",
+    "time": 367.332
+  },
+  {
+    "type": "log",
+    "callId": "call@11",
+    "time": 367.34
+  },
+  {
+    "type": "log",
+    "callId": "call@11",
+    "time": 369.085
+  },
+  {
+    "type": "after",
+    "callId": "call@11",
+    "endTime": 369.112
+  },
+  {
+    "type": "before",
+    "callId": "call@13",
+    "evaluationKind": "raf-evaluation",
+    "startTime": 369.441,
+    "class": "Frame",
+    "method": "evaluateExpression"
+  },
+  {
+    "type": "after",
+    "callId": "call@13",
+    "endTime": 389.308
+  }
+]

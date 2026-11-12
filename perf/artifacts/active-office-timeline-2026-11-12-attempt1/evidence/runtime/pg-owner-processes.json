@@ -1,0 +1,371 @@
+{
+  "version": 1,
+  "token": "ceebe53d2758ef13a1884d016c54010619a73bc31203ec9b",
+  "supervisor": {
+    "pid": 163823,
+    "state": "R",
+    "ppid": 163800,
+    "pgid": 163800,
+    "startTime": "230820855"
+  },
+  "root": {
+    "pid": 163826,
+    "state": "R",
+    "ppid": 163823,
+    "pgid": 163826,
+    "startTime": "230820859"
+  },
+  "processes": [
+    {
+      "pid": 163826,
+      "state": "S",
+      "ppid": 163823,
+      "pgid": 163826,
+      "startTime": "230820859"
+    },
+    {
+      "pid": 163830,
+      "state": "S",
+      "ppid": 163826,
+      "pgid": 163826,
+      "startTime": "230820859"
+    },
+    {
+      "pid": 163837,
+      "state": "S",
+      "ppid": 163830,
+      "pgid": 163826,
+      "startTime": "230820866"
+    },
+    {
+      "pid": 163838,
+      "state": "R",
+      "ppid": 163837,
+      "pgid": 163826,
+      "startTime": "230820866"
+    },
+    {
+      "pid": 163840,
+      "state": "S",
+      "ppid": 163826,
+      "pgid": 163826,
+      "startTime": "230820881"
+    },
+    {
+      "pid": 163842,
+      "state": "S",
+      "ppid": 163823,
+      "pgid": 163842,
+      "startTime": "230820881"
+    },
+    {
+      "pid": 163843,
+      "state": "S",
+      "ppid": 163842,
+      "pgid": 163843,
+      "startTime": "230820882"
+    },
+    {
+      "pid": 163844,
+      "state": "S",
+      "ppid": 163842,
+      "pgid": 163844,
+      "startTime": "230820882"
+    },
+    {
+      "pid": 163845,
+      "state": "S",
+      "ppid": 163842,
+      "pgid": 163845,
+      "startTime": "230820882"
+    },
+    {
+      "pid": 163846,
+      "state": "S",
+      "ppid": 163842,
+      "pgid": 163846,
+      "startTime": "230820882"
+    },
+    {
+      "pid": 163847,
+      "state": "S",
+      "ppid": 163842,
+      "pgid": 163847,
+      "startTime": "230820882"
+    },
+    {
+      "pid": 163849,
+      "state": "S",
+      "ppid": 163842,
+      "pgid": 163849,
+      "startTime": "230820882"
+    },
+    {
+      "pid": 163850,
+      "state": "S",
+      "ppid": 163842,
+      "pgid": 163850,
+      "startTime": "230820882"
+    },
+    {
+      "pid": 163851,
+      "state": "S",
+      "ppid": 163842,
+      "pgid": 163851,
+      "startTime": "230820882"
+    },
+    {
+      "pid": 163852,
+      "state": "S",
+      "ppid": 163826,
+      "pgid": 163826,
+      "startTime": "230820891"
+    },
+    {
+      "pid": 163853,
+      "state": "R",
+      "ppid": 163842,
+      "pgid": 163853,
+      "startTime": "230820891"
+    },
+    {
+      "pid": 163854,
+      "state": "R",
+      "ppid": 163826,
+      "pgid": 163826,
+      "startTime": "230820893"
+    },
+    {
+      "pid": 163878,
+      "state": "R",
+      "ppid": 163826,
+      "pgid": 163826,
+      "startTime": "230821259"
+    },
+    {
+      "pid": 163893,
+      "state": "S",
+      "ppid": 163878,
+      "pgid": 163826,
+      "startTime": "230821270"
+    },
+    {
+      "pid": 163909,
+      "state": "R",
+      "ppid": 163826,
+      "pgid": 163826,
+      "startTime": "230821297"
+    },
+    {
+      "pid": 163916,
+      "state": "S",
+      "ppid": 163826,
+      "pgid": 163826,
+      "startTime": "230821299"
+    },
+    {
+      "pid": 163917,
+      "state": "R",
+      "ppid": 163842,
+      "pgid": 163917,
+      "startTime": "230821299"
+    },
+    {
+      "pid": 163918,
+      "state": "S",
+      "ppid": 163826,
+      "pgid": 163826,
+      "startTime": "230821311"
+    },
+    {
+      "pid": 163934,
+      "state": "R",
+      "ppid": 163918,
+      "pgid": 163826,
+      "startTime": "230821315"
+    },
+    {
+      "pid": 163947,
+      "state": "S",
+      "ppid": 163842,
+      "pgid": 163947,
+      "startTime": "230821354"
+    },
+    {
+      "pid": 163986,
+      "state": "S",
+      "ppid": 163826,
+      "pgid": 163826,
+      "startTime": "230822222"
+    },
+    {
+      "pid": 163988,
+      "state": "S",
+      "ppid": 163986,
+      "pgid": 163826,
+      "startTime": "230822222"
+    },
+    {
+      "pid": 163999,
+      "state": "S",
+      "ppid": 163988,
+      "pgid": 163826,
+      "startTime": "230822242"
+    },
+    {
+      "pid": 164000,
+      "state": "S",
+      "ppid": 163999,
+      "pgid": 163826,
+      "startTime": "230822243"
+    },
+    {
+      "pid": 164001,
+      "state": "R",
+      "ppid": 164000,
+      "pgid": 163826,
+      "startTime": "230822243"
+    },
+    {
+      "pid": 164004,
+      "state": "R",
+      "ppid": 163986,
+      "pgid": 163826,
+      "startTime": "230822321"
+    },
+    {
+      "pid": 164006,
+      "state": "S",
+      "ppid": 163986,
+      "pgid": 163826,
+      "startTime": "230822321"
+    },
+    {
+      "pid": 164007,
+      "state": "S",
+      "ppid": 164004,
+      "pgid": 164007,
+      "startTime": "230822324"
+    },
+    {
+      "pid": 164023,
+      "state": "S",
+      "ppid": 163986,
+      "pgid": 163826,
+      "startTime": "230822331"
+    },
+    {
+      "pid": 164057,
+      "state": "S",
+      "ppid": 163842,
+      "pgid": 164057,
+      "startTime": "230822387"
+    },
+    {
+      "pid": 164058,
+      "state": "S",
+      "ppid": 163986,
+      "pgid": 163826,
+      "startTime": "230822431"
+    },
+    {
+      "pid": 164059,
+      "state": "S",
+      "ppid": 163986,
+      "pgid": 163826,
+      "startTime": "230822437"
+    },
+    {
+      "pid": 164067,
+      "state": "S",
+      "ppid": 163842,
+      "pgid": 164067,
+      "startTime": "230822442"
+    },
+    {
+      "pid": 164068,
+      "state": "S",
+      "ppid": 163842,
+      "pgid": 164068,
+      "startTime": "230822445"
+    },
+    {
+      "pid": 164069,
+      "state": "S",
+      "ppid": 163842,
+      "pgid": 164069,
+      "startTime": "230822446"
+    },
+    {
+      "pid": 164070,
+      "state": "S",
+      "ppid": 163842,
+      "pgid": 164070,
+      "startTime": "230822449"
+    },
+    {
+      "pid": 164071,
+      "state": "S",
+      "ppid": 163842,
+      "pgid": 164071,
+      "startTime": "230822449"
+    },
+    {
+      "pid": 164072,
+      "state": "S",
+      "ppid": 163842,
+      "pgid": 164072,
+      "startTime": "230822449"
+    },
+    {
+      "pid": 164073,
+      "state": "S",
+      "ppid": 163842,
+      "pgid": 164073,
+      "startTime": "230822449"
+    },
+    {
+      "pid": 164074,
+      "state": "S",
+      "ppid": 163842,
+      "pgid": 164074,
+      "startTime": "230822449"
+    },
+    {
+      "pid": 164831,
+      "state": "S",
+      "ppid": 163986,
+      "pgid": 164831,
+      "startTime": "230824659"
+    },
+    {
+      "pid": 164832,
+      "state": "S",
+      "ppid": 164831,
+      "pgid": 164831,
+      "startTime": "230824659"
+    },
+    {
+      "pid": 164839,
+      "state": "S",
+      "ppid": 163986,
+      "pgid": 163826,
+      "startTime": "230824670"
+    },
+    {
+      "pid": 164853,
+      "state": "R",
+      "ppid": 163826,
+      "pgid": 163826,
+      "startTime": "230824682"
+    }
+  ],
+  "status": "stopped",
+  "remaining": [],
+  "groupActions": [],
+  "familyAbsent": true,
+  "ownedIdentitiesAbsent": true,
+  "rootExitCode": 143,
+  "timedOut": false,
+  "requestedSignal": null
+}

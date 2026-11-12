@@ -1,0 +1,112 @@
+{
+  "version": 1,
+  "token": "43105fbb1be7db97fb175f600178bb361275e2d33207ca67",
+  "supervisor": {
+    "pid": 163514,
+    "state": "R",
+    "ppid": 163513,
+    "pgid": 163506,
+    "startTime": "230816966"
+  },
+  "root": {
+    "pid": 163515,
+    "state": "R",
+    "ppid": 163514,
+    "pgid": 163515,
+    "startTime": "230816969"
+  },
+  "processes": [
+    {
+      "pid": 163515,
+      "state": "S",
+      "ppid": 163514,
+      "pgid": 163515,
+      "startTime": "230816969"
+    },
+    {
+      "pid": 163527,
+      "state": "S",
+      "ppid": 163515,
+      "pgid": 163527,
+      "startTime": "230816985"
+    },
+    {
+      "pid": 163529,
+      "state": "S",
+      "ppid": 163514,
+      "pgid": 163528,
+      "startTime": "230816987"
+    },
+    {
+      "pid": 163531,
+      "state": "S",
+      "ppid": 163514,
+      "pgid": 163530,
+      "startTime": "230816987"
+    },
+    {
+      "pid": 163534,
+      "state": "S",
+      "ppid": 163527,
+      "pgid": 163527,
+      "startTime": "230816988"
+    },
+    {
+      "pid": 163535,
+      "state": "S",
+      "ppid": 163527,
+      "pgid": 163527,
+      "startTime": "230816988"
+    },
+    {
+      "pid": 163555,
+      "state": "R",
+      "ppid": 163534,
+      "pgid": 163527,
+      "startTime": "230816990"
+    },
+    {
+      "pid": 163558,
+      "state": "S",
+      "ppid": 163527,
+      "pgid": 163527,
+      "startTime": "230816991"
+    },
+    {
+      "pid": 163568,
+      "state": "S",
+      "ppid": 163535,
+      "pgid": 163527,
+      "startTime": "230816992"
+    },
+    {
+      "pid": 163594,
+      "state": "R",
+      "ppid": 163535,
+      "pgid": 163527,
+      "startTime": "230816995"
+    },
+    {
+      "pid": 163603,
+      "state": "S",
+      "ppid": 163535,
+      "pgid": 163527,
+      "startTime": "230816997"
+    },
+    {
+      "pid": 163604,
+      "state": "S",
+      "ppid": 163535,
+      "pgid": 163527,
+      "startTime": "230816997"
+    }
+  ],
+  "status": "stopped",
+  "remaining": [],
+  "groupActions": [],
+  "familyAbsent": true,
+  "ownedIdentitiesAbsent": true,
+  "rootExitCode": 0,
+  "timedOut": false,
+  "requestedSignal": null
+}

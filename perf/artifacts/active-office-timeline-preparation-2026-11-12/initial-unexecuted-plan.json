@@ -1,0 +1,85 @@
+{
+  "status": "source-prepared-not-executed",
+  "methodRoot": "/tmp/foremanhq-office-timeline-method.rbq8r9op",
+  "methodSha256": "e789bccd27abd7818e3511c6004f8917cedbff09c921a381c5cf6cfc1c1b1907",
+  "sourceBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+  "sourceFingerprint": "34f0c1508584e40382ad25955b3aa2b5703bdd78ced4e6ef2536e902fd82281d",
+  "sourceFileCount": 2200,
+  "lab": "/tmp/foremanhq-speed-app-fxHxrn",
+  "labBuild": "wTBAqKGVn-GRqajiTebMf",
+  "frozenHarness": "/tmp/foremanhq-perf-method-f9bHR6",
+  "frozenHarnessFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "operations": [
+    {
+      "block": 1,
+      "run": 1,
+      "journey": "openmateriallist",
+      "link": "Office"
+    },
+    {
+      "block": 1,
+      "run": 2,
+      "journey": "openmateriallist",
+      "link": "Office"
+    },
+    {
+      "block": 1,
+      "run": 3,
+      "journey": "openmateriallist",
+      "link": "Office"
+    },
+    {
+      "block": 1,
+      "run": 4,
+      "journey": "openmateriallist",
+      "link": "Office"
+    },
+    {
+      "block": 1,
+      "run": 5,
+      "journey": "openmateriallist",
+      "link": "Office"
+    },
+    {
+      "block": 2,
+      "run": 1,
+      "journey": "openmateriallist",
+      "link": "Office"
+    },
+    {
+      "block": 2,
+      "run": 2,
+      "journey": "openmateriallist",
+      "link": "Office"
+    },
+    {
+      "block": 2,
+      "run": 3,
+      "journey": "openmateriallist",
+      "link": "Office"
+    },
+    {
+      "block": 2,
+      "run": 4,
+      "journey": "openmateriallist",
+      "link": "Office"
+    },
+    {
+      "block": 2,
+      "run": 5,
+      "journey": "openmateriallist",
+      "link": "Office"
+    }
+  ],
+  "captureBoundMs": 3000,
+  "artifactCapBytes": 62914560,
+  "driverBoundSeconds": 180,
+  "outerBoundSeconds": 480,
+  "acceptanceEvidence": false,
+  "noRetriesOrExclusions": true,
+  "requestMetadata": "Exact procedure/fixed route classes,method,node timestamps only; no headers,bodies,query,origins",
+  "apiTrace": "snapshots/screenshots/sources false; reject nonempty trace.network; strict metadata projection from ephemeral ZIP, removed after parse",
+  "noDomReadinessObserver": true,
+  "noCpuProfilerOrCdpTracing": true,
+  "supervisorQualification": "Reuses approved supervisor; scans /proc and writes ownership every100ms, extra diagnostic-only host load, never acceptance timing"
+}

@@ -1,0 +1,12 @@
+✔ API phases preserve clocks/call association but strip payloads/errors/log content (0.753512ms)
+✔ request metadata strips queries/IDs/origin and write guard rejects nonempty push (0.253588ms)
+✔ installed trace envelope keeps clock anchor and classifies fixed actionability log only (0.107504ms)
+✔ real installed trace shapes decode only with empty network and complete phases (0.362548ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 41.05781

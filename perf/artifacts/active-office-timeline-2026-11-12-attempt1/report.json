@@ -1,0 +1,2870 @@
+{
+  "protocol": "active-office-material-timeline-v1",
+  "status": "complete",
+  "acceptanceEvidence": false,
+  "nodeTimeOrigin": 1794450898313.594,
+  "sourceBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+  "sourceFingerprint": "34f0c1508584e40382ad25955b3aa2b5703bdd78ced4e6ef2536e902fd82281d",
+  "samples": [
+    {
+      "id": "block1-run1",
+      "block": 1,
+      "run": 1,
+      "adapterMs": 245.54744200000005,
+      "adapterNodeStart": 2435.070388,
+      "adapterNodeEnd": 2680.61783,
+      "anchor": {
+        "at": 2115.5999999046326,
+        "timeOrigin": 1794450898632.6
+      },
+      "anchorNodeBefore": 2433.162467,
+      "anchorNodeAfter": 2435.070081,
+      "finishNodeBefore": 2680.618871,
+      "finishNodeAfter": 2700.120258,
+      "observed": {
+        "timeOrigin": 1794450898632.6,
+        "observedAt": 2378.2999997138977,
+        "events": [
+          {
+            "type": "pointerdown",
+            "eventTimeStamp": 2180.699999809265,
+            "at": 2182.8999996185303,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "pointerup",
+            "eventTimeStamp": 2180.699999809265,
+            "at": 2183.8999996185303,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "click",
+            "eventTimeStamp": 2180.699999809265,
+            "at": 2184,
+            "trusted": true,
+            "targetIsLocator": true
+          }
+        ],
+        "longTasks": [
+          {
+            "name": "self",
+            "startTime": 2215.699999809265,
+            "duration": 66
+          }
+        ],
+        "eventTiming": [
+          {
+            "name": "pointerdown",
+            "startTime": 2180.699999809265,
+            "duration": 32,
+            "processingStart": 2181.8999996185303,
+            "processingEnd": 2183.7999997138977,
+            "interactionId": 3177
+          },
+          {
+            "name": "mousedown",
+            "startTime": 2180.699999809265,
+            "duration": 32,
+            "processingStart": 2183.7999997138977,
+            "processingEnd": 2183.7999997138977,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerup",
+            "startTime": 2180.699999809265,
+            "duration": 32,
+            "processingStart": 2183.8999996185303,
+            "processingEnd": 2183.8999996185303,
+            "interactionId": 3177
+          },
+          {
+            "name": "mouseup",
+            "startTime": 2180.699999809265,
+            "duration": 32,
+            "processingStart": 2183.8999996185303,
+            "processingEnd": 2184,
+            "interactionId": 0
+          },
+          {
+            "name": "click",
+            "startTime": 2180.699999809265,
+            "duration": 32,
+            "processingStart": 2184,
+            "processingEnd": 2186,
+            "interactionId": 3177
+          },
+          {
+            "name": "pointerover",
+            "startTime": 2213.8999996185303,
+            "duration": 16,
+            "processingStart": 2213.8999996185303,
+            "processingEnd": 2214.699999809265,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 2213.8999996185303,
+            "duration": 16,
+            "processingStart": 2214.699999809265,
+            "processingEnd": 2214.699999809265,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 2213.8999996185303,
+            "duration": 16,
+            "processingStart": 2214.699999809265,
+            "processingEnd": 2214.699999809265,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 2213.8999996185303,
+            "duration": 16,
+            "processingStart": 2214.699999809265,
+            "processingEnd": 2214.699999809265,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 2213.8999996185303,
+            "duration": 16,
+            "processingStart": 2214.699999809265,
+            "processingEnd": 2214.699999809265,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 2213.8999996185303,
+            "duration": 16,
+            "processingStart": 2214.699999809265,
+            "processingEnd": 2214.699999809265,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 2213.8999996185303,
+            "duration": 16,
+            "processingStart": 2214.699999809265,
+            "processingEnd": 2214.699999809265,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 2213.8999996185303,
+            "duration": 16,
+            "processingStart": 2214.699999809265,
+            "processingEnd": 2214.699999809265,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 2213.8999996185303,
+            "duration": 16,
+            "processingStart": 2214.699999809265,
+            "processingEnd": 2214.699999809265,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 2213.8999996185303,
+            "duration": 16,
+            "processingStart": 2214.699999809265,
+            "processingEnd": 2214.699999809265,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 2213.8999996185303,
+            "duration": 16,
+            "processingStart": 2214.699999809265,
+            "processingEnd": 2214.699999809265,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 2213.8999996185303,
+            "duration": 16,
+            "processingStart": 2214.699999809265,
+            "processingEnd": 2214.699999809265,
+            "interactionId": 0
+          },
+          {
+            "name": "mouseover",
+            "startTime": 2213.8999996185303,
+            "duration": 16,
+            "processingStart": 2214.699999809265,
+            "processingEnd": 2214.7999997138977,
+            "interactionId": 0
+          }
+        ],
+        "dropped": 0,
+        "supportedEntryTypes": [
+          "element",
+          "event",
+          "first-input",
+          "interaction-contentful-paint",
+          "largest-contentful-paint",
+          "layout-shift",
+          "long-animation-frame",
+          "longtask",
+          "mark",
+          "measure",
+          "navigation",
+          "paint",
+          "resource",
+          "soft-navigation",
+          "visibility-state"
+        ],
+        "measures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 989.2999997138977,
+            "duration": 561.0999999046326,
+            "endTime": 1550.3999996185303
+          },
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 2182.8999996185303,
+            "duration": 165.2000002861023,
+            "endTime": 2348.0999999046326
+          }
+        ],
+        "currentActionMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 2182.8999996185303,
+            "duration": 165.2000002861023,
+            "endTime": 2348.0999999046326
+          }
+        ],
+        "preparationMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 989.2999997138977,
+            "duration": 561.0999999046326,
+            "endTime": 1550.3999996185303
+          }
+        ]
+      },
+      "http": [
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 895.426146,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/user.getMyRole",
+          "status": 200,
+          "nodeAt": 921.920738,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.identity,user.getMe,supplierPriceBooks.labelContext,user.getMaterialSortPreferences",
+          "status": 200,
+          "nodeAt": 1050.542651,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/appDevices.report",
+          "status": 200,
+          "nodeAt": 1061.668383,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/job.getJob",
+          "status": 200,
+          "nodeAt": 1087.759438,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.overview",
+          "status": 200,
+          "nodeAt": 1136.596773,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity,supplierPriceBooks.labelContext",
+          "status": 200,
+          "nodeAt": 1411.529296,
+          "phase": "prepare",
+          "bodyInspection": "unavailable-or-cancelled"
+        },
+        {
+          "path": "/api/trpc/jobPricing.get",
+          "status": 200,
+          "nodeAt": 1877.285126,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 2316.76945,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 2665.764307,
+          "phase": "capture",
+          "bodyInspection": "complete",
+          "errorCode": null
+        }
+      ],
+      "apiTraceBytes": 12458,
+      "apiTraceNetworkBytes": 0,
+      "requestCount": 4,
+      "captureElapsedMs": 284.5144340000006,
+      "acceptanceEvidence": false
+    },
+    {
+      "id": "block1-run2",
+      "block": 1,
+      "run": 2,
+      "adapterMs": 224.67917699999998,
+      "adapterNodeStart": 4536.637717,
+      "adapterNodeEnd": 4761.316894,
+      "anchor": {
+        "at": 1753.2000002861023,
+        "timeOrigin": 1794450901096.4
+      },
+      "anchorNodeBefore": 4534.477741,
+      "anchorNodeAfter": 4536.637112,
+      "finishNodeBefore": 4761.318243,
+      "finishNodeAfter": 4765.38233,
+      "observed": {
+        "timeOrigin": 1794450901096.4,
+        "observedAt": 1980.2000002861023,
+        "events": [
+          {
+            "type": "pointerdown",
+            "eventTimeStamp": 1783.4000000953674,
+            "at": 1786.5,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "pointerup",
+            "eventTimeStamp": 1783.5,
+            "at": 1787,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "click",
+            "eventTimeStamp": 1783.5,
+            "at": 1787,
+            "trusted": true,
+            "targetIsLocator": true
+          }
+        ],
+        "longTasks": [
+          {
+            "name": "self",
+            "startTime": 1819,
+            "duration": 63
+          }
+        ],
+        "eventTiming": [
+          {
+            "name": "pointerdown",
+            "startTime": 1783.4000000953674,
+            "duration": 16,
+            "processingStart": 1784.4000000953674,
+            "processingEnd": 1786.6000003814697,
+            "interactionId": 5256
+          },
+          {
+            "name": "mousedown",
+            "startTime": 1783.4000000953674,
+            "duration": 16,
+            "processingStart": 1786.6000003814697,
+            "processingEnd": 1786.9000000953674,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerup",
+            "startTime": 1783.5,
+            "duration": 16,
+            "processingStart": 1787,
+            "processingEnd": 1787,
+            "interactionId": 5256
+          },
+          {
+            "name": "mouseup",
+            "startTime": 1783.5,
+            "duration": 16,
+            "processingStart": 1787,
+            "processingEnd": 1787,
+            "interactionId": 0
+          },
+          {
+            "name": "click",
+            "startTime": 1783.5,
+            "duration": 16,
+            "processingStart": 1787,
+            "processingEnd": 1789,
+            "interactionId": 5256
+          }
+        ],
+        "dropped": 0,
+        "supportedEntryTypes": [
+          "element",
+          "event",
+          "first-input",
+          "interaction-contentful-paint",
+          "largest-contentful-paint",
+          "layout-shift",
+          "long-animation-frame",
+          "longtask",
+          "mark",
+          "measure",
+          "navigation",
+          "paint",
+          "resource",
+          "soft-navigation",
+          "visibility-state"
+        ],
+        "measures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 956.6000003814697,
+            "duration": 549.0999999046326,
+            "endTime": 1505.7000002861023
+          },
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 1786.5,
+            "duration": 157.5,
+            "endTime": 1944
+          }
+        ],
+        "currentActionMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 1786.5,
+            "duration": 157.5,
+            "endTime": 1944
+          }
+        ],
+        "preparationMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 956.6000003814697,
+            "duration": 549.0999999046326,
+            "endTime": 1505.7000002861023
+          }
+        ]
+      },
+      "http": [
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 3326.782341,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/user.getMyRole",
+          "status": 200,
+          "nodeAt": 3451.915087,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.identity,user.getMe,supplierPriceBooks.labelContext,user.getMaterialSortPreferences",
+          "status": 200,
+          "nodeAt": 3481.791152,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/appDevices.report",
+          "status": 200,
+          "nodeAt": 3501.171173,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/job.getJob",
+          "status": 200,
+          "nodeAt": 3529.670926,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.overview",
+          "status": 200,
+          "nodeAt": 3565.835351,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity,supplierPriceBooks.labelContext",
+          "status": 200,
+          "nodeAt": 3830.682555,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/jobPricing.get",
+          "status": 200,
+          "nodeAt": 4314.227808,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 4425.025406,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 4696.753213,
+          "phase": "capture",
+          "bodyInspection": "complete",
+          "errorCode": null
+        }
+      ],
+      "apiTraceBytes": 8518,
+      "apiTraceNetworkBytes": 0,
+      "requestCount": 4,
+      "captureElapsedMs": 238.40634899999986,
+      "acceptanceEvidence": false
+    },
+    {
+      "id": "block1-run3",
+      "block": 1,
+      "run": 3,
+      "adapterMs": 234.30667600000015,
+      "adapterNodeStart": 6882.866033,
+      "adapterNodeEnd": 7117.172709,
+      "anchor": {
+        "at": 2052.800000190735,
+        "timeOrigin": 1794450903142.9
+      },
+      "anchorNodeBefore": 6881.681464,
+      "anchorNodeAfter": 6882.86577,
+      "finishNodeBefore": 7117.173268,
+      "finishNodeAfter": 7120.815226,
+      "observed": {
+        "timeOrigin": 1794450903142.9,
+        "observedAt": 2289.5,
+        "events": [
+          {
+            "type": "pointerdown",
+            "eventTimeStamp": 2086,
+            "at": 2089.6000003814697,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "pointerup",
+            "eventTimeStamp": 2086,
+            "at": 2090.5,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "click",
+            "eventTimeStamp": 2086,
+            "at": 2090.5,
+            "trusted": true,
+            "targetIsLocator": true
+          }
+        ],
+        "longTasks": [
+          {
+            "name": "self",
+            "startTime": 2126.4000000953674,
+            "duration": 72
+          }
+        ],
+        "eventTiming": [
+          {
+            "name": "pointerdown",
+            "startTime": 2086,
+            "duration": 16,
+            "processingStart": 2086.5,
+            "processingEnd": 2089.7000002861023,
+            "interactionId": 2873
+          },
+          {
+            "name": "mousedown",
+            "startTime": 2086,
+            "duration": 16,
+            "processingStart": 2089.7000002861023,
+            "processingEnd": 2089.800000190735,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerup",
+            "startTime": 2086,
+            "duration": 16,
+            "processingStart": 2089.800000190735,
+            "processingEnd": 2090.5,
+            "interactionId": 2873
+          },
+          {
+            "name": "mouseup",
+            "startTime": 2086,
+            "duration": 16,
+            "processingStart": 2090.5,
+            "processingEnd": 2090.5,
+            "interactionId": 0
+          },
+          {
+            "name": "click",
+            "startTime": 2086,
+            "duration": 16,
+            "processingStart": 2090.5,
+            "processingEnd": 2092.300000190735,
+            "interactionId": 2873
+          }
+        ],
+        "dropped": 0,
+        "supportedEntryTypes": [
+          "element",
+          "event",
+          "first-input",
+          "interaction-contentful-paint",
+          "largest-contentful-paint",
+          "layout-shift",
+          "long-animation-frame",
+          "longtask",
+          "mark",
+          "measure",
+          "navigation",
+          "paint",
+          "resource",
+          "soft-navigation",
+          "visibility-state"
+        ],
+        "measures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 943,
+            "duration": 555.4000000953674,
+            "endTime": 1498.4000000953674
+          },
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 2089.6000003814697,
+            "duration": 169.59999990463257,
+            "endTime": 2259.2000002861023
+          }
+        ],
+        "currentActionMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 2089.6000003814697,
+            "duration": 169.59999990463257,
+            "endTime": 2259.2000002861023
+          }
+        ],
+        "preparationMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 943,
+            "duration": 555.4000000953674,
+            "endTime": 1498.4000000953674
+          }
+        ]
+      },
+      "http": [
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 5359.251107,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/user.getMyRole",
+          "status": 200,
+          "nodeAt": 5388.120062,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.identity,user.getMe,supplierPriceBooks.labelContext,user.getMaterialSortPreferences",
+          "status": 200,
+          "nodeAt": 5512.110883,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/appDevices.report",
+          "status": 200,
+          "nodeAt": 5512.920226,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/job.getJob",
+          "status": 200,
+          "nodeAt": 5527.37559,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.overview",
+          "status": 200,
+          "nodeAt": 5586.794901,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity,supplierPriceBooks.labelContext",
+          "status": 200,
+          "nodeAt": 5881.159838,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/jobPricing.get",
+          "status": 200,
+          "nodeAt": 6334.97149,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 6776.315645,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 7087.833958,
+          "phase": "capture",
+          "bodyInspection": "complete",
+          "errorCode": null
+        }
+      ],
+      "apiTraceBytes": 8531,
+      "apiTraceNetworkBytes": 0,
+      "requestCount": 4,
+      "captureElapsedMs": 245.73051100000066,
+      "acceptanceEvidence": false
+    },
+    {
+      "id": "block1-run4",
+      "block": 1,
+      "run": 4,
+      "adapterMs": 209.64068099999895,
+      "adapterNodeStart": 8920.004466,
+      "adapterNodeEnd": 9129.645147,
+      "anchor": {
+        "at": 1727.2999997138977,
+        "timeOrigin": 1794450905505.6
+      },
+      "anchorNodeBefore": 8918.218979,
+      "anchorNodeAfter": 8920.003874,
+      "finishNodeBefore": 9129.646411,
+      "finishNodeAfter": 9134.277738,
+      "observed": {
+        "timeOrigin": 1794450905505.6,
+        "observedAt": 1939.6999998092651,
+        "events": [
+          {
+            "type": "pointerdown",
+            "eventTimeStamp": 1757.0999999046326,
+            "at": 1760.4000000953674,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "pointerup",
+            "eventTimeStamp": 1757.1999998092651,
+            "at": 1761.0999999046326,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "click",
+            "eventTimeStamp": 1757.1999998092651,
+            "at": 1761.0999999046326,
+            "trusted": true,
+            "targetIsLocator": true
+          }
+        ],
+        "longTasks": [
+          {
+            "name": "self",
+            "startTime": 1795.9000000953674,
+            "duration": 65
+          }
+        ],
+        "eventTiming": [
+          {
+            "name": "pointerdown",
+            "startTime": 1757.0999999046326,
+            "duration": 16,
+            "processingStart": 1758,
+            "processingEnd": 1760.9000000953674,
+            "interactionId": 5878
+          },
+          {
+            "name": "mousedown",
+            "startTime": 1757.0999999046326,
+            "duration": 16,
+            "processingStart": 1760.9000000953674,
+            "processingEnd": 1761,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerup",
+            "startTime": 1757.1999998092651,
+            "duration": 16,
+            "processingStart": 1761,
+            "processingEnd": 1761.0999999046326,
+            "interactionId": 5878
+          },
+          {
+            "name": "mouseup",
+            "startTime": 1757.1999998092651,
+            "duration": 16,
+            "processingStart": 1761.0999999046326,
+            "processingEnd": 1761.0999999046326,
+            "interactionId": 0
+          },
+          {
+            "name": "click",
+            "startTime": 1757.1999998092651,
+            "duration": 16,
+            "processingStart": 1761.0999999046326,
+            "processingEnd": 1763,
+            "interactionId": 5878
+          }
+        ],
+        "dropped": 0,
+        "supportedEntryTypes": [
+          "element",
+          "event",
+          "first-input",
+          "interaction-contentful-paint",
+          "largest-contentful-paint",
+          "layout-shift",
+          "long-animation-frame",
+          "longtask",
+          "mark",
+          "measure",
+          "navigation",
+          "paint",
+          "resource",
+          "soft-navigation",
+          "visibility-state"
+        ],
+        "measures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 910.4000000953674,
+            "duration": 580.5,
+            "endTime": 1490.9000000953674
+          },
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 1760.2999997138977,
+            "duration": 163.40000009536743,
+            "endTime": 1923.6999998092651
+          }
+        ],
+        "currentActionMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 1760.2999997138977,
+            "duration": 163.40000009536743,
+            "endTime": 1923.6999998092651
+          }
+        ],
+        "preparationMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 910.4000000953674,
+            "duration": 580.5,
+            "endTime": 1490.9000000953674
+          }
+        ]
+      },
+      "http": [
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 7758.641689,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/user.getMyRole",
+          "status": 200,
+          "nodeAt": 7803.102158,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.identity,user.getMe,supplierPriceBooks.labelContext,user.getMaterialSortPreferences",
+          "status": 200,
+          "nodeAt": 7930.960527,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/appDevices.report",
+          "status": 200,
+          "nodeAt": 7940.192748,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/job.getJob",
+          "status": 200,
+          "nodeAt": 7970.261568,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.overview",
+          "status": 200,
+          "nodeAt": 7982.80945,
+          "phase": "prepare",
+          "bodyInspection": "unavailable-or-cancelled"
+        },
+        {
+          "path": "/api/trpc/push.identity,supplierPriceBooks.labelContext",
+          "status": 200,
+          "nodeAt": 8206.178747,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/jobPricing.get",
+          "status": 200,
+          "nodeAt": 8709.025319,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 8811.193193,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 9086.33607,
+          "phase": "capture",
+          "bodyInspection": "complete",
+          "errorCode": null
+        }
+      ],
+      "apiTraceBytes": 8687,
+      "apiTraceNetworkBytes": 0,
+      "requestCount": 4,
+      "captureElapsedMs": 223.7783610000006,
+      "acceptanceEvidence": false
+    },
+    {
+      "id": "block1-run5",
+      "block": 1,
+      "run": 5,
+      "adapterMs": 227.89113800000086,
+      "adapterNodeStart": 10953.895502,
+      "adapterNodeEnd": 11181.78664,
+      "anchor": {
+        "at": 1733.6000003814697,
+        "timeOrigin": 1794450907533.4
+      },
+      "anchorNodeBefore": 10952.29971,
+      "anchorNodeAfter": 10953.894873,
+      "finishNodeBefore": 11181.787996,
+      "finishNodeAfter": 11194.187912,
+      "observed": {
+        "timeOrigin": 1794450907533.4,
+        "observedAt": 1971.5,
+        "events": [
+          {
+            "type": "pointerdown",
+            "eventTimeStamp": 1762.8000001907349,
+            "at": 1765.5,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "pointerup",
+            "eventTimeStamp": 1762.9000000953674,
+            "at": 1766.3000001907349,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "click",
+            "eventTimeStamp": 1762.9000000953674,
+            "at": 1766.7000002861023,
+            "trusted": true,
+            "targetIsLocator": true
+          }
+        ],
+        "longTasks": [
+          {
+            "name": "self",
+            "startTime": 1798.8000001907349,
+            "duration": 66
+          }
+        ],
+        "eventTiming": [
+          {
+            "name": "pointerdown",
+            "startTime": 1762.8000001907349,
+            "duration": 16,
+            "processingStart": 1763.3000001907349,
+            "processingEnd": 1766.2000002861023,
+            "interactionId": 5919
+          },
+          {
+            "name": "mousedown",
+            "startTime": 1762.8000001907349,
+            "duration": 16,
+            "processingStart": 1766.2000002861023,
+            "processingEnd": 1766.2000002861023,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerup",
+            "startTime": 1762.9000000953674,
+            "duration": 16,
+            "processingStart": 1766.2000002861023,
+            "processingEnd": 1766.7000002861023,
+            "interactionId": 5919
+          },
+          {
+            "name": "mouseup",
+            "startTime": 1762.9000000953674,
+            "duration": 16,
+            "processingStart": 1766.7000002861023,
+            "processingEnd": 1766.7000002861023,
+            "interactionId": 0
+          },
+          {
+            "name": "click",
+            "startTime": 1762.9000000953674,
+            "duration": 16,
+            "processingStart": 1766.7000002861023,
+            "processingEnd": 1768.3000001907349,
+            "interactionId": 5919
+          },
+          {
+            "name": "pointerover",
+            "startTime": 1925.4000000953674,
+            "duration": 16,
+            "processingStart": 1926.2000002861023,
+            "processingEnd": 1926.5,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 1925.4000000953674,
+            "duration": 16,
+            "processingStart": 1926.5,
+            "processingEnd": 1926.5,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 1925.4000000953674,
+            "duration": 16,
+            "processingStart": 1926.5,
+            "processingEnd": 1926.5,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 1925.4000000953674,
+            "duration": 16,
+            "processingStart": 1926.5,
+            "processingEnd": 1926.5,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 1925.4000000953674,
+            "duration": 16,
+            "processingStart": 1926.5,
+            "processingEnd": 1926.5,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 1925.4000000953674,
+            "duration": 16,
+            "processingStart": 1926.5,
+            "processingEnd": 1926.5,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 1925.4000000953674,
+            "duration": 16,
+            "processingStart": 1926.5,
+            "processingEnd": 1926.5,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 1925.4000000953674,
+            "duration": 16,
+            "processingStart": 1926.5,
+            "processingEnd": 1926.5,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 1925.4000000953674,
+            "duration": 16,
+            "processingStart": 1926.5,
+            "processingEnd": 1926.5,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 1925.4000000953674,
+            "duration": 16,
+            "processingStart": 1926.5,
+            "processingEnd": 1926.5,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 1925.4000000953674,
+            "duration": 16,
+            "processingStart": 1926.5,
+            "processingEnd": 1926.5,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 1925.4000000953674,
+            "duration": 16,
+            "processingStart": 1926.5,
+            "processingEnd": 1926.5,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerenter",
+            "startTime": 1925.4000000953674,
+            "duration": 16,
+            "processingStart": 1926.5,
+            "processingEnd": 1926.5,
+            "interactionId": 0
+          },
+          {
+            "name": "mouseover",
+            "startTime": 1925.4000000953674,
+            "duration": 16,
+            "processingStart": 1926.5,
+            "processingEnd": 1926.6000003814697,
+            "interactionId": 0
+          }
+        ],
+        "dropped": 0,
+        "supportedEntryTypes": [
+          "element",
+          "event",
+          "first-input",
+          "interaction-contentful-paint",
+          "largest-contentful-paint",
+          "layout-shift",
+          "long-animation-frame",
+          "longtask",
+          "mark",
+          "measure",
+          "navigation",
+          "paint",
+          "resource",
+          "soft-navigation",
+          "visibility-state"
+        ],
+        "measures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 917.7000002861023,
+            "duration": 572.9000000953674,
+            "endTime": 1490.6000003814697
+          },
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 1765.5,
+            "duration": 161.40000009536743,
+            "endTime": 1926.9000000953674
+          }
+        ],
+        "currentActionMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 1765.5,
+            "duration": 161.40000009536743,
+            "endTime": 1926.9000000953674
+          }
+        ],
+        "preparationMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 917.7000002861023,
+            "duration": 572.9000000953674,
+            "endTime": 1490.6000003814697
+          }
+        ]
+      },
+      "http": [
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 9739.784634,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/user.getMyRole",
+          "status": 200,
+          "nodeAt": 9856.214959,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.identity,user.getMe,supplierPriceBooks.labelContext,user.getMaterialSortPreferences",
+          "status": 200,
+          "nodeAt": 9887.615415,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/appDevices.report",
+          "status": 200,
+          "nodeAt": 9910.996019,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/job.getJob",
+          "status": 200,
+          "nodeAt": 9933.949175,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.overview",
+          "status": 200,
+          "nodeAt": 9943.321513,
+          "phase": "prepare",
+          "bodyInspection": "unavailable-or-cancelled"
+        },
+        {
+          "path": "/api/trpc/push.identity,supplierPriceBooks.labelContext",
+          "status": 200,
+          "nodeAt": 10234.500145,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/jobPricing.get",
+          "status": 200,
+          "nodeAt": 10738.882605,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 10842.164992,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 11145.749865,
+          "phase": "capture",
+          "bodyInspection": "complete",
+          "errorCode": null
+        }
+      ],
+      "apiTraceBytes": 12207,
+      "apiTraceNetworkBytes": 0,
+      "requestCount": 4,
+      "captureElapsedMs": 251.00096200000007,
+      "acceptanceEvidence": false
+    },
+    {
+      "id": "block2-run1",
+      "block": 2,
+      "run": 1,
+      "adapterMs": 226.01574900000014,
+      "adapterNodeStart": 12967.503997,
+      "adapterNodeEnd": 13193.519746,
+      "anchor": {
+        "at": 1706.2999997138977,
+        "timeOrigin": 1794450909573.5
+      },
+      "anchorNodeBefore": 12965.450977,
+      "anchorNodeAfter": 12967.503424,
+      "finishNodeBefore": 13193.520911,
+      "finishNodeAfter": 13196.413033,
+      "observed": {
+        "timeOrigin": 1794450909573.5,
+        "observedAt": 1934.6999998092651,
+        "events": [
+          {
+            "type": "pointerdown",
+            "eventTimeStamp": 1738.7999997138977,
+            "at": 1742.3999996185303,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "pointerup",
+            "eventTimeStamp": 1738.8999996185303,
+            "at": 1742.7999997138977,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "click",
+            "eventTimeStamp": 1738.8999996185303,
+            "at": 1742.8999996185303,
+            "trusted": true,
+            "targetIsLocator": true
+          }
+        ],
+        "longTasks": [
+          {
+            "name": "self",
+            "startTime": 1774.5,
+            "duration": 63
+          }
+        ],
+        "eventTiming": [
+          {
+            "name": "pointerdown",
+            "startTime": 1738.7999997138977,
+            "duration": 16,
+            "processingStart": 1739.2999997138977,
+            "processingEnd": 1742.6999998092651,
+            "interactionId": 6301
+          },
+          {
+            "name": "mousedown",
+            "startTime": 1738.7999997138977,
+            "duration": 16,
+            "processingStart": 1742.6999998092651,
+            "processingEnd": 1742.6999998092651,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerup",
+            "startTime": 1738.8999996185303,
+            "duration": 16,
+            "processingStart": 1742.7999997138977,
+            "processingEnd": 1742.7999997138977,
+            "interactionId": 6301
+          },
+          {
+            "name": "mouseup",
+            "startTime": 1738.8999996185303,
+            "duration": 16,
+            "processingStart": 1742.7999997138977,
+            "processingEnd": 1742.7999997138977,
+            "interactionId": 0
+          },
+          {
+            "name": "click",
+            "startTime": 1738.8999996185303,
+            "duration": 16,
+            "processingStart": 1742.7999997138977,
+            "processingEnd": 1745.1999998092651,
+            "interactionId": 6301
+          }
+        ],
+        "dropped": 0,
+        "supportedEntryTypes": [
+          "element",
+          "event",
+          "first-input",
+          "interaction-contentful-paint",
+          "largest-contentful-paint",
+          "layout-shift",
+          "long-animation-frame",
+          "longtask",
+          "mark",
+          "measure",
+          "navigation",
+          "paint",
+          "resource",
+          "soft-navigation",
+          "visibility-state"
+        ],
+        "measures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 898.2999997138977,
+            "duration": 577.3000001907349,
+            "endTime": 1475.5999999046326
+          },
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 1742.2999997138977,
+            "duration": 156.80000019073486,
+            "endTime": 1899.0999999046326
+          }
+        ],
+        "currentActionMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 1742.2999997138977,
+            "duration": 156.80000019073486,
+            "endTime": 1899.0999999046326
+          }
+        ],
+        "preparationMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 898.2999997138977,
+            "duration": 577.3000001907349,
+            "endTime": 1475.5999999046326
+          }
+        ]
+      },
+      "http": [
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 11818.950109,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/user.getMyRole",
+          "status": 200,
+          "nodeAt": 11857.606289,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.identity,user.getMe,supplierPriceBooks.labelContext,user.getMaterialSortPreferences",
+          "status": 200,
+          "nodeAt": 11988.907654,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/appDevices.report",
+          "status": 200,
+          "nodeAt": 11997.31177,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/job.getJob",
+          "status": 200,
+          "nodeAt": 12029.753569,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.overview",
+          "status": 200,
+          "nodeAt": 12065.071037,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity,supplierPriceBooks.labelContext",
+          "status": 200,
+          "nodeAt": 12260.852989,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/jobPricing.get",
+          "status": 200,
+          "nodeAt": 12762.558346,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 12870.781691,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 13130.151769,
+          "phase": "capture",
+          "bodyInspection": "complete",
+          "errorCode": null
+        }
+      ],
+      "apiTraceBytes": 8781,
+      "apiTraceNetworkBytes": 0,
+      "requestCount": 4,
+      "captureElapsedMs": 240.39514899999995,
+      "acceptanceEvidence": false
+    },
+    {
+      "id": "block2-run2",
+      "block": 2,
+      "run": 2,
+      "adapterMs": 226.8217769999992,
+      "adapterNodeStart": 14983.925954,
+      "adapterNodeEnd": 15210.747731,
+      "anchor": {
+        "at": 1713.2000002861023,
+        "timeOrigin": 1794450911583.4
+      },
+      "anchorNodeBefore": 14982.032961,
+      "anchorNodeAfter": 14983.925716,
+      "finishNodeBefore": 15210.748166,
+      "finishNodeAfter": 15214.214892,
+      "observed": {
+        "timeOrigin": 1794450911583.4,
+        "observedAt": 1942.3000001907349,
+        "events": [
+          {
+            "type": "pointerdown",
+            "eventTimeStamp": 1746.8000001907349,
+            "at": 1750.1000003814697,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "pointerup",
+            "eventTimeStamp": 1746.8000001907349,
+            "at": 1750.3000001907349,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "click",
+            "eventTimeStamp": 1746.8000001907349,
+            "at": 1751.2000002861023,
+            "trusted": true,
+            "targetIsLocator": true
+          }
+        ],
+        "longTasks": [
+          {
+            "name": "self",
+            "startTime": 1782.6000003814697,
+            "duration": 63
+          }
+        ],
+        "eventTiming": [
+          {
+            "name": "pointerdown",
+            "startTime": 1746.8000001907349,
+            "duration": 16,
+            "processingStart": 1747.7000002861023,
+            "processingEnd": 1750.2000002861023,
+            "interactionId": 5524
+          },
+          {
+            "name": "mousedown",
+            "startTime": 1746.8000001907349,
+            "duration": 16,
+            "processingStart": 1750.2000002861023,
+            "processingEnd": 1750.2000002861023,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerup",
+            "startTime": 1746.8000001907349,
+            "duration": 16,
+            "processingStart": 1750.2000002861023,
+            "processingEnd": 1750.3000001907349,
+            "interactionId": 5524
+          },
+          {
+            "name": "mouseup",
+            "startTime": 1746.8000001907349,
+            "duration": 16,
+            "processingStart": 1750.3000001907349,
+            "processingEnd": 1751.1000003814697,
+            "interactionId": 0
+          },
+          {
+            "name": "click",
+            "startTime": 1746.8000001907349,
+            "duration": 16,
+            "processingStart": 1751.1000003814697,
+            "processingEnd": 1752.9000000953674,
+            "interactionId": 5524
+          }
+        ],
+        "dropped": 0,
+        "supportedEntryTypes": [
+          "element",
+          "event",
+          "first-input",
+          "interaction-contentful-paint",
+          "largest-contentful-paint",
+          "layout-shift",
+          "long-animation-frame",
+          "longtask",
+          "mark",
+          "measure",
+          "navigation",
+          "paint",
+          "resource",
+          "soft-navigation",
+          "visibility-state"
+        ],
+        "measures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 902.5,
+            "duration": 575.7000002861023,
+            "endTime": 1478.2000002861023
+          },
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 1750.1000003814697,
+            "duration": 157.59999990463257,
+            "endTime": 1907.7000002861023
+          }
+        ],
+        "currentActionMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 1750.1000003814697,
+            "duration": 157.59999990463257,
+            "endTime": 1907.7000002861023
+          }
+        ],
+        "preparationMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 902.5,
+            "duration": 575.7000002861023,
+            "endTime": 1478.2000002861023
+          }
+        ]
+      },
+      "http": [
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 13829.378934,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/user.getMyRole",
+          "status": 200,
+          "nodeAt": 13870.448184,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.identity,user.getMe,supplierPriceBooks.labelContext,user.getMaterialSortPreferences",
+          "status": 200,
+          "nodeAt": 13995.38151,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/appDevices.report",
+          "status": 200,
+          "nodeAt": 14003.434338,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/job.getJob",
+          "status": 200,
+          "nodeAt": 14035.191312,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.overview",
+          "status": 200,
+          "nodeAt": 14044.010932,
+          "phase": "prepare",
+          "bodyInspection": "unavailable-or-cancelled"
+        },
+        {
+          "path": "/api/trpc/push.identity,supplierPriceBooks.labelContext",
+          "status": 200,
+          "nodeAt": 14271.333367,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/jobPricing.get",
+          "status": 200,
+          "nodeAt": 14774.124243,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 14877.659636,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 15147.487701,
+          "phase": "capture",
+          "bodyInspection": "complete",
+          "errorCode": null
+        }
+      ],
+      "apiTraceBytes": 8779,
+      "apiTraceNetworkBytes": 0,
+      "requestCount": 4,
+      "captureElapsedMs": 240.6523359999992,
+      "acceptanceEvidence": false
+    },
+    {
+      "id": "block2-run3",
+      "block": 2,
+      "run": 3,
+      "adapterMs": 244.66876000000047,
+      "adapterNodeStart": 17015.204093,
+      "adapterNodeEnd": 17259.872853,
+      "anchor": {
+        "at": 1726.4000000953674,
+        "timeOrigin": 1794450913601.2
+      },
+      "anchorNodeBefore": 17013.547911,
+      "anchorNodeAfter": 17015.203993,
+      "finishNodeBefore": 17259.873076,
+      "finishNodeAfter": 17262.147509,
+      "observed": {
+        "timeOrigin": 1794450913601.2,
+        "observedAt": 1973.3000001907349,
+        "events": [
+          {
+            "type": "pointerdown",
+            "eventTimeStamp": 1761.4000000953674,
+            "at": 1766.3000001907349,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "pointerup",
+            "eventTimeStamp": 1761.4000000953674,
+            "at": 1767.4000000953674,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "click",
+            "eventTimeStamp": 1761.4000000953674,
+            "at": 1768.3000001907349,
+            "trusted": true,
+            "targetIsLocator": true
+          }
+        ],
+        "longTasks": [
+          {
+            "name": "self",
+            "startTime": 1802.5999999046326,
+            "duration": 67
+          }
+        ],
+        "eventTiming": [
+          {
+            "name": "pointerdown",
+            "startTime": 1761.4000000953674,
+            "duration": 16,
+            "processingStart": 1762.8000001907349,
+            "processingEnd": 1766.3000001907349,
+            "interactionId": 4726
+          },
+          {
+            "name": "mousedown",
+            "startTime": 1761.4000000953674,
+            "duration": 16,
+            "processingStart": 1766.3000001907349,
+            "processingEnd": 1766.4000000953674,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerup",
+            "startTime": 1761.4000000953674,
+            "duration": 16,
+            "processingStart": 1767.2000002861023,
+            "processingEnd": 1767.4000000953674,
+            "interactionId": 4726
+          },
+          {
+            "name": "mouseup",
+            "startTime": 1761.4000000953674,
+            "duration": 16,
+            "processingStart": 1767.4000000953674,
+            "processingEnd": 1767.4000000953674,
+            "interactionId": 0
+          },
+          {
+            "name": "click",
+            "startTime": 1761.4000000953674,
+            "duration": 16,
+            "processingStart": 1767.4000000953674,
+            "processingEnd": 1771.3000001907349,
+            "interactionId": 4726
+          }
+        ],
+        "dropped": 0,
+        "supportedEntryTypes": [
+          "element",
+          "event",
+          "first-input",
+          "interaction-contentful-paint",
+          "largest-contentful-paint",
+          "layout-shift",
+          "long-animation-frame",
+          "longtask",
+          "mark",
+          "measure",
+          "navigation",
+          "paint",
+          "resource",
+          "soft-navigation",
+          "visibility-state"
+        ],
+        "measures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 918.8000001907349,
+            "duration": 579.1999998092651,
+            "endTime": 1498
+          },
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 1766.2000002861023,
+            "duration": 171.69999980926514,
+            "endTime": 1937.9000000953674
+          }
+        ],
+        "currentActionMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 1766.2000002861023,
+            "duration": 171.69999980926514,
+            "endTime": 1937.9000000953674
+          }
+        ],
+        "preparationMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 918.8000001907349,
+            "duration": 579.1999998092651,
+            "endTime": 1498
+          }
+        ]
+      },
+      "http": [
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 15843.904026,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/user.getMyRole",
+          "status": 200,
+          "nodeAt": 15885.423374,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.identity,user.getMe,supplierPriceBooks.labelContext,user.getMaterialSortPreferences",
+          "status": 200,
+          "nodeAt": 16010.568249,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/appDevices.report",
+          "status": 200,
+          "nodeAt": 16019.429472,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/job.getJob",
+          "status": 200,
+          "nodeAt": 16051.43481,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.overview",
+          "status": 200,
+          "nodeAt": 16062.302126,
+          "phase": "prepare",
+          "bodyInspection": "unavailable-or-cancelled"
+        },
+        {
+          "path": "/api/trpc/push.identity,supplierPriceBooks.labelContext",
+          "status": 200,
+          "nodeAt": 16307.976622,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/jobPricing.get",
+          "status": 200,
+          "nodeAt": 16811.642685,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 16918.01194,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 17191.097992,
+          "phase": "capture",
+          "bodyInspection": "complete",
+          "errorCode": null
+        }
+      ],
+      "apiTraceBytes": 8807,
+      "apiTraceNetworkBytes": 0,
+      "requestCount": 4,
+      "captureElapsedMs": 255.12984400000278,
+      "acceptanceEvidence": false
+    },
+    {
+      "id": "block2-run4",
+      "block": 2,
+      "run": 4,
+      "adapterMs": 212.5531579999988,
+      "adapterNodeStart": 19170.409628,
+      "adapterNodeEnd": 19382.962786,
+      "anchor": {
+        "at": 1832.9000000953674,
+        "timeOrigin": 1794450915650.2
+      },
+      "anchorNodeBefore": 19168.927415,
+      "anchorNodeAfter": 19170.409397,
+      "finishNodeBefore": 19382.963052,
+      "finishNodeAfter": 19403.801355,
+      "observed": {
+        "timeOrigin": 1794450915650.2,
+        "observedAt": 2064.199999809265,
+        "events": [
+          {
+            "type": "pointerdown",
+            "eventTimeStamp": 1861.5,
+            "at": 1864.5999999046326,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "pointerup",
+            "eventTimeStamp": 1861.5999999046326,
+            "at": 1865.9000000953674,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "click",
+            "eventTimeStamp": 1861.5999999046326,
+            "at": 1865.9000000953674,
+            "trusted": true,
+            "targetIsLocator": true
+          }
+        ],
+        "longTasks": [
+          {
+            "name": "self",
+            "startTime": 1898.5,
+            "duration": 70
+          }
+        ],
+        "eventTiming": [
+          {
+            "name": "pointerdown",
+            "startTime": 1861.5,
+            "duration": 16,
+            "processingStart": 1862.5,
+            "processingEnd": 1865.3000001907349,
+            "interactionId": 2195
+          },
+          {
+            "name": "mousedown",
+            "startTime": 1861.5,
+            "duration": 16,
+            "processingStart": 1865.3000001907349,
+            "processingEnd": 1865.4000000953674,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerup",
+            "startTime": 1861.5999999046326,
+            "duration": 16,
+            "processingStart": 1865.4000000953674,
+            "processingEnd": 1865.9000000953674,
+            "interactionId": 2195
+          },
+          {
+            "name": "mouseup",
+            "startTime": 1861.5999999046326,
+            "duration": 16,
+            "processingStart": 1865.9000000953674,
+            "processingEnd": 1865.9000000953674,
+            "interactionId": 0
+          },
+          {
+            "name": "click",
+            "startTime": 1861.5999999046326,
+            "duration": 16,
+            "processingStart": 1865.9000000953674,
+            "processingEnd": 1867.8000001907349,
+            "interactionId": 2195
+          }
+        ],
+        "dropped": 0,
+        "supportedEntryTypes": [
+          "element",
+          "event",
+          "first-input",
+          "interaction-contentful-paint",
+          "largest-contentful-paint",
+          "layout-shift",
+          "long-animation-frame",
+          "longtask",
+          "mark",
+          "measure",
+          "navigation",
+          "paint",
+          "resource",
+          "soft-navigation",
+          "visibility-state"
+        ],
+        "measures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 1019.9000000953674,
+            "duration": 574.4000000953674,
+            "endTime": 1594.3000001907349
+          },
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 1864.5999999046326,
+            "duration": 167.30000019073486,
+            "endTime": 2031.9000000953674
+          }
+        ],
+        "currentActionMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 1864.5999999046326,
+            "duration": 167.30000019073486,
+            "endTime": 2031.9000000953674
+          }
+        ],
+        "preparationMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 1019.9000000953674,
+            "duration": 574.4000000953674,
+            "endTime": 1594.3000001907349
+          }
+        ]
+      },
+      "http": [
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 17910.829069,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/user.getMyRole",
+          "status": 200,
+          "nodeAt": 18064.57422,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.identity,user.getMe,supplierPriceBooks.labelContext,user.getMaterialSortPreferences",
+          "status": 200,
+          "nodeAt": 18092.397407,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/appDevices.report",
+          "status": 200,
+          "nodeAt": 18100.9537,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/job.getJob",
+          "status": 200,
+          "nodeAt": 18145.0772,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.overview",
+          "status": 200,
+          "nodeAt": 18156.692824,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity,supplierPriceBooks.labelContext",
+          "status": 200,
+          "nodeAt": 18453.291548,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/jobPricing.get",
+          "status": 200,
+          "nodeAt": 18959.114266,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 19068.035547,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 19367.437868,
+          "phase": "capture",
+          "bodyInspection": "complete",
+          "errorCode": null
+        }
+      ],
+      "apiTraceBytes": 8766,
+      "apiTraceNetworkBytes": 0,
+      "requestCount": 4,
+      "captureElapsedMs": 242.40559199999916,
+      "acceptanceEvidence": false
+    },
+    {
+      "id": "block2-run5",
+      "block": 2,
+      "run": 5,
+      "adapterMs": 225.35263399999894,
+      "adapterNodeStart": 21285.042361,
+      "adapterNodeEnd": 21510.394995,
+      "anchor": {
+        "at": 1806.6999998092651,
+        "timeOrigin": 1794450917790.7
+      },
+      "anchorNodeBefore": 21282.410382,
+      "anchorNodeAfter": 21285.042114,
+      "finishNodeBefore": 21510.395353,
+      "finishNodeAfter": 21513.856162,
+      "observed": {
+        "timeOrigin": 1794450917790.7,
+        "observedAt": 2034.3000001907349,
+        "events": [
+          {
+            "type": "pointerdown",
+            "eventTimeStamp": 1838.1999998092651,
+            "at": 1842.1999998092651,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "pointerup",
+            "eventTimeStamp": 1838.1999998092651,
+            "at": 1842.9000000953674,
+            "trusted": true,
+            "targetIsLocator": true
+          },
+          {
+            "type": "click",
+            "eventTimeStamp": 1838.1999998092651,
+            "at": 1842.9000000953674,
+            "trusted": true,
+            "targetIsLocator": true
+          }
+        ],
+        "longTasks": [
+          {
+            "name": "self",
+            "startTime": 1875.1999998092651,
+            "duration": 63
+          }
+        ],
+        "eventTiming": [
+          {
+            "name": "pointerdown",
+            "startTime": 1838.1999998092651,
+            "duration": 16,
+            "processingStart": 1839.6999998092651,
+            "processingEnd": 1842.1999998092651,
+            "interactionId": 6715
+          },
+          {
+            "name": "mousedown",
+            "startTime": 1838.1999998092651,
+            "duration": 16,
+            "processingStart": 1842.1999998092651,
+            "processingEnd": 1842.1999998092651,
+            "interactionId": 0
+          },
+          {
+            "name": "pointerup",
+            "startTime": 1838.1999998092651,
+            "duration": 16,
+            "processingStart": 1842.8000001907349,
+            "processingEnd": 1842.9000000953674,
+            "interactionId": 6715
+          },
+          {
+            "name": "mouseup",
+            "startTime": 1838.1999998092651,
+            "duration": 16,
+            "processingStart": 1842.9000000953674,
+            "processingEnd": 1842.9000000953674,
+            "interactionId": 0
+          },
+          {
+            "name": "click",
+            "startTime": 1838.1999998092651,
+            "duration": 16,
+            "processingStart": 1842.9000000953674,
+            "processingEnd": 1845,
+            "interactionId": 6715
+          }
+        ],
+        "dropped": 0,
+        "supportedEntryTypes": [
+          "element",
+          "event",
+          "first-input",
+          "interaction-contentful-paint",
+          "largest-contentful-paint",
+          "layout-shift",
+          "long-animation-frame",
+          "longtask",
+          "mark",
+          "measure",
+          "navigation",
+          "paint",
+          "resource",
+          "soft-navigation",
+          "visibility-state"
+        ],
+        "measures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 994.8000001907349,
+            "duration": 576.8999996185303,
+            "endTime": 1571.6999998092651
+          },
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 1841.5,
+            "duration": 158.80000019073486,
+            "endTime": 2000.3000001907349
+          }
+        ],
+        "currentActionMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 1841.5,
+            "duration": 158.80000019073486,
+            "endTime": 2000.3000001907349
+          }
+        ],
+        "preparationMeasures": [
+          {
+            "name": "foremenhq:tap-to-paint",
+            "startTime": 994.8000001907349,
+            "duration": 576.8999996185303,
+            "endTime": 1571.6999998092651
+          }
+        ]
+      },
+      "http": [
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 20047.962634,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/user.getMyRole",
+          "status": 200,
+          "nodeAt": 20086.389707,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.identity,user.getMe,supplierPriceBooks.labelContext,user.getMaterialSortPreferences",
+          "status": 200,
+          "nodeAt": 20217.844303,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/appDevices.report",
+          "status": 200,
+          "nodeAt": 20226.689219,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/job.getJob",
+          "status": 200,
+          "nodeAt": 20259.17681,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/notifications.overview",
+          "status": 200,
+          "nodeAt": 20292.534642,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity,supplierPriceBooks.labelContext",
+          "status": 200,
+          "nodeAt": 20568.035462,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/jobPricing.get",
+          "status": 200,
+          "nodeAt": 21075.312615,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 21185.336911,
+          "phase": "prepare",
+          "bodyInspection": "complete",
+          "errorCode": null
+        },
+        {
+          "path": "/api/trpc/push.identity",
+          "status": 200,
+          "nodeAt": 21446.312964,
+          "phase": "capture",
+          "bodyInspection": "complete",
+          "errorCode": null
+        }
+      ],
+      "apiTraceBytes": 8795,
+      "apiTraceNetworkBytes": 0,
+      "requestCount": 4,
+      "captureElapsedMs": 239.60631999999896,
+      "acceptanceEvidence": false
+    }
+  ],
+  "guardRejections": [],
+  "active": null,
+  "limitations": [
+    "Instrumented supplemental operations, not comparable acceptance durations",
+    "No CPU profiler/CDP tracing, force clicks, DOM readiness observer, geometry patch or continuous RAF",
+    "API tracing/observers add work; EventTiming may arrive after drainage or omit below16ms",
+    "Absolute clocks retained separately; no outer-minus-browser correction",
+    "HTTP overlaps do not establish Replicache/render cause"
+  ],
+  "methodBefore": {
+    "harnessFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+    "harnessFingerprintAlgorithm": "foremanhq-frozen-harness-v1",
+    "harnessFileCount": 29,
+    "files": [
+      {
+        "path": "package.json",
+        "sha256": "d218e29ec01186542b0d85bdc6691d12514e4cdd0ba3b9cd81f253250c8d1e34"
+      },
+      {
+        "path": "perf/auth/clerk-client.jsx",
+        "sha256": "aaf7431cadb66761ee2fedff53e39388eb775c62bc33f3cf2a2ae51e40894039"
+      },
+      {
+        "path": "perf/auth/clerk-server.mjs",
+        "sha256": "31b7c60358bba0473cd23fe6344543a63b311a523eeba30ea7d6d7e9006beebe"
+      },
+      {
+        "path": "perf/budgets.json",
+        "sha256": "20e471f9002f9a567e2c85ac54f9ff4729c1f8a67a886b80baacf7251bda7f1e"
+      },
+      {
+        "path": "perf/check.mjs",
+        "sha256": "368a3fc575a4250a5c17d877ccc33479fc5ee77571315cefec5c9d7468679259"
+      },
+      {
+        "path": "perf/create-lab-snapshot.mjs",
+        "sha256": "79b7c7952c1eae02496003ace6895aa14063a78fef0a5c25b0245139743bf715"
+      },
+      {
+        "path": "perf/freeze-harness.mjs",
+        "sha256": "b64ed881c0175952e64464917c37978292af0f03f718f881b02a4b7a6c9323e7"
+      },
+      {
+        "path": "perf/full-baseline.sh",
+        "sha256": "508f3adb603a99eadd8267cfdbc5cc6cf99be43e43717bce44f63822b6259822"
+      },
+      {
+        "path": "perf/harness-fingerprint.mjs",
+        "sha256": "8cd0a58cd234e6f47ae199f11dbb23c4b8fb8dc4bc26791cacf9bc9cbb45120f"
+      },
+      {
+        "path": "perf/idle.mjs",
+        "sha256": "86e737c3846d1b9fb6988267559465bdc320f2aed4de824f077f5aa77462f55a"
+      },
+      {
+        "path": "perf/journeys.mjs",
+        "sha256": "9e030388e3706bb8f2ae863b44773af98ed97523421adcecb2984f619d312683"
+      },
+      {
+        "path": "perf/lab/database.sh",
+        "sha256": "b8a9dea0f647033596fb4bd9a6ece1b6c49c3a2d8666892978cc3b19d16fc438"
+      },
+      {
+        "path": "perf/lab/drizzle.config.ts",
+        "sha256": "52cd30ed639f967af721463c9257a2c06c26fb0bac09614c1dc355b5db8d8211"
+      },
+      {
+        "path": "perf/lab/make-set.mts",
+        "sha256": "32fe6aa2147142cc2d09a303efc4a4d371c0bb1495764d1db048781646a188a8"
+      },
+      {
+        "path": "perf/lab/order-schema.mjs",
+        "sha256": "10347a9375807ca7625e4b3dfc94396109c270f4290db29cf300494cf639499d"
+      },
+      {
+        "path": "perf/lab/pg-error-report.mjs",
+        "sha256": "4214ce175fd44d79bb8082fd8e64be7ab625eed1f96516c86a409318ce3781dc"
+      },
+      {
+        "path": "perf/lab/reset-writes.mjs",
+        "sha256": "55435fd0de6480c37b9623be0860516fe083628bf55b2b213b97338e40a6271d"
+      },
+      {
+        "path": "perf/lab/schema-entry.mjs",
+        "sha256": "f0be5974882e493c108d4ac5b27a066b64d8d37c7471ff81757ef652800a9457"
+      },
+      {
+        "path": "perf/lab/seed.ts",
+        "sha256": "f4bf8a4b66ce237a7cdc921bad58fd98dbaf693e855e10e8ffe53d22b5d87835"
+      },
+      {
+        "path": "perf/pilot.sh",
+        "sha256": "423f003669430947395ca958fdaeadcb56c54c930ac372c6f9a4b78f0f7bc8fa"
+      },
+      {
+        "path": "perf/preflight.mjs",
+        "sha256": "51b571d38d66fbefc0a2ee234eeab250a84948d0701245a0315688cd5fad7530"
+      },
+      {
+        "path": "perf/refresh-lab.mjs",
+        "sha256": "d77c5a63c3e35d84178d076648ad7982481cc47022e98aeb0f147773d631c2f3"
+      },
+      {
+        "path": "perf/run.mjs",
+        "sha256": "6e03df0cb02eb9ea456121634cba42d815fd1aee6d451b5e7430f3dfc21d9e89"
+      },
+      {
+        "path": "perf/summarize.mjs",
+        "sha256": "aca38875f525cc8acae6f222de298cfd99df0a8cca2f2ab997271d9672c186a8"
+      },
+      {
+        "path": "scripts/release/script-map.mjs",
+        "sha256": "1574d433deaea2477b44a99a1670eb7f4de07a4918f2861caa51e88d49ddd225"
+      },
+      {
+        "path": "scripts/release/source-fingerprint.mjs",
+        "sha256": "896edf22bdc46654b07f9788f9594b94f07702df5e92659649265c1b9b85c5a9"
+      },
+      {
+        "path": "scripts/release/static-assets.mjs",
+        "sha256": "ae2da59e2536f0d90c8d7610fc910c87f59f1bd25501a20bcecadbdbc979bc29"
+      },
+      {
+        "path": "scripts/release/static-metrics.mjs",
+        "sha256": "d67d327be39081db242b4fb83119f2c4956a067ecf940397255cea2e0e721e2d"
+      },
+      {
+        "path": "tsconfig.json",
+        "sha256": "e3f85e3ec2ecd9cb723766b560b3da55a7f45f049ccbbbfa6bec8af1a3ff9434"
+      }
+    ]
+  },
+  "bindings": {
+    "evidence": {
+      "sourceBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+      "sourceFingerprint": "34f0c1508584e40382ad25955b3aa2b5703bdd78ced4e6ef2536e902fd82281d",
+      "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+      "sourceFileCount": 2200,
+      "sourceVerification": {
+        "stage": "after-lab-transforms",
+        "unchangedFilesChecked": 2195,
+        "allowedLabTransforms": [
+          "next.config.js",
+          "tsconfig.json",
+          "src/server/db/index.ts",
+          "src/server/background/hints.ts",
+          "src/server/background/worker.ts"
+        ],
+        "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+        "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash",
+        "preTransformUnchangedFilesChecked": 2200
+      },
+      "sourceBinding": {
+        "method": "frozen-release-inputs-sha256",
+        "algorithm": "foremanhq-lab-source-v1",
+        "sourceBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+        "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+      },
+      "authentication": "stubbed-seeded-user",
+      "labBuild": "wTBAqKGVn-GRqajiTebMf",
+      "snapshot": "/tmp/foremanhq-speed-app-fxHxrn",
+      "socket": "/tmp/foremanhq-perf-pg.I2Skfs"
+    },
+    "preflight": {
+      "status": "passed",
+      "build": "wTBAqKGVn-GRqajiTebMf",
+      "sourceBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+      "sourceFingerprint": "34f0c1508584e40382ad25955b3aa2b5703bdd78ced4e6ef2536e902fd82281d",
+      "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+      "sourceFileCount": 2200,
+      "sourceVerification": {
+        "stage": "after-lab-transforms",
+        "unchangedFilesChecked": 2195,
+        "allowedLabTransforms": [
+          "next.config.js",
+          "tsconfig.json",
+          "src/server/db/index.ts",
+          "src/server/background/hints.ts",
+          "src/server/background/worker.ts"
+        ],
+        "additionalLabRoute": "src/app/api/perf-lab/route.ts",
+        "scope": "src/public/scripts/vendor and named build configs, excluding env/private/data/uploads/build output directories; not the production build private salted hash",
+        "preTransformUnchangedFilesChecked": 2200
+      },
+      "sourceBinding": {
+        "method": "frozen-release-inputs-sha256",
+        "algorithm": "foremanhq-lab-source-v1",
+        "sourceBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+        "scope": "Copied public release inputs: src/public/scripts/vendor plus next.config.js/package.json/pnpm-lock.yaml/tsconfig.json/postcss.config.js; excludes env/private/data/uploads/build outputs. Production build ID separately binds private build inputs."
+      },
+      "authentication": "stubbed-seeded-user",
+      "results": [
+        {
+          "procedure": "user.getMe",
+          "status": "ok"
+        },
+        {
+          "procedure": "notifications.identity",
+          "status": "ok"
+        },
+        {
+          "procedure": "push.identity",
+          "status": "ok"
+        },
+        {
+          "procedure": "job.getJob",
+          "status": "ok"
+        },
+        {
+          "procedure": "materialList.getMaterialList",
+          "status": "ok"
+        },
+        {
+          "procedure": "materialList.getOrderById",
+          "status": "ok"
+        },
+        {
+          "procedure": "drawings.listSets",
+          "status": "ok"
+        },
+        {
+          "procedure": "drawings.getSet",
+          "status": "ok"
+        },
+        {
+          "procedure": "drawingsWorkspace.get",
+          "status": "ok"
+        },
+        {
+          "procedure": "drawingsWorkspace.changes",
+          "status": "ok"
+        },
+        {
+          "procedure": "chat.getOverview",
+          "status": "ok"
+        },
+        {
+          "procedure": "chat.history",
+          "status": "ok"
+        },
+        {
+          "procedure": "rooms.getJobRoomCount",
+          "status": "ok"
+        },
+        {
+          "procedure": "notifications.overview",
+          "status": "ok"
+        }
+      ]
+    },
+    "fixtureSha256": "30481f2bf877ecf728ea6fd6ae84de0f302c451a955573137ba8f025bbb52aa0",
+    "serverPid": 164007,
+    "privateBindingVerified": true,
+    "healthBefore": 0
+  },
+  "methodAfter": {
+    "harnessFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+    "harnessFingerprintAlgorithm": "foremanhq-frozen-harness-v1",
+    "harnessFileCount": 29,
+    "files": [
+      {
+        "path": "package.json",
+        "sha256": "d218e29ec01186542b0d85bdc6691d12514e4cdd0ba3b9cd81f253250c8d1e34"
+      },
+      {
+        "path": "perf/auth/clerk-client.jsx",
+        "sha256": "aaf7431cadb66761ee2fedff53e39388eb775c62bc33f3cf2a2ae51e40894039"
+      },
+      {
+        "path": "perf/auth/clerk-server.mjs",
+        "sha256": "31b7c60358bba0473cd23fe6344543a63b311a523eeba30ea7d6d7e9006beebe"
+      },
+      {
+        "path": "perf/budgets.json",
+        "sha256": "20e471f9002f9a567e2c85ac54f9ff4729c1f8a67a886b80baacf7251bda7f1e"
+      },
+      {
+        "path": "perf/check.mjs",
+        "sha256": "368a3fc575a4250a5c17d877ccc33479fc5ee77571315cefec5c9d7468679259"
+      },
+      {
+        "path": "perf/create-lab-snapshot.mjs",
+        "sha256": "79b7c7952c1eae02496003ace6895aa14063a78fef0a5c25b0245139743bf715"
+      },
+      {
+        "path": "perf/freeze-harness.mjs",
+        "sha256": "b64ed881c0175952e64464917c37978292af0f03f718f881b02a4b7a6c9323e7"
+      },
+      {
+        "path": "perf/full-baseline.sh",
+        "sha256": "508f3adb603a99eadd8267cfdbc5cc6cf99be43e43717bce44f63822b6259822"
+      },
+      {
+        "path": "perf/harness-fingerprint.mjs",
+        "sha256": "8cd0a58cd234e6f47ae199f11dbb23c4b8fb8dc4bc26791cacf9bc9cbb45120f"
+      },
+      {
+        "path": "perf/idle.mjs",
+        "sha256": "86e737c3846d1b9fb6988267559465bdc320f2aed4de824f077f5aa77462f55a"
+      },
+      {
+        "path": "perf/journeys.mjs",
+        "sha256": "9e030388e3706bb8f2ae863b44773af98ed97523421adcecb2984f619d312683"
+      },
+      {
+        "path": "perf/lab/database.sh",
+        "sha256": "b8a9dea0f647033596fb4bd9a6ece1b6c49c3a2d8666892978cc3b19d16fc438"
+      },
+      {
+        "path": "perf/lab/drizzle.config.ts",
+        "sha256": "52cd30ed639f967af721463c9257a2c06c26fb0bac09614c1dc355b5db8d8211"
+      },
+      {
+        "path": "perf/lab/make-set.mts",
+        "sha256": "32fe6aa2147142cc2d09a303efc4a4d371c0bb1495764d1db048781646a188a8"
+      },
+      {
+        "path": "perf/lab/order-schema.mjs",
+        "sha256": "10347a9375807ca7625e4b3dfc94396109c270f4290db29cf300494cf639499d"
+      },
+      {
+        "path": "perf/lab/pg-error-report.mjs",
+        "sha256": "4214ce175fd44d79bb8082fd8e64be7ab625eed1f96516c86a409318ce3781dc"
+      },
+      {
+        "path": "perf/lab/reset-writes.mjs",
+        "sha256": "55435fd0de6480c37b9623be0860516fe083628bf55b2b213b97338e40a6271d"
+      },
+      {
+        "path": "perf/lab/schema-entry.mjs",
+        "sha256": "f0be5974882e493c108d4ac5b27a066b64d8d37c7471ff81757ef652800a9457"
+      },
+      {
+        "path": "perf/lab/seed.ts",
+        "sha256": "f4bf8a4b66ce237a7cdc921bad58fd98dbaf693e855e10e8ffe53d22b5d87835"
+      },
+      {
+        "path": "perf/pilot.sh",
+        "sha256": "423f003669430947395ca958fdaeadcb56c54c930ac372c6f9a4b78f0f7bc8fa"
+      },
+      {
+        "path": "perf/preflight.mjs",
+        "sha256": "51b571d38d66fbefc0a2ee234eeab250a84948d0701245a0315688cd5fad7530"
+      },
+      {
+        "path": "perf/refresh-lab.mjs",
+        "sha256": "d77c5a63c3e35d84178d076648ad7982481cc47022e98aeb0f147773d631c2f3"
+      },
+      {
+        "path": "perf/run.mjs",
+        "sha256": "6e03df0cb02eb9ea456121634cba42d815fd1aee6d451b5e7430f3dfc21d9e89"
+      },
+      {
+        "path": "perf/summarize.mjs",
+        "sha256": "aca38875f525cc8acae6f222de298cfd99df0a8cca2f2ab997271d9672c186a8"
+      },
+      {
+        "path": "scripts/release/script-map.mjs",
+        "sha256": "1574d433deaea2477b44a99a1670eb7f4de07a4918f2861caa51e88d49ddd225"
+      },
+      {
+        "path": "scripts/release/source-fingerprint.mjs",
+        "sha256": "896edf22bdc46654b07f9788f9594b94f07702df5e92659649265c1b9b85c5a9"
+      },
+      {
+        "path": "scripts/release/static-assets.mjs",
+        "sha256": "ae2da59e2536f0d90c8d7610fc910c87f59f1bd25501a20bcecadbdbc979bc29"
+      },
+      {
+        "path": "scripts/release/static-metrics.mjs",
+        "sha256": "d67d327be39081db242b4fb83119f2c4956a067ecf940397255cea2e0e721e2d"
+      },
+      {
+        "path": "tsconfig.json",
+        "sha256": "e3f85e3ec2ecd9cb723766b560b3da55a7f45f049ccbbbfa6bec8af1a3ff9434"
+      }
+    ]
+  },
+  "healthAfter": 0
+}

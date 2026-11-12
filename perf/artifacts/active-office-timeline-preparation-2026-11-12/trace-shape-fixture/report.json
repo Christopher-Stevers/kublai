@@ -1,0 +1,12 @@
+{
+  "fixtureOnly": true,
+  "appEvidence": false,
+  "status": "passed",
+  "networkBytes": 0,
+  "phaseMethods": [
+    "click",
+    "expect",
+    "evaluateExpression"
+  ],
+  "rawZipRemoved": true
+}
