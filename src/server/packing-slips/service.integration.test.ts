@@ -1235,6 +1235,19 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     await reviewAction(f.access,f.doc.documentId,{action:"approve",lineIds:ids,fingerprint:await finger(f.access)});
     expect(Number((await item()).receivedQuantity)).toBe(8);
   });
+  it("approves a short line without a backorder decision and leaves the rest due",async()=>{
+    const f=await confirmedHeader();
+    await resolveAction(f,{...allResolved,remainder:null,siteQuantity:6,acceptedQuantity:6,note:"Reviewer confirmed the displayed information is correct."});
+    await reviewAction(f.access,f.doc.documentId,{action:"approve",lineIds:["0"],fingerprint:await finger(f.access)});
+    expect(Number((await item()).receivedQuantity)).toBe(8);
+    expect(Number((await item()).quantity)).toBe(10);
+  });
+  it("still refuses a line whose remainder is cancelled until the order is corrected",async()=>{
+    const f=await confirmedHeader();
+    await resolveAction(f,{...allResolved,remainder:"cancelled",note:"Supplier cancelled the rest"});
+    await expect(reviewAction(f.access,f.doc.documentId,{action:"approve",lineIds:["0"],fingerprint:await finger(f.access)})).rejects.toThrow("authorized order correction");
+    expect(Number((await item()).receivedQuantity)).toBe(2);
+  });
   it("records and undoes absent-item dispositions without creating receipt rows or changing orders",async()=>{
     const f=await confirmedHeader();
     const state=await workspace(); state.documents[0]!.receivingReview!.lines[0]!.orderItemId=null;

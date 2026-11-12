@@ -144,18 +144,41 @@ describe("independent receiving resolutions", () => {
     expect(resolutionBlockers(l)).toEqual([]);
     expect(readyLine(l)).toBe(true);
   });
-  it("requires an explicit remainder decision and cannot cancel an order by receipt", () => {
+  it("lets a short line through without a remainder decision but cannot cancel an order by receipt", () => {
     const l = resolved();
     l.quantity = 6;
     l.resolution!.evidenceFingerprint = resolutionEvidenceFingerprint(l);
-    expect(resolutionBlockers(l, item)).toHaveLength(1);
+    // The four still stay outstanding on the order; nothing more is asked.
+    expect(resolutionBlockers(l, item)).toEqual([]);
+    expect(receivingLineReady(l, "delivery", item)).toBe(true);
+    l.resolution!.remainder = "unexplained";
+    l.resolution!.note = "Supplier did not say";
+    expect(resolutionBlockers(l, item)).toEqual([]);
     l.resolution!.remainder = "cancelled";
     l.resolution!.note = "Supplier cancelled remainder";
-    expect(resolutionBlockers(l, item)[0]).toContain(
-      "authorized order correction",
-    );
+    expect(resolutionBlockers(l, item)).toEqual([
+      "Cancellation is recorded; an authorized order correction is still required.",
+    ]);
     l.resolution!.remainder = "backordered";
     expect(resolutionBlockers(l, item)).toEqual([]);
+  });
+  it("keeps blocking an excess, a bad count and a wrong part on a short order", () => {
+    const over = resolved();
+    over.quantity = 12;
+    over.resolution!.evidenceFingerprint = resolutionEvidenceFingerprint(over);
+    expect(resolutionBlockers(over, item)).toContain(
+      "Accept the excess explicitly, or exclude the quantity being returned from the accepted count.",
+    );
+    const count = resolved();
+    count.quantity = 6;
+    count.resolution!.evidenceFingerprint = resolutionEvidenceFingerprint(count);
+    count.resolution!.siteQuantity = -1;
+    expect(resolutionBlockers(count, item)).toContain("Enter a valid actual site count.");
+    const wrong = resolved();
+    wrong.resolution = { ...wrong.resolution!, delivery: "wrong", siteQuantity: 10, note: "Wrong valve" };
+    expect(resolutionBlockers(wrong, item)).toContain(
+      "Accept the substitution explicitly, or record zero accepted for the wrong part.",
+    );
   });
   it("totals several printed lines for the same ordered item without inventing shortages", () => {
     const a = resolved(),
@@ -241,6 +264,16 @@ describe("allocation conservation", () => {
       ),
     ).toThrow("cannot be combined");
   });
+});
+it("accepts a line where nothing came without a backorder decision", () => {
+  const l = line();
+  l.quantity = 0;
+  l.resolution = { ...newResolution(l, "u", "now"),
+    counterpartFingerprint: resolutionCounterpartFingerprint(item),
+    match: "confirmed", specification: "confirmed", quantity: "confirmed",
+    delivery: "short", siteQuantity: 0, acceptedQuantity: 0, note: "Nothing delivered on this slip." };
+  expect(resolutionBlockers(l, item, [l], "delivery")).toEqual([]);
+  expect(receivingLineReady(l, "delivery", item)).toBe(true);
 });
 it("accepts an explicitly confirmed full backorder without receiving any goods", () => {
   const l = line();

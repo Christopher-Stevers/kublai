@@ -12,7 +12,7 @@ function posted() {
 it("uses matching posted receipts even with an unset document flag", () => {
   expect(receivingReviewComplete(posted(), "version")).toBe(true);
 });
-it.each(["quantity", "item", "kind", "unapproved", "version", "order", "kindConfirmed", "unresolved", "unchecked", "trial"])("keeps %s changes in review", change => {
+it.each(["quantity", "item", "kind", "unapproved", "version", "order", "kindConfirmed", "cancel-requested", "unchecked", "trial"])("keeps %s changes in review", change => {
   const review = posted();
   const line = review.lines[0]!;
   if (change === "quantity") line.quantity = 3;
@@ -22,7 +22,7 @@ it.each(["quantity", "item", "kind", "unapproved", "version", "order", "kindConf
   if (change === "version") review.versionId = "old";
   if (change === "order") review.orderConfirmed = false;
   if (change === "kindConfirmed") review.kindConfirmed = false;
-  if (change === "unresolved") review.orderResolutions = { item: {disposition:"unresolved",note:"check",by:"user",at:"now"} };
+  if (change === "cancel-requested") review.orderResolutions = { item: {disposition:"cancel-requested",note:"cancel",by:"user",at:"now"} };
   if (change === "unchecked") line.checked = false;
   if (change === "trial") { review.sourceTrial = {runId:"trial",reader:"terra"}; line.checked = false; }
   expect(receivingReviewComplete(review, "version")).toBe(false);
@@ -39,5 +39,18 @@ it("does not infer completion for an empty or entirely excluded slip", () => {
 it("preserves older posted receipts without an explicit checked field", () => {
   const review = posted();
   delete review.lines[0]!.checked;
+  expect(receivingReviewComplete(review, "version")).toBe(true);
+});
+
+it.each(["unresolved", "outstanding", "backordered"] as const)("does not hold a slip open for an order item left off it (%s)", disposition => {
+  const review = posted();
+  review.orderResolutions = { other: {disposition,note:"",by:"user",at:"now"} };
+  expect(receivingReviewComplete(review, "version")).toBe(true);
+});
+
+it("completes a slip whose accepted line came short of the order", () => {
+  const review = posted();
+  const line = review.lines[0]!;
+  line.ordered = 10;
   expect(receivingReviewComplete(review, "version")).toBe(true);
 });

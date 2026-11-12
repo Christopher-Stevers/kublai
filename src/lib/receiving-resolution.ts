@@ -77,10 +77,11 @@ export function receivedLineQuantity(line: ReceivingLine) {
   );
 }
 
+/** Order items left off the slip need no decision; they stay outstanding.
+ * A requested cancellation still waits for an order correction. */
 export function pendingOrderResolutions(review: ReceivingReview) {
   return Object.values(review.orderResolutions ?? {}).filter(
-    (r) =>
-      r.disposition === "unresolved" || r.disposition === "cancel-requested",
+    (r) => r.disposition === "cancel-requested",
   ).length;
 }
 
@@ -288,11 +289,11 @@ export function resolutionBlockers(
         item.received +
         (line.approved?.kind === "delivery" ? line.approved.quantity : 0),
     );
-    if (total < outstanding - 1e-6 && r.remainder !== "backordered")
+    // A shortfall never blocks: what did not come stays outstanding on the
+    // order. Only a cancellation needs an order correction first.
+    if (total < outstanding - 1e-6 && r.remainder === "cancelled")
       problems.push(
-        r.remainder === "cancelled"
-          ? "Cancellation is recorded; an authorized order correction is still required."
-          : "Confirm whether the remaining quantity is backordered or resolve the unexplained remainder.",
+        "Cancellation is recorded; an authorized order correction is still required.",
       );
     if (total > outstanding + 1e-6 && r.excess !== "accepted")
       problems.push(
