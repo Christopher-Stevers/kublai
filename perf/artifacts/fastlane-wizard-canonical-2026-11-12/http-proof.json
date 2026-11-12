@@ -1,0 +1,60 @@
+{
+  "build": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+  "currentAssetsAndRetainedCss": 264,
+  "currentScripts": 255,
+  "allCurrentBrotliSidecarsAndDecodedBytesExact": true,
+  "immutableStaticHeaders": true,
+  "previousReleaseSamples": 10,
+  "historicalSamples": [
+    {
+      "asset": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "UzwdBuKm2iDE8zDCyDcEI/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "chunks/0bfc8dce-5dee486d9911075a.js",
+      "exact": true
+    },
+    {
+      "asset": "chunks/0bfc8dce-5dee486d9911075a.js",
+      "exact": true
+    },
+    {
+      "asset": "ZRfPvd8bwvzuDDJvHXz1_/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "_Nnpqrzp9ZPDOicKBkHnX/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "_jYy29uYB_rXlSwfUp7w-/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "6C0P1mprL-QSjWOWNS84l/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "28koM8o3VXq3Bje-aNjrf/_buildManifest.js",
+      "exact": true
+    },
+    {
+      "asset": "chunks/0bfc8dce-5dee486d9911075a.js",
+      "exact": true
+    }
+  ],
+  "allHistoricalBytesExact": true,
+  "workerMatchesPackaged": true,
+  "healthStatus": 200,
+  "signInStatus": 200,
+  "backgroundMode": "separate",
+  "bimDisabled": true,
+  "databaseReadOnlyVerified": true,
+  "allRequestsCookieFreeGet": true,
+  "releaseManifestAndBinding": "Not added: Phase0 has neither newer feature",
+  "activated": false
+}

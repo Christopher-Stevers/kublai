@@ -1,0 +1,37 @@
+{
+  "canonicalBuildAttempts": 1,
+  "canonicalExit": 0,
+  "packageProofAttempts": [
+    {
+      "attempt": 1,
+      "passed": false,
+      "reason": "Active runtime omits two preexisting compiled false defaults; before any packaging copy"
+    },
+    {
+      "attempt": 2,
+      "passed": true,
+      "reviewedNormalization": [
+        "experimental.trustHostHeader",
+        "experimental.isExperimentalCompile"
+      ],
+      "runtimeConfigCopiedUnchanged": true
+    }
+  ],
+  "logs": {
+    "build.log": {
+      "retainedPath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/phase0-wizard-build.log",
+      "sha256": "5bbcdfb5999f285d3d6b010371b42b8d48eb844c3cfca5157c74242261791f0f"
+    },
+    "package-proof.log": {
+      "retainedPath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/phase0-wizard-package-proof.log",
+      "sha256": "06ed9489e2f0ca8906498df627c5c3fca0af44d8447dc4615d2ffbf878945a39"
+    },
+    "package-proof-attempt2.log": {
+      "retainedPath": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/phase0-wizard-package-proof-attempt2.log",
+      "sha256": "7b7fb6b10b6062c5c37beb12a978748d2179352a2ec65fc5f874c215e484717f"
+    }
+  },
+  "anonymousProtectedEndpointNotYetTested": true,
+  "fullMatrixNotYetRun": true,
+  "activated": false
+}

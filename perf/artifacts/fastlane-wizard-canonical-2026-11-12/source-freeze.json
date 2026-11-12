@@ -1,0 +1,17 @@
+{
+  "base": "/home/tim/.openclaw/workspace/releases/speed-phase0-bootstrap-20261110",
+  "source": "/home/tim/.openclaw/workspace/releases/speed-phase0-wizard-fastlane-20261112",
+  "commit": "669d7f83e05452f7027bfbd7ca7db75f848bb3a3",
+  "changedPaths": [
+    "src/components/catalogue/CatalogueVisibility.tsx"
+  ],
+  "before": "01cd2bd87133a6318bcb6ebe587601d5456525c0262f43e4b8bac4e18c80b5ae",
+  "after": "bc8b16aed9e92b1d4319dd65fc77c54547efc38e04185c16279c85afb0ca5c1a",
+  "unchangedInputs": 4399,
+  "publicFiles": 2297,
+  "activeBuild": "/home/tim/.openclaw/workspace/releases/speed-phase0-bootstrap-20261110/.next-canonical-a",
+  "buildNotStarted": true,
+  "sourceFingerprint": "34f0c1508584e40382ad25955b3aa2b5703bdd78ced4e6ef2536e902fd82281d",
+  "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+  "sourceFileCount": 2200
+}
