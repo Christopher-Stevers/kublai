@@ -1,0 +1,161 @@
+{
+  "checkedAt": "2026-11-12T01:19:23.448Z",
+  "active": "/home/tim/.openclaw/workspace/releases/speed-phase0-wizard-fastlane-20261112/.next-web",
+  "build": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+  "sourceFingerprint": "34f0c1508584e40382ad25955b3aa2b5703bdd78ced4e6ef2536e902fd82281d",
+  "changedScriptCount": 6,
+  "allPassed": true,
+  "service": "ActiveState=active\nSubState=running\nMainPID=137502\nNRestarts=0",
+  "checks": [
+    {
+      "endpoint": "/api/health",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "/sign-in",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "/api/trpc/user.getMe",
+      "status": 401,
+      "expected": 401,
+      "passed": true
+    },
+    {
+      "endpoint": "/_next/static/9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0/_buildManifest.js",
+      "status": 200,
+      "requestedEncoding": "br",
+      "receivedEncoding": "br",
+      "exactDecodedBytes": true,
+      "sha256": "d9c440e2e96dbf4a4324c85025b7c15f00844ae6b76161d7b7b7be5129dccae0",
+      "passed": true
+    },
+    {
+      "endpoint": "/_next/static/9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0/_buildManifest.js",
+      "status": 200,
+      "requestedEncoding": "gzip",
+      "receivedEncoding": "gzip",
+      "exactDecodedBytes": true,
+      "sha256": "d9c440e2e96dbf4a4324c85025b7c15f00844ae6b76161d7b7b7be5129dccae0",
+      "passed": true
+    },
+    {
+      "endpoint": "/_next/static/9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0/_ssgManifest.js",
+      "status": 200,
+      "requestedEncoding": "br",
+      "receivedEncoding": "br",
+      "exactDecodedBytes": true,
+      "sha256": "678f6ce2cb80b1fe72fc67e7412be6e2ab6ada083111b64f7c40d35e3cba5e00",
+      "passed": true
+    },
+    {
+      "endpoint": "/_next/static/9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0/_ssgManifest.js",
+      "status": 200,
+      "requestedEncoding": "gzip",
+      "receivedEncoding": "gzip",
+      "exactDecodedBytes": true,
+      "sha256": "678f6ce2cb80b1fe72fc67e7412be6e2ab6ada083111b64f7c40d35e3cba5e00",
+      "passed": true
+    },
+    {
+      "endpoint": "/_next/static/chunks/7021.a6e0e67e58f7179e.js",
+      "status": 200,
+      "requestedEncoding": "br",
+      "receivedEncoding": "br",
+      "exactDecodedBytes": true,
+      "sha256": "8964aa4291c23e11b1903a5102c5a49c1190f748100e39f36e38d634c7924fc0",
+      "passed": true
+    },
+    {
+      "endpoint": "/_next/static/chunks/7021.a6e0e67e58f7179e.js",
+      "status": 200,
+      "requestedEncoding": "gzip",
+      "receivedEncoding": "gzip",
+      "exactDecodedBytes": true,
+      "sha256": "8964aa4291c23e11b1903a5102c5a49c1190f748100e39f36e38d634c7924fc0",
+      "passed": true
+    },
+    {
+      "endpoint": "/_next/static/chunks/8731-22a82579342c8ff5.js",
+      "status": 200,
+      "requestedEncoding": "br",
+      "receivedEncoding": "br",
+      "exactDecodedBytes": true,
+      "sha256": "4da021bf6f22eeb9b25cc50f03ab97153151c9d360bdbc3a21adeb980a8d8301",
+      "passed": true
+    },
+    {
+      "endpoint": "/_next/static/chunks/8731-22a82579342c8ff5.js",
+      "status": 200,
+      "requestedEncoding": "gzip",
+      "receivedEncoding": "gzip",
+      "exactDecodedBytes": true,
+      "sha256": "4da021bf6f22eeb9b25cc50f03ab97153151c9d360bdbc3a21adeb980a8d8301",
+      "passed": true
+    },
+    {
+      "endpoint": "/_next/static/chunks/app/layout-d4431da91a02ea9b.js",
+      "status": 200,
+      "requestedEncoding": "br",
+      "receivedEncoding": "br",
+      "exactDecodedBytes": true,
+      "sha256": "f2eee47367440522fe18dda5067822793c440a6f90b6b46eb9df91278c6457ed",
+      "passed": true
+    },
+    {
+      "endpoint": "/_next/static/chunks/app/layout-d4431da91a02ea9b.js",
+      "status": 200,
+      "requestedEncoding": "gzip",
+      "receivedEncoding": "gzip",
+      "exactDecodedBytes": true,
+      "sha256": "f2eee47367440522fe18dda5067822793c440a6f90b6b46eb9df91278c6457ed",
+      "passed": true
+    },
+    {
+      "endpoint": "/_next/static/chunks/webpack-ec94b61c6ffc0dcf.js",
+      "status": 200,
+      "requestedEncoding": "br",
+      "receivedEncoding": "br",
+      "exactDecodedBytes": true,
+      "sha256": "df5470175c482f59186f775c5ae5594e0143e302f2b8e807ae9f77f91739be74",
+      "passed": true
+    },
+    {
+      "endpoint": "/_next/static/chunks/webpack-ec94b61c6ffc0dcf.js",
+      "status": 200,
+      "requestedEncoding": "gzip",
+      "receivedEncoding": "gzip",
+      "exactDecodedBytes": true,
+      "sha256": "df5470175c482f59186f775c5ae5594e0143e302f2b8e807ae9f77f91739be74",
+      "passed": true
+    },
+    {
+      "endpoint": "/_next/static/c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d/_buildManifest.js",
+      "status": 200,
+      "requestedEncoding": "br",
+      "receivedEncoding": "br",
+      "exactDecodedBytes": true,
+      "sha256": "d9c440e2e96dbf4a4324c85025b7c15f00844ae6b76161d7b7b7be5129dccae0",
+      "passed": true
+    },
+    {
+      "endpoint": "/_next/static/c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d/_buildManifest.js",
+      "status": 200,
+      "requestedEncoding": "gzip",
+      "receivedEncoding": "gzip",
+      "exactDecodedBytes": true,
+      "sha256": "d9c440e2e96dbf4a4324c85025b7c15f00844ae6b76161d7b7b7be5129dccae0",
+      "passed": true
+    },
+    {
+      "endpoint": "/sw.js",
+      "status": 200,
+      "exactDecodedBytes": true,
+      "passed": true
+    }
+  ]
+}

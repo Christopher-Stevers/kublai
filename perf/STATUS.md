@@ -5,16 +5,18 @@ Source plan: `perf/SPEED_PLAN.md`, copied unchanged from
 Its original plan-only header is superseded by Tim’s subsequent authorization.
 Authorized by Tim on 2026-11-10, including Sol 6.1 delegation.
 
-## Current checkpoint — 2026-11-11
+## Current checkpoint — 2026-11-12
 
 The work is in Phase 1 preparation; no broad Phase 1 candidate has passed the
-release gate. Production still runs the Phase 0 measurement bootstrap, including
-the canonical release foundation. Phase 0 has a working synthetic lab, repeatable
+release gate. Production runs the Phase 0 measurement bootstrap plus the approved
+one-file catalogue wizard fix (`9aaeabbe…355b0`), activated only after all fastlane
+gates passed. Its full matrix passes 24/24 cells, and its update is 33,690 gzip
+bytes. No broad Phase 1 changes were included. Phase 0 has a working synthetic lab, repeatable
 desktop baselines and live telemetry, but controlled phone/Safari and remaining
 field targets are unproved. Tim deferred further Pixel debugging; independent
 work continues without requesting that connection again.
 
-The latest full candidate (R20) passed 23 of 24 timing cells and was not
+The latest broad Phase 1 candidate (R20) passed 23 of 24 timing cells and was not
 activated. Opening a job on the Basement profile measured 98.4 ms against the
 82.4 ms baseline, exceeding the unchanged 10% regression band. The newer receiving/photo source passes focused checks and canonical
 compilation/byte ratchets, but has no new full timing result. Its shared script is
@@ -1258,3 +1260,28 @@ lab and helper hashes. One full capture started at 00:47:55 UTC with the origina
 v2 method, fixed baseline pair, ten-minute idle and all 120 samples. Static delta
 uses actual active Phase 0. No other builds/tests run during this window. The
 full result is pending; live production remains Phase 0 and activation is held.
+
+## Approved wizard fastlane activated — 2026-11-12 01:18 UTC
+
+The full candidate capture passed all 24 cells and 120 samples against the fixed
+accepted Phase 0 baseline. Ten-minute idle has 80 reads and one non-overlapping
+stream, matching baseline. Source/method hashes, schema/read preflight and zero
+database-error evidence pass; all test processes and private storage are cleaned.
+Root independently verified the archived raw report, exact one-file source diff,
+repeatability and comparison, then the complete read-only activation gate.
+
+The first read-only gate call preceded the report archive and correctly blocked
+on the missing file. It made no activation attempt. After the byte-identical
+archive was available, the definitive gate passed. Root ran `activate.mjs`, which
+passed its own preflight and activated build `9aaeabbe…355b0` at 01:18:47 UTC.
+All eighteen public checks pass: health/sign-in 200, protected endpoint 401,
+service worker bytes, all six changed scripts and an old script via Brotli/gzip.
+The service is active, running, with NRestarts=0. No database or worker changes.
+
+Evidence: `artifacts/wizard-fastlane-ready-then-pinch-v2-2026-11-12/`
+(`report.json`, `root-review.json`, `activation.json`, `public-edge.json`).
+The original Phase 0 baseline pair stays bound to c25/128d; it must not be
+relabeled as this new active source. Future activation must satisfy the existing
+gate's active-build/baseline binding and use the actual active fastlane for its
+deployment delta. No new baseline run is part of this request. Broader R20,
+notification, receiving, photo, assets, sync and drawing work remain separate.

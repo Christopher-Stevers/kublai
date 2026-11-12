@@ -52,3 +52,17 @@ the plan. This preflight never claims reference-phone results, completed Phase 0
 offline convergence, or a drawing-spike pass. Missing field baselines remain
 listed in `perf/STATUS.md`; the first-week actions in section 18 can be prepared
 and evaluated while they are collected.
+
+## Active one-file fastlane — 2026-11-12
+
+The approved Phase 0 source plus only CatalogueVisibility.tsx from `669d7f83`
+passed the strict 33,690-byte update check, all 24 cells/120 samples, retained
+assets and guarded activation. Active build is now `9aaeabbe…355b0`, source
+fingerprint `34f0c150…82281d`; eighteen public edge checks passed. See
+`perf/artifacts/wizard-fastlane-ready-then-pinch-v2-2026-11-12/`.
+
+The original accepted baseline pair remains bound to Phase 0 `c25f525d…`,
+not the new active source. This gate currently requires baseline/repeat to match
+the actual active build. Subsequent releases must provide correctly bound
+evidence and compute changed bytes against actual active fastlane; do not
+relabel old reports or silently waive this condition.

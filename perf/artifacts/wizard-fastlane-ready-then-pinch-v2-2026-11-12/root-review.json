@@ -1,0 +1,23 @@
+{
+  "checkedAt": "2026-11-12T01:18:40.135Z",
+  "sourceBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+  "sourceFingerprint": "34f0c1508584e40382ad25955b3aa2b5703bdd78ced4e6ef2536e902fd82281d",
+  "sourceFileCount": 2200,
+  "changedPaths": [
+    "src/components/catalogue/CatalogueVisibility.tsx"
+  ],
+  "reportSha256": "50a18a58409e9db3b19c5a3e2211fd7c4228437e8c65f7b0668f5db79eae6583",
+  "reportMatchesRaw": true,
+  "validationErrors": [],
+  "comparisonErrors": [],
+  "repeatabilityErrors": [],
+  "sampleCount": 120,
+  "cells": 24,
+  "strictSmallChangeGzipBytes": 33690,
+  "guardedReadOnlyGatePassed": true,
+  "priorGateAttempt": {
+    "result": "blocked-missing-archive-report-before-copy",
+    "activationAttempted": false
+  },
+  "activated": false
+}

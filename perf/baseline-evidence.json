@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "recordedAt": "2026-11-11T04:17:17.125Z",
+  "recordedAt": "2026-11-12T01:19:23.448Z",
   "referenceDevice": "Google Pixel 9 Pro XL / Chrome",
-  "liveBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+  "liveBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
   "phase0Complete": false,
   "acceptedFullLabCaptures": 2,
   "notes": [
@@ -61,7 +61,11 @@
     "perf/artifacts/part-image-browser-2026-11-11.json",
     "perf/artifacts/chat-overview-pg-proof-2026-11-11-attempt1/README.md",
     "perf/artifacts/chat-overview-pg-proof-2026-11-11-attempt1/proof-summary.json",
-    "perf/artifacts/chat-overview-pg-proof-2026-11-11-attempt1/final-cleanup.json"
+    "perf/artifacts/chat-overview-pg-proof-2026-11-11-attempt1/final-cleanup.json",
+    "perf/artifacts/wizard-fastlane-ready-then-pinch-v2-2026-11-12/report.json",
+    "perf/artifacts/wizard-fastlane-ready-then-pinch-v2-2026-11-12/root-review.json",
+    "perf/artifacts/wizard-fastlane-ready-then-pinch-v2-2026-11-12/activation.json",
+    "perf/artifacts/wizard-fastlane-ready-then-pinch-v2-2026-11-12/public-edge.json"
   ],
   "rows": [
     {
@@ -276,7 +280,7 @@
       "medianMs": 88
     }
   ],
-  "completedFullLabCaptures": 14,
+  "completedFullLabCaptures": 15,
   "reconciledAt": "2026-11-11T05:46:23.441555+00:00",
   "fieldCheckpoint": {
     "measuredAt": "2026-11-11T04:22:07.587029+00:00",
@@ -311,7 +315,7 @@
     "physicalBaselineAccepted": false
   },
   "updatedAt": "2026-11-11T23:17:25.484261+00:00",
-  "completedCandidateLabCaptures": 7,
+  "completedCandidateLabCaptures": 8,
   "candidateRegression": {
     "status": "failed-no-regression-gate",
     "sourceBuild": "e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c",
@@ -485,7 +489,7 @@
     }
   ],
   "completedBaselineLabCaptures": 6,
-  "completedFullLabCapturesMeaning": "Six complete baseline captures (four rejected, two accepted for repeatability only), six full rejected v2 candidate captures (R6/R7/R17/R18/R19/R20), one complete R17 capture rejected for incompatible protocol, and one passing predeclared Phase0 self-control. Invalid/partial pilot runs and supplemental diagnostics excluded.",
+  "completedFullLabCapturesMeaning": "Six complete baseline captures (four rejected, two accepted for repeatability only), six full rejected v2 candidate captures (R6/R7/R17/R18/R19/R20), one complete R17 capture rejected for incompatible protocol, one passing predeclared Phase0 self-control, and one passing approved one-file wizard fastlane candidate. Invalid/partial pilots and supplemental diagnostics excluded.",
   "actionabilityDiagnostic": {
     "status": "supplemental-only",
     "source": "perf/artifacts/openjob-actionability-diagnostic-2026-11-11-assessment.json",
@@ -1674,11 +1678,11 @@
       "src/components/catalogue/CatalogueVisibility.tsx"
     ],
     "rootIndependentSourceCheckPassed": true,
-    "status": "full-candidate-capture-running",
+    "status": "activated-after-all-applicable-gates-passed",
     "smallChangeComparison": "Actual active Phase0 build",
     "fullCandidateMatrixRequired": true,
     "activationOnlyIfEveryApplicableGatePasses": true,
-    "activation": false,
+    "activation": true,
     "canonicalBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
     "functionalProofCommit": "767852d6",
     "unitTestsPassed": 9,
@@ -1694,6 +1698,29 @@
     "lab": "/tmp/foremanhq-speed-app-fxHxrn",
     "labBuild": "wTBAqKGVn-GRqajiTebMf",
     "matrixStartedAt": "2026-11-12T00:47:55Z",
-    "matrixPlanSha256": "803de39660e89e3114d7cfb317754a3d7a80245cc5305d54fb0b026c4642c192"
+    "matrixPlanSha256": "803de39660e89e3114d7cfb317754a3d7a80245cc5305d54fb0b026c4642c192",
+    "sampleCount": 120,
+    "cellsPassed": 24,
+    "comparisonErrors": [],
+    "idlePolls": 80,
+    "completedAt": "2026-11-12T01:16:52Z",
+    "reportSha256": "50a18a58409e9db3b19c5a3e2211fd7c4228437e8c65f7b0668f5db79eae6583",
+    "captureEvidenceCommit": "974abc76",
+    "activationGatePassed": true,
+    "activatedAt": "2026-11-12T01:18:47.766Z",
+    "publicEdgeChecksPassed": 18,
+    "publicEdgeCheckedAt": "2026-11-12T01:19:23.448Z",
+    "serviceRestarts": 0,
+    "rootReview": "perf/artifacts/wizard-fastlane-ready-then-pinch-v2-2026-11-12/root-review.json",
+    "activationEvidence": "perf/artifacts/wizard-fastlane-ready-then-pinch-v2-2026-11-12/activation.json",
+    "publicEdgeEvidence": "perf/artifacts/wizard-fastlane-ready-then-pinch-v2-2026-11-12/public-edge.json"
+  },
+  "liveSourceFingerprint": "34f0c1508584e40382ad25955b3aa2b5703bdd78ced4e6ef2536e902fd82281d",
+  "acceptedCandidateLabCaptures": 1,
+  "nextReleaseBaselineBinding": {
+    "activeBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+    "acceptedReferenceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+    "sameSource": false,
+    "requirement": "Do not relabel the original Phase0 baseline pair as the new active source. The current activation gate requires baseline/repeat to match the actual active build; future release evidence must satisfy that binding and measure deployment bytes against actual active fastlane. No new baseline run requested by this fastlane task."
   }
 }
