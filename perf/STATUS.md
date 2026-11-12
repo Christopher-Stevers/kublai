@@ -1163,3 +1163,43 @@ belong to the unchanged Phase 0 build, not R20. The numeric-only raw snapshot is
 preserved privately and hashed; aggregate evidence is
 `artifacts/field-review-2026-11-11-after-r20.json`. The live service remains active
 on the Phase 0 canonical release. Pixel debugging remains deferred.
+
+
+## Notification ownership functional proof — 2026-11-12
+
+Prepared client-only slice `acca100a` uses successful current-account overview
+responses to replace the redundant notification identity interval. The existing
+overview cadence and identity bootstrap, invalidation and recovery remain. Cached
+or old responses cannot establish ownership; account, mount and request-authority
+fences retain same-account dialog state across benign pauses. Independent review
+caught and repaired a slow-overview/new-identity race before the browser proof.
+
+Twenty-seven tests across four files, scoped lint and scoped runtime/test
+TypeScript pass. One actual Center/Dialog/QueryClient browser fixture with 250 ms
+HTTP replies observes two 30.256-second cadence gaps: four overview replies
+(including bootstrap and open) and one identity reply during that window. The
+same dialog/input DOM and edited value survive healthy refresh, offline/reconnect
+and cooperative pause/resume. Sources remain unchanged and the browser, local
+server/port and temporary files are cleaned. All earlier failed checks remain
+preserved. The fixture explicitly substitutes transport and panel content; it
+does not prove production authentication, batching, full-app idle savings or
+latency. No build or activation. See `notification-overview-owner.md` and
+`artifacts/notification-owner-http-attempt-UqLd7p/`.
+
+## One unchanged Phase 0 control started — 2026-11-12 00:01 UTC
+
+The exact retained Phase 0 canonical source and compiled lab are being compared
+to fixed baseline 1 using the unchanged v2 method, all 120 samples and a ten-minute
+idle observation. Baseline 2 remains the repeatability reference. Root and a
+second reviewer checked all seven final orchestration hashes. Nine control guards
+pass, including rejection of changed source, subset runs, extra diagnostics and
+incorrect static references. Setup passes all fourteen actual reads and reproduces
+the original static values. The pre-bootstrap static predecessor is reconstructed
+from the release manifest and checked against original measured values; the old
+launcher environment itself was not independently retained.
+
+This is one prospective unchanged-build validation, never an R20 rerun or release
+candidate. No additional trials are scheduled. Every result will be retained;
+no final control outcome exists at this checkpoint. All other heavy work is
+paused. Preparation is in
+`artifacts/phase0-self-control-ready-then-pinch-v2-2026-11-11-preparation/`.

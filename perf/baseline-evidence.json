@@ -1393,6 +1393,46 @@
       "rootActivationReportErrors": [
         "openjob/Basement: median 98.4ms exceeds 82.4ms baseline +10%"
       ]
+    },
+    "notificationOverviewOwner": {
+      "status": "prepared-functional-proof-passed-not-built-or-activated",
+      "commit": "acca100a",
+      "runtimeChangedPaths": [
+        "src/hooks/use-notification-account.ts",
+        "src/components/notifications/NotificationCenter.tsx"
+      ],
+      "focusedTests": 27,
+      "testFiles": 4,
+      "scopedLintPassed": true,
+      "scopedTypesPassed": true,
+      "componentHttpProof": "perf/artifacts/notification-owner-http-attempt-UqLd7p/report.json",
+      "realCadenceMs": [
+        30256.981336999997,
+        30255.701413000003
+      ],
+      "identityRepliesDuringTwoCycles": 1,
+      "overviewRepliesIncludingBootstrapAndOpen": 4,
+      "sameDialogAndDraftRetained": true,
+      "sourceHashesUnchanged": true,
+      "cleanupConfirmed": true,
+      "fullAppIdleReductionProved": false,
+      "activation": false
+    },
+    "phase0SelfControl": {
+      "status": "running-control-only",
+      "startedAt": "2026-11-12T00:01:58Z",
+      "prospectiveTrial": 1,
+      "additionalTrialsScheduled": 0,
+      "samplesPlanned": 120,
+      "idleDurationMs": 600000,
+      "preparation": "perf/artifacts/phase0-self-control-ready-then-pinch-v2-2026-11-11-preparation/plan.json",
+      "preparationSha256": "a4f6654d3eceeeb82864d6b42bde37c4c461d35ddf7b588a438feee71e1945c2",
+      "rootAndIndependentReviewerVerifiedAllSevenHashes": true,
+      "comparisonBaseline": "perf/artifacts/baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+      "readPreflightPassed": 14,
+      "originalStaticValuesMatched": true,
+      "doesNotClearR20": true,
+      "activation": false
     }
   },
   "historicalCandidateRegressions": [
