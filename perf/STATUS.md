@@ -1203,3 +1203,33 @@ candidate. No additional trials are scheduled. Every result will be retained;
 no final control outcome exists at this checkpoint. All other heavy work is
 paused. Preparation is in
 `artifacts/phase0-self-control-ready-then-pinch-v2-2026-11-11-preparation/`.
+
+
+## Phase 0 control passed; approved catalogue fastlane next — 2026-11-12
+
+The single predeclared unchanged-build control completed all 120 samples and
+passes all 24 cells against the fixed baseline 1. Root independently confirms
+report validation, baseline-pair repeatability and comparison return no errors.
+The ten-minute idle observation has 80 reads and one non-overlapping stream.
+Fourteen read preflights pass, source/method bindings remain exact, database
+errors are zero and both app processes, private database, socket and port are
+cleaned. Quiet was released at 00:31:04 UTC. Archive `0430c752` and root review
+are in `artifacts/phase0-self-control-ready-then-pinch-v2-2026-11-11/`.
+This is one prospective false-alarm validation of twenty, not clearance of R20.
+
+Tim explicitly approved `/home/tim/Documents/foremanhq-fastlane/REQUEST.md` and
+requested its build, strict small-change check, full candidate matrix and guarded
+activation only if every applicable gate passes. This takes the next runtime slot.
+The source is the actual frozen live Phase 0 plus only CatalogueVisibility.tsx
+from `669d7f83`. Both reviewers and root verify the exact preimage/postimage and
+one-file diff; root independently verifies fingerprint `34f0c150…` / 2,200 inputs.
+The source's `.next` points to actual active Phase 0, so retention and changed
+bytes cannot accidentally use its older predecessor.
+
+The approved original Phase 0 recipe runs with external current safety/toolchain
+checks; source scripts are unchanged. Operational post-build packaging must retain
+exact active runtime wrappers/public assets and bind the actual source fingerprint.
+The separate full matrix uses the original v2 method and fixed baseline pair.
+All failed checks remain failures; no budget adjustment or R20 waiver is allowed.
+Other notification, receiving, photo, asset-request and drawing changes are excluded.
+At this checkpoint no fastlane build result or activation exists.

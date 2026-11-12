@@ -276,7 +276,7 @@
       "medianMs": 88
     }
   ],
-  "completedFullLabCaptures": 13,
+  "completedFullLabCaptures": 14,
   "reconciledAt": "2026-11-11T05:46:23.441555+00:00",
   "fieldCheckpoint": {
     "measuredAt": "2026-11-11T04:22:07.587029+00:00",
@@ -485,7 +485,7 @@
     }
   ],
   "completedBaselineLabCaptures": 6,
-  "completedFullLabCapturesMeaning": "Six complete baseline captures (four rejected, two accepted for repeatability only), six full rejected v2 candidate captures (R6/R7/R17/R18/R19/R20), and one complete R17 capture rejected for incompatible protocol before timing comparison. Invalid/partial pilot runs and supplemental diagnostics excluded.",
+  "completedFullLabCapturesMeaning": "Six complete baseline captures (four rejected, two accepted for repeatability only), six full rejected v2 candidate captures (R6/R7/R17/R18/R19/R20), one complete R17 capture rejected for incompatible protocol, and one passing predeclared Phase0 self-control. Invalid/partial pilot runs and supplemental diagnostics excluded.",
   "actionabilityDiagnostic": {
     "status": "supplemental-only",
     "source": "perf/artifacts/openjob-actionability-diagnostic-2026-11-11-assessment.json",
@@ -1419,7 +1419,7 @@
       "activation": false
     },
     "phase0SelfControl": {
-      "status": "running-control-only",
+      "status": "completed-control-only-pass",
       "startedAt": "2026-11-12T00:01:58Z",
       "prospectiveTrial": 1,
       "additionalTrialsScheduled": 0,
@@ -1432,7 +1432,20 @@
       "readPreflightPassed": 14,
       "originalStaticValuesMatched": true,
       "doesNotClearR20": true,
-      "activation": false
+      "activation": false,
+      "samplesCompleted": 120,
+      "passedCells": 24,
+      "archiveCommit": "0430c752",
+      "report": "perf/artifacts/phase0-self-control-ready-then-pinch-v2-2026-11-11/report.json",
+      "rootReview": "perf/artifacts/phase0-self-control-ready-then-pinch-v2-2026-11-11/root-review.json",
+      "cleanup": "perf/artifacts/phase0-self-control-ready-then-pinch-v2-2026-11-11/cleanup.json",
+      "rootValidationErrors": [],
+      "rootRepeatabilityErrors": [],
+      "rootComparisonErrors": [],
+      "unexpectedDatabaseErrors": 0,
+      "cleanupConfirmed": true,
+      "prospectiveValidationTrialsPassed": 1,
+      "requiredProspectiveValidationTrials": 20
     }
   },
   "historicalCandidateRegressions": [
@@ -1647,5 +1660,24 @@
       "phoneTapToPaintSamples": 3,
       "physicalDeviceVerifiedPerRow": false
     }
-  ]
+  ],
+  "completedControlLabCaptures": 1,
+  "approvedFastlane": {
+    "request": "/home/tim/Documents/foremanhq-fastlane/REQUEST.md",
+    "userExplicitlyApproved": true,
+    "scope": "Exact live Phase0 plus approved CatalogueVisibility.tsx only",
+    "commit": "669d7f83e05452f7027bfbd7ca7db75f848bb3a3",
+    "source": "/home/tim/.openclaw/workspace/releases/speed-phase0-wizard-fastlane-20261112",
+    "sourceFingerprint": "34f0c1508584e40382ad25955b3aa2b5703bdd78ced4e6ef2536e902fd82281d",
+    "sourceFileCount": 2200,
+    "changedPaths": [
+      "src/components/catalogue/CatalogueVisibility.tsx"
+    ],
+    "rootIndependentSourceCheckPassed": true,
+    "status": "frozen-functional-checks-in-progress-canonical-build-authorized-after-functional-runtime",
+    "smallChangeComparison": "Actual active Phase0 build",
+    "fullCandidateMatrixRequired": true,
+    "activationOnlyIfEveryApplicableGatePasses": true,
+    "activation": false
+  }
 }
