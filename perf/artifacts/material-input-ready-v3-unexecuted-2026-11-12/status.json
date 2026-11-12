@@ -1,0 +1,9 @@
+{
+  "status": "cancelled-unexecuted-source-proposal",
+  "reason": "Explicit user calibration keeps original f9/v2 timing boundaries; v3 boundary change deferred.",
+  "sourceSha256": "d626d2f5e91302679d27c282fe625316f9a70ac0e1f679073019f6c89c71c0c7",
+  "testsExecuted": false,
+  "browserOrDatabaseExecuted": false,
+  "acceptanceHarnessCreated": false,
+  "reportsConverted": false
+}
