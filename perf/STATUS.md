@@ -1338,3 +1338,17 @@ operational test setup outside frozen inputs and tightening deferred-ACK
 assertions. Its unit stage is now authorized after quiet cleanup; no browser
 or canonical build result yet. Functional work continues without asserting
 release eligibility, full Phase 1 completion or physical-phone performance.
+
+## Exact inline notification behavior verified — 2026-11-12
+
+The narrow active-source notification candidate passed 29 focused tests, scoped
+lint and types. Its one bounded browser attempt retained the actual inline inbox,
+All filter and settings through two real 30-second refresh cycles. During that
+window it made one identity request and four overview requests. Read/settings
+acknowledgment, Close/reopen and offline/pause recovery checks passed. Root
+independently verified unchanged source/input hashes and complete owned cleanup.
+Evidence is committed at `b1f7032c`. Transport and account data are synthetic;
+this is behavior evidence, not full-app idle savings, physical-phone speed or
+activation eligibility. The failed active-source baseline repeat still blocks
+release. A separate canonical build/byte check is authorized after capacity
+preflight; no additional timing matrix or activation is authorized.

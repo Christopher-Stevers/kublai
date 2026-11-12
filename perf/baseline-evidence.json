@@ -1736,8 +1736,8 @@
       "src/components/notifications/NotificationCenter.tsx",
       "src/hooks/use-notification-account.ts"
     ],
-    "notificationBuildStarted": false,
-    "notificationInlineProof": "preparing source-bound real inline UI test; newer lazy-panel fixture is not a substitute",
+    "notificationBuildStarted": true,
+    "notificationInlineProof": "passed: 29 focused tests, scoped lint/types, exact inline UI and two real timer cycles in bounded local HTTP fixture",
     "activeSourceRepeat": {
       "fixedFirstReport": "perf/artifacts/wizard-fastlane-ready-then-pinch-v2-2026-11-12/report.json",
       "fixedFirstSha256": "50a18a58409e9db3b19c5a3e2211fd7c4228437e8c65f7b0668f5db79eae6583",
@@ -1765,6 +1765,12 @@
       "sourceMethodStable": true,
       "databaseErrors": 0
     },
-    "releaseHeldReason": "The independent unchanged active-source repeat failed; no accepted active-source pair exists. Notification functional and canonical byte preparation may proceed separately; no repeat/threshold waiver or activation."
+    "releaseHeldReason": "The independent unchanged active-source repeat failed; no accepted active-source pair exists. Notification functional and canonical byte preparation may proceed separately; no repeat/threshold waiver or activation.",
+    "notificationInlineProofCommit": "b1f7032c",
+    "notificationInlineBrowserReport": "perf/artifacts/notification-inline-http-attempt-4o5LwR/report.json",
+    "notificationInlineBrowserReportSha256": "7f25453004f4fe0931b37bc03255776a6df9e0b34d8812c7723b00e7acb5803e",
+    "notificationInlineBrowserCleanupPassed": true,
+    "notificationInlineBrowserIsAcceptanceEvidence": false,
+    "notificationCanonicalStatus": "one attempt in progress; no activation"
   }
 }
