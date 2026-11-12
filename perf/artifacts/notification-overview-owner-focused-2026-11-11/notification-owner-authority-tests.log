@@ -1,0 +1,42 @@
+(node:99942) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v4.1.4 /home/tim/.openclaw/workspace/kublai
+
+ ❯ src/hooks/use-notification-account.test.tsx (13 tests | 2 failed) 5718ms
+   × transient overview failure restores identity catchup without an overview retry loop 57ms
+   × a terminal overview refusal recovers identity once without an immediate refusal loop 5041ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/hooks/use-notification-account.test.tsx > transient overview failure restores identity catchup without an overview retry loop
+AssertionError: expected "vi.fn()" to be called 2 times, but got 3 times
+ ❯ src/hooks/use-notification-account.test.tsx:140:25
+    138|   await waitFor(() => expect(mock.identity).toHaveBeenCalledTimes(2));
+    139|   expect(result.current.accountKey).toBe("a:org");
+    140|   expect(mock.overview).toHaveBeenCalledTimes(2);
+       |                         ^
+    141| });
+    142| it("a new same-key owner gets fresh HTTP after an old deduplicated req…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/hooks/use-notification-account.test.tsx > a terminal overview refusal recovers identity once without an immediate refusal loop
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/hooks/use-notification-account.test.tsx:358:1
+    356|   );
+    357| });
+    358| it("a terminal overview refusal recovers identity once without an imme…
+       | ^
+    359|   vi.useFakeTimers({
+    360|     toFake: [
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  2 failed | 25 passed (27)
+   Start at  18:52:45
+   Duration  10.83s (transform 108ms, setup 81ms, import 470ms, tests 9.02s, environment 1.01s)
+

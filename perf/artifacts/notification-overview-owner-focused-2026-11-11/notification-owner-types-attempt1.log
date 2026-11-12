@@ -1,0 +1,2 @@
+src/components/notifications/NotificationCenter.owner.test.tsx(113,65): error TS2339: Property 'toBeVisible' does not exist on type 'Assertion<HTMLElement>'.
+src/components/notifications/NotificationCenter.owner.test.tsx(114,54): error TS2339: Property 'toHaveValue' does not exist on type 'Assertion<HTMLElement>'.

@@ -40,6 +40,22 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
 vi.mock("~/hooks/use-online-status", () => ({
   useOnlineStatus: () => mocks.online,
 }));
+vi.mock("~/hooks/use-notification-account", () => ({
+  useNotificationAccount: () => ({
+    accountKey: mocks.validated ? mocks.accountKey : null,
+    online: mocks.online,
+    identity: { isLoading: false },
+    overview: {
+      data: mocks.accountKey
+        ? { unreadCount: mocks.count, readTargets: mocks.targets }
+        : undefined,
+      isFetchedAfterMount: mocks.validated,
+      isError: mocks.error,
+      refetch: mocks.refetch,
+    },
+    refreshIdentity: mocks.refetch,
+  }),
+}));
 vi.mock("~/trpc/react", () => ({
   api: {
     useUtils: () => ({

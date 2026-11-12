@@ -1,0 +1,191 @@
+(node:96419) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v4.1.4 /home/tim/.openclaw/workspace/kublai
+
+ ❯ src/hooks/use-notification-account.test.tsx (8 tests | 8 failed) 20ms
+   × boots through actual identity HTTP, then overview suppresses only the identity interval while preserving the binding 11ms
+   × manual cached overview cannot establish ownership before a real reply 2ms
+   × transient overview failure restores identity catchup without an overview retry loop 1ms
+   × a new same-key owner gets fresh HTTP after an old deduplicated request settles 1ms
+   × simulation replacement cannot reuse a previous successful overview as authority 1ms
+   × Activity reactivation requires fresh identity and ignores the old pending completion 1ms
+   × retains the same bound account across a benign offline interval and waits for fresh ownership 1ms
+   × does not let an older identity reply undo a terminal overview denial 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/hooks/use-notification-account.test.tsx > boots through actual identity HTTP, then overview suppresses only the identity interval while preserving the binding
+TypeError: Cannot read properties of undefined (reading 'flatMap')
+ ❯ getQueryKeyInternal node_modules/.pnpm/@trpc+react-query@11.8.1_@tanstack+react-query@5.90.16_react@19.2.3__@trpc+client@11.8._172c143bfe1cfdb2538f7ca7e663c03a/node_modules/@trpc/react-query/src/internals/getQueryKey.ts:38:25
+ ❯ getQueryKey node_modules/.pnpm/@trpc+react-query@11.8.1_@tanstack+react-query@5.90.16_react@19.2.3__@trpc+client@11.8._172c143bfe1cfdb2538f7ca7e663c03a/node_modules/@trpc/react-query/src/internals/getQueryKey.ts:117:19
+ ❯ Module.useNotificationAccount src/hooks/use-notification-account.ts:45:15
+     43|   const overviewOwns = eligible && Boolean(accountKey) && owner?.lifec…
+     44|   const identity = useQuery({
+     45|     queryKey: getQueryKey(api.notifications.identity, { sessionKey }, …
+       |               ^
+     46|     queryFn: async ({ signal }) => {
+     47|       identityAttempt.current = { lifecycle, epoch: mountEpoch.current…
+ ❯ renderHook.wrapper.wrapper src/hooks/use-notification-account.test.tsx:24:39
+ ❯ TestComponent node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@type_019c8b90c88a1cc11c541bca58ce838f/node_modules/@testing-library/react/dist/pure.js:330:27
+ ❯ Object.react_stack_bottom_frame node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:25904:20
+ ❯ renderWithHooks node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:7662:22
+ ❯ updateFunctionComponent node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:10166:19
+ ❯ beginWork node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:11778:18
+ ❯ runWithFiberInDEV node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:874:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  src/hooks/use-notification-account.test.tsx > manual cached overview cannot establish ownership before a real reply
+TypeError: Cannot read properties of undefined (reading 'flatMap')
+ ❯ getQueryKeyInternal node_modules/.pnpm/@trpc+react-query@11.8.1_@tanstack+react-query@5.90.16_react@19.2.3__@trpc+client@11.8._172c143bfe1cfdb2538f7ca7e663c03a/node_modules/@trpc/react-query/src/internals/getQueryKey.ts:38:25
+ ❯ getQueryKey node_modules/.pnpm/@trpc+react-query@11.8.1_@tanstack+react-query@5.90.16_react@19.2.3__@trpc+client@11.8._172c143bfe1cfdb2538f7ca7e663c03a/node_modules/@trpc/react-query/src/internals/getQueryKey.ts:117:19
+ ❯ Module.useNotificationAccount src/hooks/use-notification-account.ts:45:15
+     43|   const overviewOwns = eligible && Boolean(accountKey) && owner?.lifec…
+     44|   const identity = useQuery({
+     45|     queryKey: getQueryKey(api.notifications.identity, { sessionKey }, …
+       |               ^
+     46|     queryFn: async ({ signal }) => {
+     47|       identityAttempt.current = { lifecycle, epoch: mountEpoch.current…
+ ❯ renderHook.wrapper.wrapper src/hooks/use-notification-account.test.tsx:37:39
+ ❯ TestComponent node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@type_019c8b90c88a1cc11c541bca58ce838f/node_modules/@testing-library/react/dist/pure.js:330:27
+ ❯ Object.react_stack_bottom_frame node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:25904:20
+ ❯ renderWithHooks node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:7662:22
+ ❯ updateFunctionComponent node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:10166:19
+ ❯ beginWork node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:11778:18
+ ❯ runWithFiberInDEV node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:874:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  src/hooks/use-notification-account.test.tsx > transient overview failure restores identity catchup without an overview retry loop
+TypeError: Cannot read properties of undefined (reading 'flatMap')
+ ❯ getQueryKeyInternal node_modules/.pnpm/@trpc+react-query@11.8.1_@tanstack+react-query@5.90.16_react@19.2.3__@trpc+client@11.8._172c143bfe1cfdb2538f7ca7e663c03a/node_modules/@trpc/react-query/src/internals/getQueryKey.ts:38:25
+ ❯ getQueryKey node_modules/.pnpm/@trpc+react-query@11.8.1_@tanstack+react-query@5.90.16_react@19.2.3__@trpc+client@11.8._172c143bfe1cfdb2538f7ca7e663c03a/node_modules/@trpc/react-query/src/internals/getQueryKey.ts:117:19
+ ❯ Module.useNotificationAccount src/hooks/use-notification-account.ts:45:15
+     43|   const overviewOwns = eligible && Boolean(accountKey) && owner?.lifec…
+     44|   const identity = useQuery({
+     45|     queryKey: getQueryKey(api.notifications.identity, { sessionKey }, …
+       |               ^
+     46|     queryFn: async ({ signal }) => {
+     47|       identityAttempt.current = { lifecycle, epoch: mountEpoch.current…
+ ❯ renderHook.wrapper.wrapper src/hooks/use-notification-account.test.tsx:46:68
+ ❯ TestComponent node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@type_019c8b90c88a1cc11c541bca58ce838f/node_modules/@testing-library/react/dist/pure.js:330:27
+ ❯ Object.react_stack_bottom_frame node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:25904:20
+ ❯ renderWithHooks node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:7662:22
+ ❯ updateFunctionComponent node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:10166:19
+ ❯ beginWork node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:11778:18
+ ❯ runWithFiberInDEV node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:874:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  src/hooks/use-notification-account.test.tsx > a new same-key owner gets fresh HTTP after an old deduplicated request settles
+TypeError: Cannot read properties of undefined (reading 'flatMap')
+ ❯ getQueryKeyInternal node_modules/.pnpm/@trpc+react-query@11.8.1_@tanstack+react-query@5.90.16_react@19.2.3__@trpc+client@11.8._172c143bfe1cfdb2538f7ca7e663c03a/node_modules/@trpc/react-query/src/internals/getQueryKey.ts:38:25
+ ❯ getQueryKey node_modules/.pnpm/@trpc+react-query@11.8.1_@tanstack+react-query@5.90.16_react@19.2.3__@trpc+client@11.8._172c143bfe1cfdb2538f7ca7e663c03a/node_modules/@trpc/react-query/src/internals/getQueryKey.ts:117:19
+ ❯ Module.useNotificationAccount src/hooks/use-notification-account.ts:45:15
+     43|   const overviewOwns = eligible && Boolean(accountKey) && owner?.lifec…
+     44|   const identity = useQuery({
+     45|     queryKey: getQueryKey(api.notifications.identity, { sessionKey }, …
+       |               ^
+     46|     queryFn: async ({ signal }) => {
+     47|       identityAttempt.current = { lifecycle, epoch: mountEpoch.current…
+ ❯ renderHook.wrapper.wrapper src/hooks/use-notification-account.test.tsx:56:34
+ ❯ TestComponent node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@type_019c8b90c88a1cc11c541bca58ce838f/node_modules/@testing-library/react/dist/pure.js:330:27
+ ❯ Object.react_stack_bottom_frame node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:25904:20
+ ❯ renderWithHooks node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:7662:22
+ ❯ updateFunctionComponent node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:10166:19
+ ❯ beginWork node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:11778:18
+ ❯ runWithFiberInDEV node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:874:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  src/hooks/use-notification-account.test.tsx > simulation replacement cannot reuse a previous successful overview as authority
+TypeError: Cannot read properties of undefined (reading 'flatMap')
+ ❯ getQueryKeyInternal node_modules/.pnpm/@trpc+react-query@11.8.1_@tanstack+react-query@5.90.16_react@19.2.3__@trpc+client@11.8._172c143bfe1cfdb2538f7ca7e663c03a/node_modules/@trpc/react-query/src/internals/getQueryKey.ts:38:25
+ ❯ getQueryKey node_modules/.pnpm/@trpc+react-query@11.8.1_@tanstack+react-query@5.90.16_react@19.2.3__@trpc+client@11.8._172c143bfe1cfdb2538f7ca7e663c03a/node_modules/@trpc/react-query/src/internals/getQueryKey.ts:117:19
+ ❯ Module.useNotificationAccount src/hooks/use-notification-account.ts:45:15
+     43|   const overviewOwns = eligible && Boolean(accountKey) && owner?.lifec…
+     44|   const identity = useQuery({
+     45|     queryKey: getQueryKey(api.notifications.identity, { sessionKey }, …
+       |               ^
+     46|     queryFn: async ({ signal }) => {
+     47|       identityAttempt.current = { lifecycle, epoch: mountEpoch.current…
+ ❯ renderHook.wrapper.wrapper src/hooks/use-notification-account.test.tsx:64:78
+ ❯ TestComponent node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@type_019c8b90c88a1cc11c541bca58ce838f/node_modules/@testing-library/react/dist/pure.js:330:27
+ ❯ Object.react_stack_bottom_frame node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:25904:20
+ ❯ renderWithHooks node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:7662:22
+ ❯ updateFunctionComponent node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:10166:19
+ ❯ beginWork node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:11778:18
+ ❯ runWithFiberInDEV node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:874:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+ FAIL  src/hooks/use-notification-account.test.tsx > Activity reactivation requires fresh identity and ignores the old pending completion
+TypeError: Cannot read properties of undefined (reading 'flatMap')
+ ❯ getQueryKeyInternal node_modules/.pnpm/@trpc+react-query@11.8.1_@tanstack+react-query@5.90.16_react@19.2.3__@trpc+client@11.8._172c143bfe1cfdb2538f7ca7e663c03a/node_modules/@trpc/react-query/src/internals/getQueryKey.ts:38:25
+ ❯ getQueryKey node_modules/.pnpm/@trpc+react-query@11.8.1_@tanstack+react-query@5.90.16_react@19.2.3__@trpc+client@11.8._172c143bfe1cfdb2538f7ca7e663c03a/node_modules/@trpc/react-query/src/internals/getQueryKey.ts:117:19
+ ❯ Module.useNotificationAccount src/hooks/use-notification-account.ts:45:15
+     43|   const overviewOwns = eligible && Boolean(accountKey) && owner?.lifec…
+     44|   const identity = useQuery({
+     45|     queryKey: getQueryKey(api.notifications.identity, { sessionKey }, …
+       |               ^
+     46|     queryFn: async ({ signal }) => {
+     47|       identityAttempt.current = { lifecycle, epoch: mountEpoch.current…
+ ❯ renderHook.wrapper.children.children src/hooks/use-notification-account.test.tsx:74:33
+ ❯ TestComponent node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@type_019c8b90c88a1cc11c541bca58ce838f/node_modules/@testing-library/react/dist/pure.js:330:27
+ ❯ Object.react_stack_bottom_frame node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:25904:20
+ ❯ renderWithHooks node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:7662:22
+ ❯ updateFunctionComponent node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:10166:19
+ ❯ beginWork node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:11778:18
+ ❯ runWithFiberInDEV node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:874:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+
+ FAIL  src/hooks/use-notification-account.test.tsx > retains the same bound account across a benign offline interval and waits for fresh ownership
+TypeError: Cannot read properties of undefined (reading 'flatMap')
+ ❯ getQueryKeyInternal node_modules/.pnpm/@trpc+react-query@11.8.1_@tanstack+react-query@5.90.16_react@19.2.3__@trpc+client@11.8._172c143bfe1cfdb2538f7ca7e663c03a/node_modules/@trpc/react-query/src/internals/getQueryKey.ts:38:25
+ ❯ getQueryKey node_modules/.pnpm/@trpc+react-query@11.8.1_@tanstack+react-query@5.90.16_react@19.2.3__@trpc+client@11.8._172c143bfe1cfdb2538f7ca7e663c03a/node_modules/@trpc/react-query/src/internals/getQueryKey.ts:117:19
+ ❯ Module.useNotificationAccount src/hooks/use-notification-account.ts:45:15
+     43|   const overviewOwns = eligible && Boolean(accountKey) && owner?.lifec…
+     44|   const identity = useQuery({
+     45|     queryKey: getQueryKey(api.notifications.identity, { sessionKey }, …
+       |               ^
+     46|     queryFn: async ({ signal }) => {
+     47|       identityAttempt.current = { lifecycle, epoch: mountEpoch.current…
+ ❯ renderHook.wrapper.wrapper src/hooks/use-notification-account.test.tsx:82:70
+ ❯ TestComponent node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@type_019c8b90c88a1cc11c541bca58ce838f/node_modules/@testing-library/react/dist/pure.js:330:27
+ ❯ Object.react_stack_bottom_frame node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:25904:20
+ ❯ renderWithHooks node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:7662:22
+ ❯ updateFunctionComponent node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:10166:19
+ ❯ beginWork node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:11778:18
+ ❯ runWithFiberInDEV node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:874:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+
+ FAIL  src/hooks/use-notification-account.test.tsx > does not let an older identity reply undo a terminal overview denial
+TypeError: Cannot read properties of undefined (reading 'flatMap')
+ ❯ getQueryKeyInternal node_modules/.pnpm/@trpc+react-query@11.8.1_@tanstack+react-query@5.90.16_react@19.2.3__@trpc+client@11.8._172c143bfe1cfdb2538f7ca7e663c03a/node_modules/@trpc/react-query/src/internals/getQueryKey.ts:38:25
+ ❯ getQueryKey node_modules/.pnpm/@trpc+react-query@11.8.1_@tanstack+react-query@5.90.16_react@19.2.3__@trpc+client@11.8._172c143bfe1cfdb2538f7ca7e663c03a/node_modules/@trpc/react-query/src/internals/getQueryKey.ts:117:19
+ ❯ Module.useNotificationAccount src/hooks/use-notification-account.ts:45:15
+     43|   const overviewOwns = eligible && Boolean(accountKey) && owner?.lifec…
+     44|   const identity = useQuery({
+     45|     queryKey: getQueryKey(api.notifications.identity, { sessionKey }, …
+       |               ^
+     46|     queryFn: async ({ signal }) => {
+     47|       identityAttempt.current = { lifecycle, epoch: mountEpoch.current…
+ ❯ renderHook.wrapper.wrapper src/hooks/use-notification-account.test.tsx:95:62
+ ❯ TestComponent node_modules/.pnpm/@testing-library+react@16.3.2_@testing-library+dom@10.4.1_@types+react-dom@19.2.3_@type_019c8b90c88a1cc11c541bca58ce838f/node_modules/@testing-library/react/dist/pure.js:330:27
+ ❯ Object.react_stack_bottom_frame node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:25904:20
+ ❯ renderWithHooks node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:7662:22
+ ❯ updateFunctionComponent node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:10166:19
+ ❯ beginWork node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:11778:18
+ ❯ runWithFiberInDEV node_modules/.pnpm/react-dom@19.2.3_react@19.2.3/node_modules/react-dom/cjs/react-dom-client.development.js:874:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed (8)
+   Start at  18:43:44
+   Duration  567ms (transform 40ms, setup 27ms, import 100ms, tests 20ms, environment 255ms)
+

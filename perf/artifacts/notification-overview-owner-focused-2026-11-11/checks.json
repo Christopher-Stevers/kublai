@@ -1,0 +1,129 @@
+{
+  "status": "focused-and-component-http-pass-not-activated",
+  "runtimePaths": [
+    "src/hooks/use-notification-account.ts",
+    "src/components/notifications/NotificationCenter.tsx"
+  ],
+  "checks": {
+    "vitest": {
+      "command": "NODE_OPTIONS=--no-experimental-webstorage pnpm exec vitest run src/hooks/use-notification-account.test.tsx src/components/notifications/NotificationCenter.owner.test.tsx src/components/notifications/NotificationCenter.test.tsx src/components/notifications/NotificationCenter.loading.test.tsx --maxWorkers=1",
+      "tests": 27,
+      "files": 4,
+      "breakdown": {
+        "realQueryClientOwner": 13,
+        "actualCenterLifecycle": 3,
+        "existingPresentation": 10,
+        "existingLoading": 1
+      },
+      "log": "notification-owner-authority2-tests.log"
+    },
+    "eslint": {
+      "files": 6,
+      "errors": 0,
+      "warnings": 0,
+      "log": "notification-owner-authority-lint.log"
+    },
+    "typescript": {
+      "command": "timeout 180s pnpm exec tsc --noEmit --incremental false --pretty false --project /tmp/foremanhq-notification-overview-types-20261111.json",
+      "scope": "runtime hook/Center + two new tests + actual vitest.setup/next-env/src declarations/import closure; not canonical full build",
+      "exitCode": 0,
+      "log": "notification-owner-authority-types.log"
+    },
+    "syntax": "node --check scripts/test-notification-owner-browser.mjs",
+    "browser": "../notification-owner-http-attempt-UqLd7p/report.json"
+  },
+  "sourceHashes": {
+    "src/hooks/use-notification-account.ts": "3d1d0bbc15bb85e9ac3d1afd820b73c3b85148d189d3ec15385b80f0b122bdc5",
+    "src/hooks/use-notification-account.test.tsx": "d18c29ce2f6d04c8d4f419329f1370fe135ab3f62a4e91e888cc609f6284dac2",
+    "src/components/notifications/NotificationCenter.tsx": "3ee59bbb1dd1778ce14bfa69c84c32c536459488621a7ff1261184f794c44d6e",
+    "src/components/notifications/NotificationCenter.owner.test.tsx": "a4bf85d228de72c975f584040c2b14f54d1d0226597225461a8f3bf006922902",
+    "src/components/notifications/NotificationCenter.test.tsx": "4a2b9f957a3c5cbd2e7e26159d3c18f627d9cbea90acb1e3f6b4bc17f24261c6",
+    "src/components/notifications/NotificationCenter.loading.test.tsx": "daf35fa1aa3a9ed642126c6cc38fdd95a975e206524e04c7dd5ca2440a96c5dd",
+    "scripts/test-notification-owner-browser.mjs": "f56dd5205a5692fcec484c8f01a5050887a0d6454b7b6dcf94254522af3db083",
+    "scripts/fixtures/notification-owner/app.jsx": "863ae83118a960027c7383a910040786b7b74f63606e53497437e999cb16c728",
+    "scripts/fixtures/notification-owner/api.jsx": "ec359401020b90d96cb2e4cbde78322395cd3f810ff7a152c768cb044411e718"
+  },
+  "logs": [
+    {
+      "path": "notification-owner-attempt1.log",
+      "sha256": "1cebde669c20204450d60791e694760e751d6c3e089b1c654a24f5a96b54023e",
+      "bytes": 18795
+    },
+    {
+      "path": "notification-owner-attempt2.log",
+      "sha256": "5b8586bde8dda45eb784a62863588008ddab251bc494b8b1cf4047267238e723",
+      "bytes": 1895
+    },
+    {
+      "path": "notification-owner-attempt3.log",
+      "sha256": "ecd72db36afbd5f1de98b65e816b4f472922d0dec2b00d709d162124eb56db60",
+      "bytes": 412
+    },
+    {
+      "path": "notification-owner-integration-attempt1.log",
+      "sha256": "2adf61872555765b130b31b3fffd8d80c1e4161d5741fafc86b40cd28ce9d1ba",
+      "bytes": 3077
+    },
+    {
+      "path": "notification-owner-integration-attempt2.log",
+      "sha256": "f06ecf480153ed91ce67fb8ffcc172c42f61b37523969400eb813c0e4d42c397",
+      "bytes": 416
+    },
+    {
+      "path": "notification-owner-integration-attempt3.log",
+      "sha256": "66f810070fdcf89fbe9a30c51107b9dc2dcd766791d823c369257eb854017865",
+      "bytes": 416
+    },
+    {
+      "path": "notification-owner-authority-tests.log",
+      "sha256": "e52c38016fc348e6bdb5ed86fdde6d16e881c1b57efcbb43d644a580ba7c9488",
+      "bytes": 2052
+    },
+    {
+      "path": "notification-owner-authority2-tests.log",
+      "sha256": "2393595d9965e2bea9165d31bd37651fb460e86937c24abb04b5c823d862ad11",
+      "bytes": 417
+    },
+    {
+      "path": "notification-owner-lint1.log",
+      "sha256": "56cea36aa5f2a2d20cd6eab4cd40de4c32b80906274c0c8b821c22c011bcc2eb",
+      "bytes": 1656
+    },
+    {
+      "path": "notification-owner-lint-final.log",
+      "sha256": "88da55edac235f90b308b2db1ba500f96db58a19276f5a00963651e759f47bb9",
+      "bytes": 340
+    },
+    {
+      "path": "notification-owner-authority-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "notification-owner-types-attempt1.log",
+      "sha256": "7a64c2412d2a1a1acc572cbe1c5aaa07ba1ba830f078c9ce3b4c14677040620d",
+      "bytes": 316
+    },
+    {
+      "path": "notification-owner-types-attempt2.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "notification-owner-authority-types.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "notification-owner-browser-attempt1.log",
+      "sha256": "3a84c3b763078e7ecf605e3adcf5cc5c7f5197dce397bd4f28144bf2e056e2d9",
+      "bytes": 4685
+    }
+  ],
+  "limitations": [
+    "No Next app/database/production auth/batching/build/full matrix or activation",
+    "Source remains outside frozen R20",
+    "Two-cycle component HTTP evidence is not a ten-minute app idle gate",
+    "Forced-timeout supervisor path is source-reviewed, not separately exercised"
+  ]
+}

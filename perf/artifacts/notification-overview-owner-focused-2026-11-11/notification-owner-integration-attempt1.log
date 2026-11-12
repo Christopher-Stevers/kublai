@@ -1,0 +1,73 @@
+(node:97252) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v4.1.4 /home/tim/.openclaw/workspace/kublai
+
+ ❯ src/components/notifications/NotificationCenter.test.tsx (10 tests | 1 failed) 2302ms
+   × hides cached data when identity has not been revalidated or access is revoked 6ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/notifications/NotificationCenter.test.tsx > hides cached data when identity has not been revalidated or access is revoked
+Error: expect(element).not.toBeInTheDocument()
+
+expected document not to contain element, found <button
+  aria-controls="radix-_r_c_"
+  aria-expanded="false"
+  aria-haspopup="dialog"
+  aria-label="Notifications, 2 unread"
+  class="capitalize inline-flex items-center cursor-pointer justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive hover:text-accent-foreground dark:hover:bg-accent/50 size-9 relative h-11 w-11 shrink-0 bg-primary/10 text-primary hover:bg-primary/20 data-[pressed=true]:opacity-75 data-[pressed=true]:transition-none"
+  data-slot="dialog-trigger"
+  data-state="closed"
+  type="button"
+>
+  <svg
+    aria-hidden="true"
+    class="lucide lucide-bell-ring notification-bell-ring h-5 w-5"
+    data-ring="1"
+    fill="none"
+    height="24"
+    stroke="currentColor"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="2"
+    viewBox="0 0 24 24"
+    width="24"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M10.268 21a2 2 0 0 0 3.464 0"
+    />
+    <path
+      d="M22 8c0-2.3-.8-4.3-2-6"
+    />
+    <path
+      d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"
+    />
+    <path
+      d="M4 2C2.8 3.7 2 5.7 2 8"
+    />
+  </svg>
+  <span
+    aria-hidden="true"
+    class="ring-background absolute -top-1 -right-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-red-700 px-1.5 text-sm leading-none font-bold text-white tabular-nums shadow-sm ring-2"
+  >
+    2
+  </span>
+</button> instead
+ ❯ src/components/notifications/NotificationCenter.test.tsx:214:9
+    212|   expect(
+    213|     screen.queryByRole("button", { name: /2 unread/ }),
+    214|   ).not.toBeInTheDocument();
+       |         ^
+    215|   mocks.validated = true;
+    216|   rerender(<NotificationCenter />);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  1 failed | 21 passed (22)
+   Start at  18:45:52
+   Duration  5.18s (transform 107ms, setup 83ms, import 466ms, tests 3.41s, environment 983ms)
+

@@ -1,0 +1,11 @@
+(node:97517) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v4.1.4 /home/tim/.openclaw/workspace/kublai
+
+
+ Test Files  4 passed (4)
+      Tests  23 passed (23)
+   Start at  18:46:31
+   Duration  5.53s (transform 109ms, setup 80ms, import 478ms, tests 3.73s, environment 998ms)
+

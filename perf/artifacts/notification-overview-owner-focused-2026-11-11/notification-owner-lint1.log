@@ -1,0 +1,10 @@
+
+/home/tim/.openclaw/workspace/kublai/src/hooks/use-notification-account.ts
+   20:41  warning  React Hook useMemo has unnecessary dependencies: 'sessionKey' and 'simulation.id'. Either exclude them or remove the dependency array                                                                                                                                react-hooks/exhaustive-deps
+   27:92  warning  The ref value 'mountEpoch.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'mountEpoch.current' to a variable inside the effect, and use that variable in the cleanup function  react-hooks/exhaustive-deps
+   41:49  warning  React Hook useMemo has an unnecessary dependency: 'accountKey'. Either exclude it or remove the dependency array                                                                                                                                                     react-hooks/exhaustive-deps
+  124:6   warning  React Hook useEffect has missing dependencies: 'current' and 'identity'. Either include them or remove the dependency array                                                                                                                                          react-hooks/exhaustive-deps
+  129:6   warning  React Hook useEffect has a missing dependency: 'overview'. Either include it or remove the dependency array                                                                                                                                                          react-hooks/exhaustive-deps
+
+✖ 5 problems (0 errors, 5 warnings)
+

@@ -38,6 +38,20 @@ vi.mock("~/hooks/use-online-status", () => ({ useOnlineStatus: () => true }));
 vi.mock("./use-notification-reminder", () => ({
   useNotificationReminder: () => 0,
 }));
+vi.mock("~/hooks/use-notification-account", () => ({
+  useNotificationAccount: () => ({
+    accountKey: state.account,
+    online: true,
+    identity: { isLoading: false },
+    overview: {
+      data: { unreadCount: 2, readTargets: [] },
+      isFetchedAfterMount: true,
+      isError: false,
+      refetch: vi.fn(),
+    },
+    refreshIdentity: vi.fn(),
+  }),
+}));
 vi.mock("~/trpc/react", () => ({
   api: {
     useUtils: () => ({}),

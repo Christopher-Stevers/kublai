@@ -24,7 +24,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
-import { useOnlineStatus } from "~/hooks/use-online-status";
+import { useNotificationAccount } from "~/hooks/use-notification-account";
 import {
   notificationBadge,
   NOTIFICATION_POLL_MS,
@@ -42,31 +42,19 @@ export function NotificationCenter({
 }: {
   sessionKey?: string;
 }) {
-  const isOnline = useOnlineStatus();
-  const identity = api.notifications.identity.useQuery(
-    { sessionKey },
-    {
-      enabled: isOnline,
-      staleTime: 0,
-      refetchOnMount: "always",
-      refetchInterval: NOTIFICATION_POLL_MS,
-      retry: false,
-    },
-  );
-  // Revalidate identity on mount/account changes before showing any cached inbox.
-  const accountKey =
-    identity.isFetchedAfterMount && !identity.isError
-      ? (identity.data?.accountKey ?? null)
-      : null;
+  return <NotificationAccountController key={sessionKey} sessionKey={sessionKey} />;
+}
+
+function NotificationAccountController({ sessionKey }: { sessionKey: string }) {
+  const { accountKey, online, identity, overview, refreshIdentity } = useNotificationAccount(sessionKey);
   return (
     <NotificationInbox
       key={accountKey ?? "unavailable"}
       accountKey={accountKey}
-      isOnline={isOnline}
+      isOnline={online}
       identityLoading={identity.isLoading}
-      refreshIdentity={() => {
-        void identity.refetch();
-      }}
+      refreshIdentity={refreshIdentity}
+      overview={overview}
     />
   );
 }
@@ -76,11 +64,13 @@ function NotificationInbox({
   isOnline,
   identityLoading,
   refreshIdentity,
+  overview,
 }: {
   accountKey: string | null;
   isOnline: boolean;
   identityLoading: boolean;
   refreshIdentity: () => void;
+  overview: ReturnType<typeof useNotificationAccount>["overview"];
 }) {
   const router = useRouter();
   const simulation = useEmployeeSimulation();
@@ -99,13 +89,6 @@ function NotificationInbox({
     };
   }, []);
   const input = { accountKey: accountKey ?? "" };
-  const overview = api.notifications.overview.useQuery(input, {
-    enabled: Boolean(accountKey) && isOnline,
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchInterval: NOTIFICATION_POLL_MS,
-    retry: false,
-  });
   const list = api.notifications.list.useInfiniteQuery(
     { ...input, unreadOnly, limit: 30 },
     {
@@ -118,7 +101,7 @@ function NotificationInbox({
     },
   );
   const read = api.notifications.read.useMutation();
-  const unreadCount = overview.isError ? 0 : (overview.data?.unreadCount ?? 0);
+  const unreadCount = !accountKey || overview.isError ? 0 : (overview.data?.unreadCount ?? 0);
   useEffect(() => {
     // Never replace the signed-in device badge with a simulated employee's
     // count, stale cached data, or a failed/offline request's fallback zero.
