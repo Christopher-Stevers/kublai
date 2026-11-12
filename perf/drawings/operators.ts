@@ -1,4 +1,5 @@
 import { brotliCompressSync, constants } from "node:zlib";
+import { rescaleAndStroke, setStrokeStyle, StrokeStyleError } from "./stroke-style";
 export type OperatorList = {
   fnArray: ArrayLike<number>;
   argsArray: ArrayLike<unknown>;
@@ -119,12 +120,24 @@ export function replayPaths(
     font?: (id: string) => any;
     commonObjs?: any;
     forms?: boolean;
+    strokeStyles?: boolean;
     images?: { paint: (ctx: any, index: number, image: any) => void };
   },
 ) {
   ctx.save();
   ctx.fillStyle = "black";
   ctx.strokeStyle = "black";
+  // Opt in only the isolated v3 runner. Historical replay remains unchanged.
+  let strokeWidth = resources?.strokeStyles ? 1 : null;
+  let strokeValid = true;
+  if (resources?.strokeStyles) {
+    ctx.lineWidth = 1;
+    ctx.lineCap = "butt";
+    ctx.lineJoin = "miter";
+    ctx.miterLimit = 10;
+    ctx.setLineDash([]);
+    ctx.lineDashOffset = 0;
+  }
   let text = {
     matrix: [1, 0, 0, 1, 0, 0],
     x: 0,
@@ -144,12 +157,17 @@ export function replayPaths(
   const failures = new Set<string>();
   let glyphsPainted = 0,
     formsPainted = 0;
-  const textStack: Array<{ kind: "save" | "form"; text: typeof text }> = [];
+  const textStack: Array<{
+    kind: "save" | "form";
+    text: typeof text;
+    strokeWidth: number | null;
+    strokeValid: boolean;
+  }> = [];
   const save = (kind: "save" | "form") => {
     if (textStack.length >= 64)
       throw Error("Prototype form/save depth exceeded");
     ctx.save();
-    textStack.push({ kind, text: { ...text, matrix: [...text.matrix] } });
+    textStack.push({ kind, text: { ...text, matrix: [...text.matrix] }, strokeWidth, strokeValid });
   };
   const restore = (kind: "save" | "form") => {
     const top = textStack.at(-1);
@@ -157,16 +175,40 @@ export function replayPaths(
       failures.add(`unbalanced-${kind}`);
       return;
     }
-    text = textStack.pop()!.text;
+    textStack.pop();
+    text = top.text;
+    strokeWidth = top.strokeWidth;
+    strokeValid = top.strokeValid;
     ctx.restore();
     // pdf.js restore discards an unconsumed pending clipping operation.
     pendingClip = null;
   };
-  const paint = (mode: number) => {
+  const style = (key: "LW" | "LC" | "LJ" | "ML" | "D", value: unknown) => {
+    try {
+      strokeWidth = setStrokeStyle(ctx, key, value, strokeWidth!);
+    } catch (error) {
+      strokeValid = false;
+      failures.add(error instanceof StrokeStyleError ? error.failure : "unsupported-stroke-style-context");
+    }
+  };
+  const paint = (mode: number, rebuild?: (inverseX: number, inverseY: number) => void) => {
     const n = names[mode] ?? "";
     if (/close/i.test(n)) ctx.closePath();
     if (/fill/i.test(n)) ctx.fill(/eo/i.test(n) ? "evenodd" : "nonzero");
-    if (/stroke/i.test(n)) ctx.stroke();
+    if (/stroke/i.test(n)) {
+      if (!resources?.strokeStyles) ctx.stroke();
+      else if (strokeValid) {
+        try {
+          rescaleAndStroke(ctx, strokeWidth!, (x, y) => {
+            if (!rebuild) throw new StrokeStyleError("unsupported-stroke-path");
+            rebuild(x, y);
+            if (/close/i.test(n)) ctx.closePath();
+          });
+        } catch (error) {
+          failures.add(error instanceof StrokeStyleError ? error.failure : "unsupported-stroke-context");
+        }
+      }
+    }
   };
   try {
     ctx.transform(...transform);
@@ -188,7 +230,7 @@ export function replayPaths(
       if (
         resources?.font &&
         name === "setGState" &&
-        (a[0] ?? []).some((entry: any[]) => entry[0] === "Font")
+        (resources.strokeStyles && !Array.isArray(a[0]) ? [] : (a[0] ?? [])).some((entry: any[]) => entry[0] === "Font")
       )
         failures.add("unsupported-gstate-font");
       if (name === "save") {
@@ -337,7 +379,28 @@ export function replayPaths(
               ? "unsupported-type3-font"
               : "unsupported-vertical-font",
         );
-      } else if (name === "setLineWidth") ctx.lineWidth = a[0];
+      } else if (resources?.strokeStyles && name === "setGState") {
+        if (!Array.isArray(a[0])) {
+          strokeValid = false;
+          failures.add("invalid-stroke-gstate");
+        }
+        for (const entry of Array.isArray(a[0]) ? a[0] : []) {
+          if (!Array.isArray(entry) || entry.length !== 2) {
+            strokeValid = false;
+            failures.add("invalid-stroke-gstate");
+            continue;
+          }
+          const [key, value] = entry;
+          if (key === "LW" || key === "LC" || key === "LJ" || key === "ML" || key === "D")
+            style(key, value);
+          // Other GState features remain outside this stroke-only correction.
+        }
+      } else if (resources?.strokeStyles && name === "setLineWidth") style("LW", a[0]);
+      else if (resources?.strokeStyles && name === "setLineCap") style("LC", a[0]);
+      else if (resources?.strokeStyles && name === "setLineJoin") style("LJ", a[0]);
+      else if (resources?.strokeStyles && name === "setMiterLimit") style("ML", a[0]);
+      else if (resources?.strokeStyles && name === "setDash") style("D", [a[0], a[1]]);
+      else if (name === "setLineWidth") ctx.lineWidth = a[0];
       else if (name === "setLineCap")
         ctx.lineCap = ["butt", "round", "square"][a[0]];
       else if (name === "setLineJoin")
@@ -354,29 +417,65 @@ export function replayPaths(
         ctx[name === "setStrokeGray" ? "strokeStyle" : "fillStyle"] =
           `rgb(${c},${c},${c})`;
       } else if (name === "constructPath") {
-        ctx.beginPath();
-        for (const packed of a[1] ?? []) {
-          if (!packed) continue;
-          const p = Array.from(packed) as number[];
-          for (let j = 0; j < p.length; ) {
-            const op = p[j++];
-            if (op === 0) {
-              ctx.moveTo(p[j], p[j + 1]);
-              j += 2;
-            } else if (op === 1) {
-              ctx.lineTo(p[j], p[j + 1]);
-              j += 2;
-            } else if (op === 2) {
-              ctx.bezierCurveTo(...p.slice(j, j + 6));
-              j += 6;
-            } else if (op === 3) {
-              ctx.quadraticCurveTo(...p.slice(j, j + 4));
-              j += 4;
-            } else if (op === 4) ctx.closePath();
-            else break;
+        if (!resources?.strokeStyles) {
+          ctx.beginPath();
+          for (const packed of a[1] ?? []) {
+            if (!packed) continue;
+            const p = Array.from(packed) as number[];
+            for (let j = 0; j < p.length; ) {
+              const op = p[j++];
+              if (op === 0) {
+                ctx.moveTo(p[j], p[j + 1]);
+                j += 2;
+              } else if (op === 1) {
+                ctx.lineTo(p[j], p[j + 1]);
+                j += 2;
+              } else if (op === 2) {
+                ctx.bezierCurveTo(...p.slice(j, j + 6));
+                j += 6;
+              } else if (op === 3) {
+                ctx.quadraticCurveTo(...p.slice(j, j + 4));
+                j += 4;
+              } else if (op === 4) ctx.closePath();
+              else break;
+            }
           }
+          paint(a[0]);
+        } else {
+          const build = (inverseX = 1, inverseY = 1) => {
+            ctx.beginPath();
+            for (const packed of a[1] ?? []) {
+              if (!packed) continue;
+              const p = Array.from(packed) as number[];
+              for (let j = 0; j < p.length; ) {
+                const op = p[j++];
+                if (op === 0) {
+                  ctx.moveTo(p[j]! * inverseX, p[j + 1]! * inverseY);
+                  j += 2;
+                } else if (op === 1) {
+                  ctx.lineTo(p[j]! * inverseX, p[j + 1]! * inverseY);
+                  j += 2;
+                } else if (op === 2) {
+                  ctx.bezierCurveTo(
+                    p[j]! * inverseX, p[j + 1]! * inverseY,
+                    p[j + 2]! * inverseX, p[j + 3]! * inverseY,
+                    p[j + 4]! * inverseX, p[j + 5]! * inverseY,
+                  );
+                  j += 6;
+                } else if (op === 3) {
+                  ctx.quadraticCurveTo(
+                    p[j]! * inverseX, p[j + 1]! * inverseY,
+                    p[j + 2]! * inverseX, p[j + 3]! * inverseY,
+                  );
+                  j += 4;
+                } else if (op === 4) ctx.closePath();
+                else break;
+              }
+            }
+          };
+          build();
+          paint(a[0], build);
         }
-        paint(a[0]);
         // pdf.js consumes the clipping request only after painting this path.
         // endPath paints nothing but still consumes its packed clipping path.
         if (pendingClip) {

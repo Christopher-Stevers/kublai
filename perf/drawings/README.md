@@ -163,3 +163,39 @@ no approximate visual retuning. Any later metadata-only operator inspection
 must be separately authorized. No implementation, tests, PDF parsing, rendering
 or runtime was performed for this audit. V2's fidelity failure and unchanged
 thresholds remain the current result.
+
+### Stroke-v3 preparation — 2026-11-12, not executed
+
+Tim requested continuing Phase 3 while unchanged-build calibration runs. The
+next isolated prototype is now prepared in source, with Sol 6.1 implementation
+and independent review. This supersedes the earlier "not implemented" follow-up
+above; it does not change its historical results or establish a new fidelity pass.
+
+- Opt-in stroke replay preserves logical width zero, reference device-pixel
+  compensation under affine transforms, cap/join/miter/dash styles, and matching
+  graphics-state setters. Save/form/restore retains logical stroke state. The
+  legacy replay remains the default; unsupported values fail explicitly.
+- An explicit operator audit flags ignored or malformed operations, unsupported
+  state, missing capabilities and packed-path errors. It reports bounded counts
+  and fixed reason codes, without PDF arguments or content. A passing audit only
+  describes the declared subset, never full PDF support.
+- The new comparison helper preserves 64-pixel luminance SSIM and the existing
+  0.98 per-tile / 0.005 ink limits. It rejects invalid or transparent input and
+  records at most eight worst tiles for later visual inspection. The sheet-level
+  host decision requires both zooms plus support and resource checks.
+- A separate v3 runner requires the same exact previously sampled page, fresh
+  exclusive output and no mixed mode flags. It preserves failed attempts and
+  records source/reference hashes before and after. Complete encoding and
+  production eligibility remain false even if the host comparison later passes.
+
+No new PDF was opened or rendered, no suite/build/type/lint check ran, and no
+production viewer, upload, worker or database changed during preparation. The
+new regression cases are authored only. The existing 100-sheet and v1/v2 reports
+remain unchanged, including the latest failed fidelity result.
+
+After calibration quiet ends, run the isolated focused suite and scoped types,
+then one bounded same-page comparison and inspect both reference/prototype
+pairs. The invocation and evidence requirements are in
+[stroke-v3-protocol.md](stroke-v3-protocol.md). Do not port to Rust, expand rollout
+or treat partial byte accounting as a complete package until the spike's gates
+are actually proved. Reference-phone evidence remains deferred at Tim's request.

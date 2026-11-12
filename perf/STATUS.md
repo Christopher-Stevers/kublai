@@ -57,6 +57,13 @@ receiving and chat domains remain unimplemented. The Phase 3 drawing spike faile
 visual fidelity, so its production compiler is stopped and today's renderer is
 retained. This is an observed stop decision, not a completed drawing workstream.
 
+Tim requested independent Phase 3 work during calibration on 2026-11-12. A
+source-only stroke-v3 prototype, explicit unsupported-operation audit, stricter
+input validation for unchanged fidelity thresholds and a separate single-page
+comparison protocol are prepared and source-reviewed. Tests are authored but
+unexecuted, no new PDF/render evidence exists, and the production-port stop
+remains. See `drawings/README.md` and `drawings/stroke-v3-protocol.md`.
+
 ## Decisions recorded
 
 - Start phases 0 and 1, using the plan's measured gates and one release recipe.

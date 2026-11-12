@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { classify, countPackedPaths, replayPaths } from "./operators";
-import { createCanvas } from "@napi-rs/canvas";
+import { createCanvas, Path2D } from "@napi-rs/canvas";
 describe("drawing spike operator front end", () => {
   it("counts packed pdf.js paths without treating control points as line segments", () => {
     expect(
@@ -511,5 +511,117 @@ describe("deferred packed-path clipping", () => {
     );
     expect(calls.indexOf("fill")).toBeLessThan(calls.indexOf("clip"));
     expect(calls.filter((x) => x === "clip")).toHaveLength(1);
+  });
+});
+
+// New opt-in v3 cases authored during calibration; intentionally unexecuted.
+describe("opt-in reference stroke styles", () => {
+  const names = {
+    1: "setLineWidth", 2: "constructPath", 3: "stroke", 4: "save",
+    5: "restore", 6: "paintFormXObjectBegin", 7: "paintFormXObjectEnd",
+    8: "setGState", 9: "setLineCap", 10: "setLineJoin", 11: "setMiterLimit",
+    12: "setDash", 13: "clip", 14: "endPath", 15: "fill", 16: "fillStroke",
+  };
+  const line = [3, [[0, 2, 4, 1, 10, 4]]];
+  const capture = () => {
+    const canvas = createCanvas(40, 40), ctx: any = canvas.getContext("2d");
+    const strokes: Array<{ width: number; dash: number[]; phase: number; cap: string; join: string; miter: number }> = [];
+    const stroke = ctx.stroke.bind(ctx);
+    ctx.stroke = (...args: unknown[]) => {
+      strokes.push({ width: ctx.lineWidth, dash: ctx.getLineDash(), phase: ctx.lineDashOffset,
+        cap: ctx.lineCap, join: ctx.lineJoin, miter: ctx.miterLimit });
+      stroke(...args);
+    };
+    return { canvas, ctx, strokes };
+  };
+  it("preserves logical zero through ordinary save, nested form and restore", () => {
+    const { ctx, strokes } = capture();
+    const result = replayPaths(ctx, {
+      fnArray: [1, 2, 4, 1, 2, 6, 8, 2, 7, 2, 5, 2],
+      argsArray: [[0], line, [], [3], line, [[0.5, 0, 0, 0.5, 0, 0], null],
+        [[["LW", 0]]], line, [], line, [], line],
+    }, names, [2, 0, 0, 2, 0, 0], { forms: true, strokeStyles: true });
+    expect(result.failures).toEqual([]);
+    expect(result.formsPainted).toBe(1);
+    expect(strokes.map(s => s.width)).toEqual([0.5, 3, 1, 3, 0.5]);
+  });
+  it("uses equivalent direct and GState LW/LC/LJ/ML/D setters and restores their saved state", () => {
+    const direct = capture(), gstate = capture();
+    const directResult = replayPaths(direct.ctx, {
+      fnArray: [1, 9, 10, 11, 12, 2],
+      argsArray: [[0.25], [2], [1], [5], [[3, 2], -4], line],
+    }, names, [1, 0, 0, 1, 0, 0], { strokeStyles: true });
+    const stateResult = replayPaths(gstate.ctx, {
+      fnArray: [8, 4, 8, 5, 2],
+      argsArray: [[[["LW", 0.25], ["LC", 2], ["LJ", 1], ["ML", 5], ["D", [[3, 2], -4]]]],
+        [], [[["LW", 7], ["LC", 0], ["D", [[], 0]]]], [], line],
+    }, names, [1, 0, 0, 1, 0, 0], { strokeStyles: true });
+    expect(directResult.failures).toEqual([]); expect(stateResult.failures).toEqual([]);
+    expect(direct.strokes).toEqual(gstate.strokes);
+    expect(gstate.strokes[0]).toEqual({ width: 1, cap: "square", join: "round", miter: 5, dash: [3, 2], phase: -4 });
+  });
+  it("keeps historical default zero-width/GState behavior unless strokeStyles is true", () => {
+    const historical = capture(), current = capture();
+    const list = { fnArray: [1, 8, 2], argsArray: [[0], [[["LC", 2], ["LW", 0]]], line] };
+    replayPaths(historical.ctx, list, names, [2, 0, 0, 2, 0, 0]);
+    replayPaths(current.ctx, list, names, [2, 0, 0, 2, 0, 0], { strokeStyles: true });
+    expect(historical.strokes[0]).toMatchObject({ width: 1, cap: "butt" });
+    expect(current.strokes[0]).toMatchObject({ width: 0.5, cap: "square" });
+  });
+  it("preserves path geometry for deferred clipping after anisotropic fill-and-stroke compensation", () => {
+    const { ctx } = capture();
+    ctx.fillStyle = "white"; ctx.fillRect(0, 0, 40, 40);
+    const rect = [16, [[0, 2, 2, 1, 10, 2, 1, 10, 10, 1, 2, 10, 4]]];
+    const result = replayPaths(ctx, {
+      fnArray: [1, 13, 2, 2],
+      argsArray: [[0], [], rect, [15, [[0, 0, 0, 1, 20, 0, 1, 20, 20, 1, 0, 20, 4]]]],
+    }, names, [2, 0, 0, 0.5, 0, 0], { strokeStyles: true });
+    expect(result.failures).toEqual([]);
+    expect(Array.from(ctx.getImageData(8, 3, 1, 1).data)).toEqual([0, 0, 0, 255]);
+    expect(Array.from(ctx.getImageData(30, 3, 1, 1).data)).toEqual([255, 255, 255, 255]);
+  });
+  it.each([
+    [[2, 0, 0, 0.5, 10, 10], [0.5, 2]],
+    [[1, 0, 1, 1, 10, 10], [Math.SQRT2, 1]],
+    [[0, 2, -0.5, 0, 32, 10], [0.5, 2]],
+  ] as Array<[number[], [number, number]]>)("matches native reference Path2D inverse scaling for affine %j", (ctm, scales) => {
+    const actual = createCanvas(64, 64), reference = createCanvas(64, 64);
+    const ctx = reference.getContext("2d");
+    ctx.transform(...ctm as [number, number, number, number, number, number]);
+    ctx.lineCap = "round"; ctx.lineJoin = "bevel"; ctx.miterLimit = 5;
+    const path = new Path2D();
+    path.moveTo(2, 2); path.lineTo(10, 2);
+    path.bezierCurveTo(12, 3, 10, 8, 8, 8);
+    path.quadraticCurveTo(4, 10, 2, 4); path.closePath();
+    // Independent native Path2D mechanism, with literal reference scale values.
+    ctx.scale(scales[0], scales[1]);
+    const adjusted = new Path2D();
+    adjusted.addPath(path, { a: 1 / scales[0], b: 0, c: 0, d: 1 / scales[1], e: 0, f: 0 });
+    const dashScale = Math.max(...scales);
+    ctx.setLineDash([4 / dashScale, 2 / dashScale]);
+    ctx.lineDashOffset = 3 / dashScale;
+    ctx.lineWidth = 1;
+    ctx.stroke(adjusted);
+    const result = replayPaths(actual.getContext("2d"), {
+      fnArray: [8, 2],
+      argsArray: [[[["LW", 0], ["LC", 1], ["LJ", 2], ["ML", 5], ["D", [[4, 2], 3]]]],
+        [17, [[0, 2, 2, 1, 10, 2, 2, 12, 3, 10, 8, 8, 8, 3, 4, 10, 2, 4]]]],
+    }, { ...names, 17: "closeStroke" }, ctm, { strokeStyles: true });
+    expect(result.failures).toEqual([]);
+    expect(actual.getContext("2d").getImageData(0, 0, 64, 64).data)
+      .toEqual(ctx.getImageData(0, 0, 64, 64).data);
+  });
+  it("records invalid style and singular transform failures instead of claiming a supported stroke", () => {
+    const invalid = capture(), singular = capture();
+    const badStyle = replayPaths(invalid.ctx, {
+      fnArray: [8, 2], argsArray: [[[["LW", -1]]], line],
+    }, names, [1, 0, 0, 1, 0, 0], { strokeStyles: true });
+    expect(badStyle.failures).toContain("invalid-stroke-width");
+    expect(invalid.strokes).toHaveLength(0);
+    const badTransform = replayPaths(singular.ctx, {
+      fnArray: [1, 2], argsArray: [[0], line],
+    }, names, [1, 2, 2, 4, 0, 0], { strokeStyles: true });
+    expect(badTransform.failures).toContain("unsupported-singular-stroke-transform");
+    expect(singular.strokes).toHaveLength(0);
   });
 });
