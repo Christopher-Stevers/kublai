@@ -1,0 +1,17 @@
+
+ RUN  v4.1.4 /tmp/foremanhq-fastlane-wizard-unit-LULo9u
+
+ ❯ CatalogueVisibility.test.tsx (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  CatalogueVisibility.test.tsx [ CatalogueVisibility.test.tsx ]
+Error: Cannot find module '/@fs/home/tim/.openclaw/workspace/releases/speed-phase0-bootstrap-20261110/vitest.setup.ts'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  19:33:53
+   Duration  321ms (transform 0ms, setup 0ms, import 0ms, tests 0ms, environment 246ms)
+

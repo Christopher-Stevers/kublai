@@ -1,0 +1,9 @@
+
+ RUN  v4.1.4 /tmp/foremanhq-fastlane-wizard-unit-JnZkDW
+
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  19:34:23
+   Duration  545ms (transform 52ms, setup 31ms, import 112ms, tests 89ms, environment 248ms)
+

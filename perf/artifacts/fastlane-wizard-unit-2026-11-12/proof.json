@@ -1,0 +1,15 @@
+{
+  "scope": "Exact approved commit unit proof; no source change",
+  "commit": "669d7f83e05452f7027bfbd7ca7db75f848bb3a3",
+  "testCount": 9,
+  "finalExitCode": 0,
+  "actualBaseMatchesParent": true,
+  "approvedIsExactCommitBlob": true,
+  "preimageSha256": "01cd2bd87133a6318bcb6ebe587601d5456525c0262f43e4b8bac4e18c80b5ae",
+  "postimageSha256": "bc8b16aed9e92b1d4319dd65fc77c54547efc38e04185c16279c85afb0ca5c1a",
+  "command": "NODE_OPTIONS=--no-experimental-webstorage node /home/tim/.openclaw/workspace/kublai/node_modules/vitest/vitest.mjs run --config /tmp/foremanhq-fastlane-wizard-unit-JnZkDW/vitest.config.mjs --maxWorkers=1",
+  "aliasScope": "~/ frozen Phase0/src except selected approved CatalogueVisibility; copied exact Phase0 test setup",
+  "initialFailure": "Attempt1 ran zero tests: Vite outside-root setup resolution; corrected isolated setup copy and fs allow, preserved log",
+  "browserProof": "../fastlane-wizard-browser-attempt-9dj0Ue/report.json",
+  "productionRuntimeEdited": false
+}

@@ -1,0 +1,34 @@
+{
+  "method": "fastlane-wizard-component-browser-v1",
+  "scope": "Exact approved file and frozenPhase0 WizardOptionCard/Card; synthetic UI and hide callback only",
+  "limits": [
+    "Not full application wizard, auth, production write or latency gate",
+    "Native baseline non-reproduction is a limitation; synthetic retarget/missing-click cases are not native repro"
+  ],
+  "variants": {},
+  "cleanup": {
+    "browserExited": true,
+    "tempRemoved": true
+  },
+  "browserErrors": [],
+  "externalRequests": [],
+  "sources": {
+    "baseVisibility": "01cd2bd87133a6318bcb6ebe587601d5456525c0262f43e4b8bac4e18c80b5ae",
+    "approvedVisibility": "bc8b16aed9e92b1d4319dd65fc77c54547efc38e04185c16279c85afb0ca5c1a",
+    "helper": "ecd75ead41626762da925871ba1412168425b376f7854865236e94e9015dcd21",
+    "entry": "3413fae967a33d8c033d7ac77a18dc0aea43bb1ba4061ec6058def7f7e8ff8d4",
+    "wizardGrid": "b0130acdd54b332765f96b71de63e33cd0f53f4a5d61ce4ff407c63d46571f9d",
+    "card": "9e5ad45e9c3be5ead7d698d4e1a82109280cc32d984ef08481b24344a8e16af2"
+  },
+  "status": "FAIL",
+  "error": "Error: Build failed with 3 errors:\n../../../../../tmp/foremanhq-fastlane-wizard-browser-aFtDro/baseline.tsx:9:7: ERROR: Could not resolve \"react\"\n../../../../../tmp/foremanhq-fastlane-wizard-browser-aFtDro/baseline.tsx:10:23: ERROR: Could not resolve \"lucide-react\"\n../../../../../tmp/foremanhq-fastlane-wizard-browser-aFtDro/baseline.tsx:166:6: ERROR: Could not resolve \"react/jsx-runtime\"\n    at failureErrorWithLog (/home/tim/.openclaw/workspace/kublai/node_modules/.pnpm/esbuild@0.27.2/node_modules/esbuild/lib/main.js:1467:15)\n    at /home/tim/.openclaw/workspace/kublai/node_modules/.pnpm/esbuild@0.27.2/node_modules/esbuild/lib/main.js:926:25\n    at runOnEndCallbacks (/home/tim/.openclaw/workspace/kublai/node_modules/.pnpm/esbuild@0.27.2/node_modules/esbuild/lib/main.js:1307:45)\n    at buildResponseToResult (/home/tim/.openclaw/workspace/kublai/node_modules/.pnpm/esbuild@0.27.2/node_modules/esbuild/lib/main.js:924:7)\n    at /home/tim/.openclaw/workspace/kublai/node_modules/.pnpm/esbuild@0.27.2/node_modules/esbuild/lib/main.js:951:16\n    at responseCallbacks.<computed> (/home/tim/.openclaw/workspace/kublai/node_modules/.pnpm/esbuild@0.27.2/node_modules/esbuild/lib/main.js:603:9)\n    at handleIncomingPacket (/home/tim/.openclaw/workspace/kublai/node_modules/.pnpm/esbuild@0.27.2/node_modules/esbuild/lib/main.js:658:12)\n    at Socket.readFromStdout (/home/tim/.openclaw/workspace/kublai/node_modules/.pnpm/esbuild@0.27.2/node_modules/esbuild/lib/main.js:581:7)\n    at Socket.emit (node:events:514:20)\n    at addChunk (node:internal/streams/readable:575:12)",
+  "sourcesAfter": {
+    "baseVisibility": "01cd2bd87133a6318bcb6ebe587601d5456525c0262f43e4b8bac4e18c80b5ae",
+    "approvedVisibility": "bc8b16aed9e92b1d4319dd65fc77c54547efc38e04185c16279c85afb0ca5c1a",
+    "helper": "ecd75ead41626762da925871ba1412168425b376f7854865236e94e9015dcd21",
+    "entry": "3413fae967a33d8c033d7ac77a18dc0aea43bb1ba4061ec6058def7f7e8ff8d4",
+    "wizardGrid": "b0130acdd54b332765f96b71de63e33cd0f53f4a5d61ce4ff407c63d46571f9d",
+    "card": "9e5ad45e9c3be5ead7d698d4e1a82109280cc32d984ef08481b24344a8e16af2"
+  },
+  "sourcesUnchanged": true
+}
