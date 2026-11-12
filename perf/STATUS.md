@@ -1315,3 +1315,26 @@ The new first's 33690 deployment/502616 shared/758529 heaviest/80 idle values
 are not silently replaced by the older, looser values. Source-only work proceeds
 during quiet; all other runtime is held. This does not clear R20 or finish the
 20 unchanged-build validation, field/phone checks, or Phase 1.
+
+## Active-source repeat rejected; Phase 1 source work continues — 2026-11-12 02:11 UTC
+
+All 120 samples completed with valid source/method/fixture evidence, fourteen
+read preflights and zero database errors. Cleanup passes. Twenty-three cells
+pass repeatability; Office material-list opening moves from 205.817057 to
+232.029312 ms and fails the unchanged 10% band. Both postchecks reject. This
+is the same compiled source, so the pair is not accepted for future activation;
+no samples are removed, no rerun scheduled and no threshold changed. Original
+fastlane activation evidence remains historical; live source is unchanged.
+Archive `37d8aac4`: `artifacts/active-wizard-baseline-repeat-2026-11-12/`.
+
+Root independently confirms the rejection and raw SHA. Supplemental browser
+tap-to-paint medians are 154.800000 to 158 ms; paired outer-minus-browser
+residual medians are 51.592925 to 72.837922 ms. These arithmetic differences
+are clues about measurement boundaries, not a subtraction from the gate or
+causal attribution. Source/raw review precedes any separate bounded diagnostic.
+
+The frozen inline notification proof passed source review after pinning its
+operational test setup outside frozen inputs and tightening deferred-ACK
+assertions. Its unit stage is now authorized after quiet cleanup; no browser
+or canonical build result yet. Functional work continues without asserting
+release eligibility, full Phase 1 completion or physical-phone performance.

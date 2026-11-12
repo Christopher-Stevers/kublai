@@ -280,7 +280,7 @@
       "medianMs": 88
     }
   ],
-  "completedFullLabCaptures": 15,
+  "completedFullLabCaptures": 16,
   "reconciledAt": "2026-11-11T05:46:23.441555+00:00",
   "fieldCheckpoint": {
     "measuredAt": "2026-11-11T04:22:07.587029+00:00",
@@ -489,7 +489,7 @@
     }
   ],
   "completedBaselineLabCaptures": 6,
-  "completedFullLabCapturesMeaning": "Six complete baseline captures (four rejected, two accepted for repeatability only), six full rejected v2 candidate captures (R6/R7/R17/R18/R19/R20), one complete R17 capture rejected for incompatible protocol, one passing predeclared Phase0 self-control, and one passing approved one-file wizard fastlane candidate. Invalid/partial pilots and supplemental diagnostics excluded.",
+  "completedFullLabCapturesMeaning": "Six original Phase0 baseline captures (four rejected, two accepted for repeatability only), six full rejected v2 broad candidates (R6/R7/R17/R18/R19/R20), one R17 capture rejected for incompatible protocol, one passing Phase0 self-control, one passing activated wizard fastlane candidate, and one rejected independent active-wizard baseline repeat. Partial pilots and supplemental diagnostics excluded.",
   "actionabilityDiagnostic": {
     "status": "supplemental-only",
     "source": "perf/artifacts/openjob-actionability-diagnostic-2026-11-11-assessment.json",
@@ -1744,7 +1744,7 @@
       "plan": "perf/artifacts/active-wizard-baseline-repeat-preparation-2026-11-12/plan.json",
       "planSha256": "453c74002c20b5817bef052937c743658ac4f3e8a470ba2f74fdecd372b4910b",
       "startedAt": "2026-11-12T01:42:17Z",
-      "status": "running-single-independent-repeat",
+      "status": "completed-rejected",
       "sampleCountRequired": 120,
       "idleDurationMs": 600000,
       "postCaptureChecks": [
@@ -1752,7 +1752,19 @@
         "original-regression-comparison"
       ],
       "doesNotClearR20": true,
-      "noRetriesOrExclusions": true
-    }
+      "noRetriesOrExclusions": true,
+      "completedAt": "2026-11-12T02:11:43Z",
+      "acceptedBaselinePair": false,
+      "sampleCount": 120,
+      "passingCells": 23,
+      "failure": "openmateriallist/Office: 205.817057ms -> 232.029312ms exceeds 10%",
+      "report": "perf/artifacts/active-wizard-baseline-repeat-2026-11-12/report.json",
+      "reportSha256": "9b4c238a587bc5e53795d7b37d1215bc132b7ba0df10cb453a8baa6d25992c73",
+      "evidenceCommit": "37d8aac4",
+      "cleanupPassed": true,
+      "sourceMethodStable": true,
+      "databaseErrors": 0
+    },
+    "releaseHeldReason": "The independent unchanged active-source repeat failed; no accepted active-source pair exists. Notification functional and canonical byte preparation may proceed separately; no repeat/threshold waiver or activation."
   }
 }

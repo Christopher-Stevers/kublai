@@ -1,0 +1,81 @@
+{
+  "checkedAt": "2026-11-12T02:14:20.852Z",
+  "reportSha256": "9b4c238a587bc5e53795d7b37d1215bc132b7ba0df10cb453a8baa6d25992c73",
+  "validationErrors": [],
+  "repeatabilityErrors": [
+    "openmateriallist/Office: independent-run medians differ by more than 10% (205.81705700000748 vs 232.02931200002786ms)"
+  ],
+  "comparisonErrors": [
+    "openmateriallist/Office: median 232.0ms exceeds 205.8ms baseline +10%"
+  ],
+  "accepted": false,
+  "allSamplesRetained": true,
+  "failedCell": {
+    "name": "openmateriallist/Office",
+    "first": {
+      "outerMedian": 205.81705700000748,
+      "browserMedian": 154.80000019073486,
+      "residualMedian": 51.59292471385561,
+      "rows": [
+        {
+          "run": 0,
+          "outer": 204.49554000003263,
+          "app": 153
+        },
+        {
+          "run": 1,
+          "outer": 203.7929249999579,
+          "app": 152.2000002861023
+        },
+        {
+          "run": 2,
+          "outer": 262.1710899999598,
+          "app": 192
+        },
+        {
+          "run": 3,
+          "outer": 233.11124100000598,
+          "app": 158.7000002861023
+        },
+        {
+          "run": 4,
+          "outer": 205.81705700000748,
+          "app": 154.80000019073486
+        }
+      ]
+    },
+    "repeat": {
+      "outerMedian": 232.02931200002786,
+      "browserMedian": 158,
+      "residualMedian": 72.83792200009339,
+      "rows": [
+        {
+          "run": 0,
+          "outer": 232.02931200002786,
+          "app": 157.2000002861023
+        },
+        {
+          "run": 1,
+          "outer": 233.0149209999945,
+          "app": 157.69999980926514
+        },
+        {
+          "run": 2,
+          "outer": 230.83792200009339,
+          "app": 158
+        },
+        {
+          "run": 3,
+          "outer": 233.59752099995967,
+          "app": 160.7999997138977
+        },
+        {
+          "run": 4,
+          "outer": 220.11583299993072,
+          "app": 168.40000009536743
+        }
+      ]
+    }
+  },
+  "qualification": "Supplemental browser marks/residual arithmetic do not replace the outer gate or prove a causal source of variability. No threshold change or retry."
+}
