@@ -1368,3 +1368,21 @@ A separate source proposal will move optional inbox content into a deferred
 panel. It must earn its own behavior and byte evidence; it does not repair or
 waive this failure. The supplemental material-list timing diagnostic remains
 source preparation only, with the original failed reports untouched.
+
+## Focused Phase 1 continuation — 2026-11-12
+
+Ten supplemental material-list operations completed with exact active source,
+fixed original preparation/actions and clean private-lab teardown (`45d1050e`).
+Root reproduced all ten phase summaries. The test records variable work before
+trusted input and a separate final frame wait; this is evidence about this
+instrumented run, not a correction or explanation of the historical failed pair.
+A separate browser-local input-to-ready protocol is proposed but unimplemented.
+All acceptance limits and prior rejected reports remain unchanged.
+
+A new three-path notification proposal passed 32 focused tests, scoped lint and
+types (`fc8e99ab`). It defers optional inbox presentation, keeps parent state
+and Close available, and tests cancellation/explicit Retry with an isolated
+import transport. Actual browser chunk retry and new canonical bytes are not yet
+proved. This source is separate from the rejected two-file candidate and the
+live app. One canonical byte attempt is authorized to assess the new proposal;
+no full matrix or activation is authorized by this checkpoint.

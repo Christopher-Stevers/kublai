@@ -1779,6 +1779,27 @@
       "screenGzipBytes": 759589,
       "deployGzipBytes": 135597
     },
-    "notificationActivated": false
+    "notificationActivated": false,
+    "materialListSupplementalDiagnostic": {
+      "commit": "45d1050e",
+      "sampleCount": 10,
+      "status": "completed with clean source/method/fixture/cleanup",
+      "acceptanceEvidence": false,
+      "report": "perf/artifacts/active-office-timeline-2026-11-12-attempt1/report.json",
+      "reportSha256": "af401d362fd8fa49cc6563d12cf94d0d8ff7f86a02c751cd1dc21a1c27832ceb",
+      "finding": "Distinct variable pre-input actionability and final frame-wait phases observed; not a retrospective cause or corrected gate.",
+      "nextProtocolImplemented": false
+    },
+    "notificationPanelProposal": {
+      "commit": "fc8e99ab",
+      "sourceFingerprint": "e71da8d4102bc4fb61a6cba21538cf89c9f7d7bbc04f4e29d87c1102b563172b",
+      "sourceFileCount": 2202,
+      "focusedTestsPassed": 32,
+      "scopedLintTypesPassed": true,
+      "browserPassed": false,
+      "actualNetworkChunkRetryProven": false,
+      "canonicalBytesStatus": "new source canonical preparation authorized",
+      "activated": false
+    }
   }
 }
