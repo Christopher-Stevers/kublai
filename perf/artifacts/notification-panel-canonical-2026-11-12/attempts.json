@@ -1,0 +1,23 @@
+{
+  "canonicalAttempts": 1,
+  "canonicalExit": 0,
+  "packagingProofAttempts": 1,
+  "preparationStoppedBeforeBuild": "Missing operational .next/env links in proposal; exact active references attached before external preflight; no source content changed",
+  "sourceFingerprintUnchanged": true,
+  "buildLog": {
+    "path": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/notification-panel-build.log",
+    "sha256": "1e8c83451a0bed68ad9d0bc07f106c7243f884f1b679b90c21764e01098d6bf6"
+  },
+  "packageLog": {
+    "path": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/notification-panel-package-proof.log",
+    "sha256": "a9cbe7187cc7581c4493c65fe8f6070c1d3260dd516a94e78010e00d73b6daa3"
+  },
+  "buildNotTimedOut": true,
+  "familyAbsent": true,
+  "builderLockAbsent": true,
+  "byteGatePassed": false,
+  "httpStarted": false,
+  "browserNetworkChunkProofRun": false,
+  "fullMatrixStarted": false,
+  "activated": false
+}

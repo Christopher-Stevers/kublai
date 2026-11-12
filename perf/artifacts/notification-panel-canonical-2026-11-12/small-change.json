@@ -1,0 +1,12 @@
+{
+  "baselineBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+  "candidateBuild": "691e09fdbca897d0e0bf4d03f70f67fa7829b6c457b8605977f04cc3315d233a",
+  "method": "All changed current JavaScript files, gzip level 9 per file; retained history excluded. This is an upper-bound update payload, not a browser download trace.",
+  "currentScripts": 258,
+  "reusedScripts": 231,
+  "changedScripts": 27,
+  "changedRawBytes": 832212,
+  "changedGzipBytes": 268670,
+  "budgetGzipBytes": 100000,
+  "passes": false
+}

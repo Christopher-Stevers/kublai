@@ -1,0 +1,8 @@
+{
+  "method": "exclusive posix_fallocate4GiB capacity evidence, not quota-policy knowledge",
+  "bytes": 4294967296,
+  "passed": true,
+  "reservedBytes": 4294967296,
+  "sameFilesystem": true,
+  "scratchAbsent": true
+}
