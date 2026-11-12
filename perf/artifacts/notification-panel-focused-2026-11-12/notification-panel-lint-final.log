@@ -1,0 +1,9 @@
+
+/home/tim/.openclaw/workspace/kublai/perf/notification-panel-proposal/runtime/src/components/notifications/NotificationCenter.tsx
+  148:9   error  Unsafe assignment of an error typed value     @typescript-eslint/no-unsafe-assignment
+  148:16  error  Unsafe call of a(n) `error` type typed value  @typescript-eslint/no-unsafe-call
+  230:20  error  Unsafe assignment of an error typed value     @typescript-eslint/no-unsafe-assignment
+  232:26  error  Unsafe assignment of an error typed value     @typescript-eslint/no-unsafe-assignment
+
+✖ 4 problems (4 errors, 0 warnings)
+

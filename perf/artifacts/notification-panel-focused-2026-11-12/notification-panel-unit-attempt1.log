@@ -1,0 +1,9 @@
+
+ RUN  v4.1.4 /tmp/foremanhq-notification-panel-unit-aU0Ngy
+
+
+ Test Files  5 passed (5)
+      Tests  32 passed (32)
+   Start at  21:37:27
+   Duration  5.10s (transform 139ms, setup 96ms, import 600ms, tests 2.87s, environment 1.23s)
+

@@ -1,0 +1,25 @@
+{
+  "status": "focused32-pass-browser-and-canonical-bytes-pending",
+  "base": "/home/tim/.openclaw/workspace/releases/speed-phase0-wizard-fastlane-20261112",
+  "runtimePaths": {
+    "src/components/notifications/NotificationCenter.tsx": {
+      "preimage": "52cc3407e9c40b36249e4fa67688f7e5c284ce9f085e46e59cad09b359c3bf42",
+      "postimage": "6b98d2ac142355a7e6f9e897c2746a56abfe9ea6e9e5483e429f06bec4635569"
+    },
+    "src/components/notifications/NotificationPanel.tsx": {
+      "preimage": null,
+      "postimage": "61b62c479009f19026d2bcfa5b0982db4769fb3dffce4527b21dbb1d2dc9fe5d"
+    },
+    "src/hooks/use-notification-account.ts": {
+      "preimage": null,
+      "postimage": "3d1d0bbc15bb85e9ac3d1afd820b73c3b85148d189d3ec15385b80f0b122bdc5"
+    }
+  },
+  "limits": {
+    "shared": 502616,
+    "heaviest": 758529,
+    "update": 33690,
+    "strictChangedJsExclusive": 100000
+  },
+  "note": "New proposal; prior two-file canonical failure preserved. No byte pass promised."
+}

@@ -1,0 +1,17 @@
+{
+  "status": "focused32-pass-browser-and-canonical-bytes-pending",
+  "files": {
+    "NotificationCenter.import.test.tsx": "9cd1b784c457ad112fd5909b63b177fcb07e6759302cc71ed0e4b1edf1d9debf",
+    "NotificationCenter.loading.test.tsx": "fb7cc0cbe8e872d360342addc8575cb04257b7c82bed8d8595a4fa080e2bd354",
+    "README.md": "84d40f9c8dbaab700b84b2fd5023188fbdc6da30338814f2338b72727514fb2d",
+    "manifest.json": "b6d2765116b70a96ddb32face7219680d5dfa804059fbb93eb35e9923f82c89b",
+    "merged-source.json": "8da07d35741f69a0441b32696ca61aee48f9106427d86fb6100c583ee3b3271c",
+    "prepare.mjs": "279ec4e51869cc44bc2ddd38bd17aaf6969bfedee5c8929846319d346725472c",
+    "proposal.patch": "48fdbaf260a537b29687595abf8457489ecd8cc432e92f65834712753e7ccf8c",
+    "runtime/src/components/notifications/NotificationCenter.tsx": "6b98d2ac142355a7e6f9e897c2746a56abfe9ea6e9e5483e429f06bec4635569",
+    "runtime/src/components/notifications/NotificationPanel.tsx": "61b62c479009f19026d2bcfa5b0982db4769fb3dffce4527b21dbb1d2dc9fe5d",
+    "runtime/src/hooks/use-notification-account.ts": "3d1d0bbc15bb85e9ac3d1afd820b73c3b85148d189d3ec15385b80f0b122bdc5",
+    "test-loader.ts": "47b56889a48169222535c5fa750efafb79b2bda22e9bf60c26a6fe04e41de244",
+    "test-subject/NotificationCenter.tsx": "b07c4afe3a1331395baad3d9b01598fbd44b2c44c3c7381d9ee8cc1f3c39b195"
+  }
+}

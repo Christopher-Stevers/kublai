@@ -1,0 +1,2 @@
+perf/notification-panel-proposal/runtime/src/components/notifications/NotificationCenter.tsx 67ms
+perf/notification-panel-proposal/runtime/src/components/notifications/NotificationPanel.tsx 24ms (unchanged)

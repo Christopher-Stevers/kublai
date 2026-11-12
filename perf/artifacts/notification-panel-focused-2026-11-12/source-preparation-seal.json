@@ -1,0 +1,17 @@
+{
+  "status": "source-only-unexecuted",
+  "files": {
+    "NotificationCenter.import.test.tsx": "f10078365f065ab5659328d6152cc0a7d6d75c414bb9a4374c10813163802d9c",
+    "NotificationCenter.loading.test.tsx": "4cc664c52f62783e5f2b8e07047595cd1cbe345e6d37e4e86504d719b8bebb5a",
+    "README.md": "ae3e87e269164cb145a97ec6596d177613972f4335d29984d7992817b89a0311",
+    "manifest.json": "ff92f3d7705b2dcd0696618b6726eac4252e977389276c7bfce803c95a284070",
+    "merged-source.json": "75bd17e47d7a4864722d4f0655b16842fe6d959f6c0f6785cfeab2d3a9b25566",
+    "prepare.mjs": "524f0ee75e2f038eb49a01aa145fc506f5ddf6a80583c431fd19615a92ab1710",
+    "proposal.patch": "378b1c608364441e18117cca631a61fd43eee57dae01a4168942dc2f76a14865",
+    "runtime/src/components/notifications/NotificationCenter.tsx": "5273d51dd35c4fb8ca26977febda4a1186c404bab1624f2f55033d72e599e20f",
+    "runtime/src/components/notifications/NotificationPanel.tsx": "61b62c479009f19026d2bcfa5b0982db4769fb3dffce4527b21dbb1d2dc9fe5d",
+    "runtime/src/hooks/use-notification-account.ts": "3d1d0bbc15bb85e9ac3d1afd820b73c3b85148d189d3ec15385b80f0b122bdc5",
+    "test-loader.ts": "456d20dba71ed1c8c4b5fe48fdc199a032d20ee68e721f14b0ecb68073d731ba",
+    "test-subject/NotificationCenter.tsx": "3d320b93d3af35551c4274e9fae7e73cb01d5fc8abdd2546c17556f20294c3dd"
+  }
+}
