@@ -1,0 +1,37 @@
+{
+  "canonicalAttempts": 1,
+  "canonicalExit": 0,
+  "sourceUnchanged": true,
+  "packagingAttempts": [
+    {
+      "attempt": 1,
+      "passed": false,
+      "reason": "External proof referenced nonexistent notification-owner-build-preflight.json; no packaging copy before failure"
+    },
+    {
+      "attempt": 2,
+      "passed": true,
+      "fix": "Correct external input filename to existing notification-owner-preflight.json; no source/build changes"
+    }
+  ],
+  "logs": {
+    "build.log": {
+      "path": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/notification-owner-build.log",
+      "sha256": "c7898d7a273ade05feec08bdeb0879388f622bdabb45855937f2c9b7d270f338"
+    },
+    "package-proof.log": {
+      "path": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/notification-owner-package-proof.log",
+      "sha256": "fecb3828cbb84b8e8d2e3da40758eaf5d5da849cad51c89e1e6ffdf90d5ad084"
+    },
+    "package-proof-attempt2.log": {
+      "path": "/home/tim/.openclaw/workspace/releases/speed-proof-20261110/notification-owner-package-proof-attempt2.log",
+      "sha256": "06f11c3aa3ef764b3dde89a26cba14a3723faf96607b90b69b510a9ddcd54d6b"
+    }
+  },
+  "byteGatePassed": false,
+  "eligibleForActivation": false,
+  "httpStarted": false,
+  "fullMatrixStarted": false,
+  "activated": false,
+  "builderLockAbsent": true
+}

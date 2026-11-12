@@ -1,0 +1,10 @@
+{
+  "quotaQuery": "btrfs qgroup read EPERM; no privileged access",
+  "method": "single exclusive posix_fallocate 4GiB; writable capacity evidence, not quota-policy knowledge",
+  "bytes": 4294967296,
+  "passed": true,
+  "reservedBytes": 4294967296,
+  "size": 4294967296,
+  "sameFilesystem": true,
+  "scratchAbsent": true
+}

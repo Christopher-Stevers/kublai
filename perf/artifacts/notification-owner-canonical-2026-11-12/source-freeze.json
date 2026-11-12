@@ -1,0 +1,31 @@
+{
+  "baseSource": "/home/tim/.openclaw/workspace/releases/speed-phase0-wizard-fastlane-20261112",
+  "baseBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+  "baseSourceFingerprint": "34f0c1508584e40382ad25955b3aa2b5703bdd78ced4e6ef2536e902fd82281d",
+  "source": "/home/tim/.openclaw/workspace/releases/speed-phase1-notification-owner-20261112",
+  "changedPaths": [
+    "src/components/notifications/NotificationCenter.tsx",
+    "src/hooks/use-notification-account.ts"
+  ],
+  "pathEvidence": {
+    "src/components/notifications/NotificationCenter.tsx": {
+      "before": "52cc3407e9c40b36249e4fa67688f7e5c284ce9f085e46e59cad09b359c3bf42",
+      "after": "446166895108e67d02d81421e2aa5d0d481672d73bfcb7b561ef5a4dd02031fe"
+    },
+    "src/hooks/use-notification-account.ts": {
+      "before": null,
+      "after": "3d1d0bbc15bb85e9ac3d1afd820b73c3b85148d189d3ec15385b80f0b122bdc5"
+    }
+  },
+  "unchangedInputs": 4399,
+  "publicSourceFiles": 2297,
+  "wizardPreservedSha256": "bc8b16aed9e92b1d4319dd65fc77c54547efc38e04185c16279c85afb0ca5c1a",
+  "hookCommit": "acca100ac6b17b01f56e05fa306e9799d4d373ad",
+  "centerPatchSha256": "a44a24c6b89a02625c5190f5fb9d86b3807deba4efbb02285bc9c22ca08cef39",
+  "buildStarted": false,
+  "functionalProofPending": true,
+  "activated": false,
+  "sourceFingerprint": "2c5a75daf1d3bcc2aa3468ce5877da8b0311ce8b15a70d0098a7ea7747a87421",
+  "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+  "sourceFileCount": 2201
+}

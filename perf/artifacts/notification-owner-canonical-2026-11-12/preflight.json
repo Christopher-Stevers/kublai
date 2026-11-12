@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "sourceFingerprint": "2c5a75daf1d3bcc2aa3468ce5877da8b0311ce8b15a70d0098a7ea7747a87421",
+  "sourceFingerprintAlgorithm": "foremanhq-lab-source-v1",
+  "sourceFileCount": 2201,
+  "toolchain": {
+    "node": "26.8.2",
+    "pnpm": "10.11.1",
+    "next": "16.1.1",
+    "lock": "4e2cb09f541e6f3273cd148da0ce413ed8d33d0c989e3b2dabead9b5901c1baa"
+  },
+  "recipeSha256": "0037992726f506a9b41f24cee416480a3a3b7d87835ed07b3461f48d4298d2c1",
+  "guardsSha256": "0ff35cf58ea0e7ff77628c1700bb898c7f68ff4f358e570ca0c61608b3020131",
+  "active": "/home/tim/.openclaw/workspace/releases/speed-phase0-wizard-fastlane-20261112/.next-web"
+}

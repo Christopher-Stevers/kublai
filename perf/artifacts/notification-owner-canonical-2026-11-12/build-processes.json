@@ -1,0 +1,477 @@
+{
+  "version": 1,
+  "token": "744e2c2c9d437d3960157804c73183b6fb436e4aaef5e1a1",
+  "supervisor": {
+    "pid": 158788,
+    "state": "R",
+    "ppid": 158770,
+    "pgid": 158770,
+    "startTime": "230758058"
+  },
+  "root": {
+    "pid": 158790,
+    "state": "R",
+    "ppid": 158788,
+    "pgid": 158790,
+    "startTime": "230758061"
+  },
+  "processes": [
+    {
+      "pid": 158790,
+      "state": "S",
+      "ppid": 158788,
+      "pgid": 158790,
+      "startTime": "230758061"
+    },
+    {
+      "pid": 158801,
+      "state": "R",
+      "ppid": 158790,
+      "pgid": 158790,
+      "startTime": "230758100"
+    },
+    {
+      "pid": 158812,
+      "state": "R",
+      "ppid": 158801,
+      "pgid": 158790,
+      "startTime": "230758138"
+    },
+    {
+      "pid": 158856,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230758166"
+    },
+    {
+      "pid": 158969,
+      "state": "R",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230759675"
+    },
+    {
+      "pid": 159013,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230759778"
+    },
+    {
+      "pid": 159148,
+      "state": "R",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230760859"
+    },
+    {
+      "pid": 159529,
+      "state": "S",
+      "ppid": 158788,
+      "pgid": 158790,
+      "startTime": "230762830"
+    },
+    {
+      "pid": 159530,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762830"
+    },
+    {
+      "pid": 159536,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762831"
+    },
+    {
+      "pid": 159537,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762831"
+    },
+    {
+      "pid": 159543,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762831"
+    },
+    {
+      "pid": 159549,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762831"
+    },
+    {
+      "pid": 159560,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762831"
+    },
+    {
+      "pid": 159567,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762832"
+    },
+    {
+      "pid": 159574,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762832"
+    },
+    {
+      "pid": 159592,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762834"
+    },
+    {
+      "pid": 159593,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762834"
+    },
+    {
+      "pid": 159594,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762835"
+    },
+    {
+      "pid": 159600,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762835"
+    },
+    {
+      "pid": 159611,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762835"
+    },
+    {
+      "pid": 159617,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762835"
+    },
+    {
+      "pid": 159619,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762835"
+    },
+    {
+      "pid": 159624,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762835"
+    },
+    {
+      "pid": 159630,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762836"
+    },
+    {
+      "pid": 159638,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762836"
+    },
+    {
+      "pid": 159645,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762836"
+    },
+    {
+      "pid": 159653,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762836"
+    },
+    {
+      "pid": 159660,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762836"
+    },
+    {
+      "pid": 159671,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762836"
+    },
+    {
+      "pid": 159677,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762837"
+    },
+    {
+      "pid": 159678,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762837"
+    },
+    {
+      "pid": 159680,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762837"
+    },
+    {
+      "pid": 159694,
+      "state": "S",
+      "ppid": 158812,
+      "pgid": 158790,
+      "startTime": "230762837"
+    }
+  ],
+  "status": "stopped",
+  "remaining": [],
+  "groupActions": [
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 15,
+      "groups": [
+        158790
+      ]
+    },
+    {
+      "signal": 9,
+      "groups": [
+        158790
+      ]
+    }
+  ],
+  "familyAbsent": true,
+  "ownedIdentitiesAbsent": true,
+  "rootExitCode": 0,
+  "timedOut": false,
+  "requestedSignal": null
+}

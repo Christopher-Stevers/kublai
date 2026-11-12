@@ -1,0 +1,9 @@
+# Notification ownership narrow candidate — source preparation
+
+No helper execution/build/tests/browser/DB or activation authorized by this plan. Functional proof and root GO remain pending. Freeze is exact ACTIVE fastlane plus only inline Center ownership wiring and the acca hook; wizard retained. Source script/config/package/lock/public unchanged.
+
+Use external canonical guards + symlink scan, pinned Node/pnpm/installed-lock verification and actual-active9aae binding before executing the original frozen Phase0 recipe in its unchanged canonical parent/child staging path. Record helper/recipe hashes. No compiler stats injection or operational helper overlay into source.
+
+After successful compile, require source FP unchanged and new compiled config equal active required-server-files config. Normalize only distDir/RegExp and the already reviewed absent-runtime false defaults trustHostHeader/isExperimentalCompile when comparing the active runtime config. Copy exact active pinned runtime wrappers/config/public, including all packaged catalogue images; retain and verify all active static history. Add source FP/toolchain/packaging provenance only to operational build metadata. No generated public release-manifest feature.
+
+Run formal ratchets against current-active9aae fixed-first values: shared <=502616, heaviest <=758529, deploy <=33690. Actual changed deploy bytes compare current active9aae. Strict small change <100000 remains distinct. New 314-line hook is globally imported by the already-global Center, with no compensating lazy split, so shared bytes can rise; no gzip estimate or waiver. If it fails, hold this artifact and separately review a panel split/new candidate. Full source-matched fixed-method matrix still required, after matching9aae baseline/repeat accepted. Functional contract proof alone does not establish idle reduction in the actual app.
