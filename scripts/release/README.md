@@ -1,5 +1,15 @@
 # Local web release recipe
 
+## Dev lane — effective 2026-11-12
+
+Use `node scripts/release/dev-deploy.mjs --help` for Omarchy deployments. Tim’s [amendment](../../perf/DEV_LANE.md) supersedes historical pre-activation timing/byte requirements below **for dev only**. The command requires merged committed source and passed source-bound tests/type checks, uses the canonical builder under one deployment lock, retains historical assets, switches only the web service, verifies health and served scripts, and rolls back on health failure. Every switch is recorded newest first in [REVIEW_QUEUE.md](../../perf/REVIEW_QUEUE.md).
+
+Dev deployment takes priority over timing collection: stop the owned lab processes, keep completed evidence and mark the interrupted run spoiled. Measurements resume as batch reviews when free. Findings create tasks; a broken journey or >25% slowdown confirmed twice is escalated to Tim, who decides rollback. Database/schema changes, worker releases, enabling slip autopilot and deleting data/files require separate explicit approval.
+
+The existing `activate.mjs` remains the production promotion command and still requires the full gate plus reviewed batch status. The current configured live web service is on Omarchy; no separate production host is assumed. A dev switch therefore affects users of that endpoint.
+
+## Canonical build recipe
+
 Use Node 26.8.2, pnpm 10.11.1 and the installed frozen lockfile. Invoke the same recipe from either source checkout (`RELEASE_SOURCE_DIR` can select an explicit frozen source snapshot):
 
 ```sh

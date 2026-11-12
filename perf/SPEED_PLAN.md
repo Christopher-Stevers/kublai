@@ -1,6 +1,8 @@
 # ForemanHQ Speed Plan
 
-Written 2026-11-10. This is a plan only. Nothing in it is built, and nothing in it is approved.
+Written 2026-11-10; approved by Tim. Release policy amended 2026-11-12.
+
+Tim’s [dev-lane amendment](DEV_LANE.md) takes precedence over earlier activation language: merged changes deploy to Omarchy after scoped tests/type checks and a canonical build, with serialized switching, health checks, automatic health rollback and old assets retained. Timing and byte reviews follow in batches through `perf/REVIEW_QUEUE.md`; production promotion retains the full gate. Database/schema changes, worker releases, autopilot activation and data/file deletion still need explicit approval each time.
 
 Every number marked "measured" was taken on this date from the live build, the public site or the repo. Every number marked "estimate" is unproven and has a step in the plan that proves or kills it.
 
@@ -12,7 +14,7 @@ Three rules carry the whole plan.
 
 1. Nothing a person does waits on the network.
 2. Nothing the device already has is shown blurry, late or behind a spinner.
-3. Nothing ships that makes a measured number worse.
+3. Production promotion passes the measured gate; dev deploys are reviewed afterwards.
 
 There are seven workstreams, one per idea. They run on three tracks that do not block each other.
 
@@ -578,8 +580,8 @@ Phase 0 builds the instruments. This workstream makes them binding.
 
 | Layer | What | When | Blocks |
 | --- | --- | --- | --- |
-| Static | script per screen, shared script, files changed against the last build, images without sizes | every commit, seconds | yes |
-| Lab | the eight journeys at three links and 4x slowdown, five runs each, median | before every deploy, on this machine | yes, beyond the noise band |
+| Static | script per screen, shared script, changed files, image sizes | after dev deployment, per review batch | production promotion |
+| Lab | eight journeys at three links and 4x slowdown, 15 samples per cell | after dev deployment, when free | production promotion |
 | Field | real phones, by build | always | raises a flag after a deploy |
 
 **The rule.** A change that worsens a budget fails unless the same commit raises that budget on purpose with a line saying why. Budgets only move toward the targets otherwise. After each phase the budgets are tightened to the new numbers.
@@ -592,7 +594,9 @@ Phase 0 builds the instruments. This workstream makes them binding.
 - no new provider in the shared layout
 - no image without a size
 
-**In the deploy chain.** One more guarded step before the switch: budgets pass.
+**Dev deploy chain.** Merged source, scoped tests/type checks, canonical build, one deploy lock, health checks and automatic health rollback. Record every switch in the review queue. Dev preempts timing; preserve completed evidence and mark the interrupted run spoiled for repetition.
+
+**Production promotion.** The full calibrated timing and unchanged byte gates must pass for a reviewed batch with no open serious finding. Dev review findings become tasks, not automatic rollbacks. Escalate a broken journey or a journey more than 25% slower on two independent runs to Tim for a rollback decision. Move the review baseline to the reviewed build after each batch.
 
 **For the people building.** A small overlay in development that shows tap to paint and dropped frames live.
 
@@ -601,7 +605,7 @@ Phase 0 builds the instruments. This workstream makes them binding.
 ### Steps
 
 1. Static budgets and the script. Size S.
-2. Lab gate in the deploy chain. Size M.
+2. Dev review queue and batch measurements; full gate before production promotion. Size M.
 3. Field report by build, with a flag on regressions. Size M.
 4. Lint rules, added as each workstream lands. Size S each.
 5. Development overlay. Size S.
@@ -629,7 +633,7 @@ Phase 0 builds the instruments. This workstream makes them binding.
 - Workstream 3 steps 1 to 5: press primitive, registry, no round trip for a seen screen, job tab host.
 - Workstream 2 tier 1: persisted cache and the first 20 instant writes.
 - Workstream 5 steps 1 to 3: the live stream, no polling.
-- Workstream 7 steps 1 and 2: static budgets and the lab gate.
+- Workstream 7 steps 1 and 2: static budgets, dev review queue and the production promotion gate.
 
 What a person feels after it: every screen they have seen opens at once, presses answer on finger down, common changes show at once, updates stop costing data.
 

@@ -27,10 +27,16 @@ remaining evidence are recorded in `perf/README.md` and `perf/STATUS.md`.
   `scripts/release/README.md` for production builds, including Codex sessions.
   Do not switch between webpack/Turbopack or invent per-session build recipes.
 - Preserve scripts from at least the last ten builds; serve precompressed Brotli
-  where supported. A failed speed gate blocks activation, not just the report.
-- After the measurement bootstrap, activate web candidates with
-  `scripts/release/activate.mjs` and the complete matching evidence described in
-  `scripts/release/ACTIVATION.md`. Do not manually switch around a failed preflight.
+  where supported. A failed speed gate blocks production promotion; dev findings enter the review queue.
+- Tim changed the release policy on 2026-11-12: use
+  `scripts/release/dev-deploy.mjs` for the Omarchy dev lane after merged source,
+  scoped tests/type checks and the canonical build pass. Dev deploys have priority
+  over timing runs. Retain old assets, serialize deploys, check health, roll back
+  automatically on health failure and record `perf/REVIEW_QUEUE.md`.
+- Timing and byte gates review dev batches afterwards; findings become tasks.
+  Production promotion still uses `scripts/release/activate.mjs` and the complete
+  matching evidence in `scripts/release/ACTIVATION.md`, from a reviewed batch
+  without an open serious finding. Never waive those production gates.
 - Run write journeys only against the disposable `perf/lab/database.sh` database.
   Never point the lab at the production database or deploy a `PERF_LAB_ONLY` build.
 - Record measurements and missing evidence separately. Do not equate simulated

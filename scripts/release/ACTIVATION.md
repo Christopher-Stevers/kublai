@@ -1,5 +1,15 @@
 # Deployment preflight
 
+## Dev and production are separate lanes
+
+Tim’s [2026-11-12 policy](../../perf/DEV_LANE.md) authorizes immediate Omarchy dev deployment after merged source, its own tests/type checks and the canonical build pass. Use `dev-deploy.mjs`; it serializes builds/switches, retains assets, checks sign-in/protected endpoint/served scripts, rolls back failed health and writes the review queue. Timing matrices, baseline pairs and byte ratchets do not block dev. Dev preempts active timing collection. The rest of this document describes **production promotion**, not a dev activation requirement.
+
+Review deployed dev batches afterwards against the last reviewed build. Findings become tasks. Only a broken journey or a >25% slowdown confirmed twice prompts an immediate rollback decision from Tim. Production promotion requires a reviewed batch with no open serious finding and all full-gate evidence below. No separate production host is assumed to exist; the Omarchy endpoint currently serves users.
+
+Database/schema changes, worker releases, enabling autopilot and deleting data/files remain outside the dev lane without explicit approval for each.
+
+## Production preflight
+
 The Phase 0 measurement bootstrap is already active. Later web changes use the
 canonical builder and the guarded activation command from the canonical checkout:
 
