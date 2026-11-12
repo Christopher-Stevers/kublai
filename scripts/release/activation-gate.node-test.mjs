@@ -1,3 +1,9 @@
+import { failingCells } from "../../perf/calibrated-policy.mjs";
+import {
+  calibration as calibrationFixture,
+  capture as captureFixture,
+  entry,
+} from "../../perf/calibrated-policy-fixtures.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
@@ -88,7 +94,7 @@ function report(build, timestamp, sourceBuild = oldBuild) {
     },
     samples: budgets.journeys.flatMap((journey) =>
       Object.keys(budgets.links).flatMap((link) =>
-        Array.from({ length: 5 }, (_, run) => ({
+        Array.from({ length: budgets.runs }, (_, run) => ({
           journey,
           link,
           run,
@@ -99,15 +105,30 @@ function report(build, timestamp, sourceBuild = oldBuild) {
     ),
   };
 }
-const evidence = () => ({
-  baseline: report("lab-baseline", "2026-01-01T00:00:00Z"),
-  repeat: report("lab-baseline", "2026-01-01T01:00:00Z"),
-  candidate: report("lab-candidate", "2026-01-01T02:00:00Z", newBuild),
-  baselineBuild: oldBuild,
-  candidateBuild: newBuild,
-  baselineSourceFingerprint: oldBuild,
-  candidateSourceFingerprint: newBuild,
-});
+const evidence = () => {
+  const calibration = calibrationFixture();
+  const reference = {
+    baseline: calibration.baseline,
+    repeat: calibration.controls.at(-1),
+  };
+  const capture = captureFixture({
+    role: "candidate",
+    baseline: reference.baseline,
+    source: newBuild,
+  });
+  return {
+    baseline: JSON.parse(reference.baseline.report.raw),
+    repeat: JSON.parse(reference.repeat.report.raw),
+    candidate: JSON.parse(capture.report.raw),
+    baselineBuild: oldBuild,
+    candidateBuild: newBuild,
+    baselineSourceFingerprint: oldBuild,
+    candidateSourceFingerprint: newBuild,
+    calibration,
+    reference,
+    capture,
+  };
+};
 
 test("accepts full independent comparable lab runs bound to their source releases", () => {
   assert.deepEqual(validateActivationReports(evidence()), []);
@@ -153,13 +174,24 @@ test("rejects missing, self-repeated, stale source, and unbound reports", () => 
 test("blocks planted added script, 100 ms tap, and new polling regressions", () => {
   const script = evidence();
   script.candidate.static.sharedGzipBytes += 30000;
+  script.capture.report = entry(script.candidate);
   assert.match(validateActivationReports(script).join("\n"), /sharedGzipBytes/);
   const tap = evidence();
   for (const sample of tap.candidate.samples)
     if (sample.journey === "openjob") sample.durationMs += 100;
+  tap.capture.report = entry(tap.candidate);
+  tap.capture.confirmation = captureFixture({
+    role: "remeasure",
+    baseline: tap.reference.baseline,
+    parent: tap.capture,
+    cells: failingCells(tap.baseline, tap.candidate),
+    value: 200,
+    source: newBuild,
+  });
   assert.match(validateActivationReports(tap).join("\n"), /openjob/);
   const poll = evidence();
   poll.candidate.static.idlePolls++;
+  poll.capture.report = entry(poll.candidate);
   assert.match(validateActivationReports(poll).join("\n"), /idlePolls/);
 });
 

@@ -23,7 +23,12 @@ export const READ_PREFLIGHT_PROCEDURES = [
   "rooms.getJobRoomCount",
   "notifications.overview",
 ];
-export function validateReport(report) {
+export function validateReport(
+  report,
+  cells = budgets.journeys.flatMap((journey) =>
+    Object.keys(budgets.links).map((link) => ({ journey, link })),
+  ),
+) {
   const errors = [];
   if (
     !/^[a-f0-9]{64}$/.test(report?.harnessFingerprint ?? "") ||
@@ -93,34 +98,39 @@ export function validateReport(report) {
     errors.push(
       "Expected isolated-seeded-app report, version 1, CPU slowdown 4",
     );
-  if (
-    report?.samples?.length !==
-    budgets.journeys.length * Object.keys(budgets.links).length * budgets.runs
-  )
+  if (report?.samples?.length !== cells.length * budgets.runs)
     errors.push("Expected exact full lab matrix");
-  for (const journey of budgets.journeys)
-    for (const link of Object.keys(budgets.links)) {
-      const rows =
-        report?.samples?.filter(
-          (r) => r.journey === journey && r.link === link,
-        ) ?? [];
-      if (
-        rows.length !== 5 ||
-        (["openjob", "switchjobtabs", "openmateriallist"].includes(journey) &&
-          rows.some((row) => row.variant !== "visited")) ||
-        new Set(rows.map((row) => row.run)).size !== 5 ||
-        rows.some(
-          (row) => !Number.isInteger(row.run) || row.run < 0 || row.run > 4,
-        ) ||
-        rows.some((r) => !Number.isFinite(r.durationMs) || r.durationMs < 0)
-      )
-        errors.push(
-          `${journey}/${link}: five finite durationMs samples required`,
-        );
-    }
+  for (const { journey, link } of cells) {
+    const rows =
+      report?.samples?.filter(
+        (r) => r.journey === journey && r.link === link,
+      ) ?? [];
+    if (
+      rows.length !== budgets.runs ||
+      (["openjob", "switchjobtabs", "openmateriallist"].includes(journey) &&
+        rows.some((row) => row.variant !== "visited")) ||
+      new Set(rows.map((row) => row.run)).size !== budgets.runs ||
+      rows.some(
+        (row) =>
+          !Number.isInteger(row.run) || row.run < 0 || row.run >= budgets.runs,
+      ) ||
+      rows.some((r) => !Number.isFinite(r.durationMs) || r.durationMs < 0)
+    )
+      errors.push(
+        `${journey}/${link}: ${budgets.runs} finite durationMs samples required`,
+      );
+  }
   return errors;
 }
-const median = (rows) => [...rows].sort((a, b) => a - b)[2];
+export const median = (rows) =>
+  [...rows].sort((a, b) => a - b)[Math.floor(rows.length / 2)];
+export const timingFails = (baseline, candidate) =>
+  Number.isFinite(baseline) &&
+  Number.isFinite(candidate) &&
+  baseline >= 0 &&
+  candidate >= 0 &&
+  candidate - baseline > baseline * 0.1 &&
+  candidate - baseline > 17;
 const protocolId = (report) =>
   typeof report?.protocol === "string"
     ? report.protocol
@@ -148,9 +158,9 @@ export function compareReports(before, after) {
         );
       const old = value(before),
         next = value(after);
-      if (next > old * (1 + budgets.noiseRatio))
+      if (timingFails(old, next))
         errors.push(
-          `${journey}/${link}: median ${next.toFixed(1)}ms exceeds ${old.toFixed(1)}ms baseline +10%`,
+          `${journey}/${link}: median ${next.toFixed(1)}ms exceeds ${old.toFixed(1)}ms baseline by both >10% and >17ms`,
         );
     }
   for (const key of [
@@ -197,21 +207,8 @@ export function checkRepeatability(first, second) {
     );
   if (!first.build || first.build === "unknown" || first.build !== second.build)
     errors.push("Repeatability requires matching explicit build IDs");
-  for (const journey of budgets.journeys)
-    for (const link of Object.keys(budgets.links)) {
-      const value = (report) =>
-        median(
-          report.samples
-            .filter((row) => row.journey === journey && row.link === link)
-            .map((row) => row.durationMs),
-        );
-      const a = value(first),
-        b = value(second);
-      if (Math.abs(a - b) > a * budgets.noiseRatio)
-        errors.push(
-          `${journey}/${link}: independent-run medians differ by more than 10% (${a} vs ${b}ms)`,
-        );
-    }
+  // Directional fixed-reference predicate; faster variation is diagnostic only.
+  errors.push(...compareReports(first, second));
   return errors;
 }
 if (
@@ -227,17 +224,45 @@ if (
       throw new Error(
         "Usage: node perf/check.mjs --baseline before.json --report after.json",
       );
-    const errors = (
-      process.argv.includes("--repeatability")
-        ? checkRepeatability
-        : compareReports
-    )(
-      JSON.parse(fs.readFileSync(arg("--baseline"))),
-      JSON.parse(fs.readFileSync(arg("--report"))),
-    );
+    let errors;
+    if (
+      !process.argv.includes("--repeatability") &&
+      !process.argv.includes("--initial-screen")
+    ) {
+      const read = (name) => {
+        if (!process.argv.includes(name)) throw Error("Missing " + name);
+        return JSON.parse(fs.readFileSync(arg(name)));
+      };
+      const { evaluateCalibratedRelease, decodeEntry } =
+        await import("./calibrated-policy.mjs");
+      const reference = read("--reference"),
+        capture = read("--capture");
+      if (
+        JSON.stringify(decodeEntry(reference.baseline.report)) !==
+          JSON.stringify(read("--baseline")) ||
+        JSON.stringify(decodeEntry(capture.report)) !==
+          JSON.stringify(read("--report"))
+      )
+        throw Error("Raw capture/report mismatch");
+      const result = evaluateCalibratedRelease(
+        read("--calibration"),
+        capture,
+        reference,
+      );
+      errors = result.errors;
+      console.log(JSON.stringify(result));
+    } else
+      errors = (
+        process.argv.includes("--repeatability")
+          ? checkRepeatability
+          : compareReports
+      )(
+        JSON.parse(fs.readFileSync(arg("--baseline"))),
+        JSON.parse(fs.readFileSync(arg("--report"))),
+      );
     if (errors.length) throw new Error(errors.join("\n"));
     console.log(
-      "Speed regression budgets pass (lab evidence only; field/Phase 0 gate remains separate).",
+      "Timing screen passes (not release approval without complete calibrated evidence); byte limits unchanged.",
     );
   } catch (error) {
     console.error(error.message);

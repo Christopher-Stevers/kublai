@@ -15,10 +15,12 @@ For inspection without switching anything, use `activation-gate.mjs` with those
 same arguments and `--active /absolute/path/to/current-build`.
 
 Before any switch, the gate requires two independent complete baseline matrices
-at 4x CPU and matching source, median repeatability within 10%, a complete
-candidate matrix, no journey regression beyond 10%, and no increased static
-budget. Both matrices contain eight journeys, three link profiles, five samples
-per cell. Reports carry the actual compiled lab build and a separate canonical
+at 4x CPU and matching active source, a completed method calibration, and a
+complete candidate matrix under the calibrated15-sample directional
+dual-threshold/sole-confirmation rule below. Static non-growth is unchanged.
+Each full matrix contains eight journeys, three link profiles and fifteen
+samples per cell. Historical f9/v2 used five and retains its original verdicts.
+Reports carry the actual compiled lab build and a separate canonical
 `sourceBuild` plus frozen-input `sourceFingerprint`; stubbing authentication for
 the isolated lab never makes that artifact identical to the production build.
 
@@ -66,3 +68,41 @@ not the new active source. This gate currently requires baseline/repeat to match
 the actual active build. Subsequent releases must provide correctly bound
 evidence and compute changed bytes against actual active fastlane; do not
 relabel old reports or silently waive this condition.
+
+## Calibrated timing protocol (authorized 2026-11-11)
+
+Byte limits are unchanged. The abandoned300KB proposal was not adopted. The new
+`ready-then-pinch-v2-calibrated-15-v1` protocol keeps original f9/v2 wall-clock
+journey boundaries and uses15 samples per cell (360 in a full run). A cell fails
+only when its median delta is BOTH greater than10% of fixed baseline B and
+greater than17ms. Equality passes; faster variation is diagnostic only. All
+original captures/verdicts stay immutable and retain their original method IDs.
+
+Every initially failed timing cell receives precisely one prospectively sealed,
+fresh15-sample confirmation against the same B. The exact failed set is captured
+once, without pooling, resetting or retaining only fast samples. Missing,
+duplicate, stale, extra, wrong-source or wrong-method evidence fails closed.
+A cell rejects only if it fails both times. Byte/auth/source/health failures do
+not receive this exception. Confirmation records the equivalent fixture prelude.
+
+Before candidates can pass, a separate completed calibration bundle must contain
+one fixed B plus19 independent unchanged-build full controls, with confirmations
+where needed and every final control passing. This validates the method once;
+it is not20 new full runs for every release. Future releases still need their
+own matching-active-source independent baseline and repeat, under the calibrated
+method/toolchain. Calibration source may differ from later active source; its
+20 runs must be internally source/build identical.
+
+Bundles carry exact original report/plan text as `{raw,sha256}` entries. Every
+capture carries prospective plan and source/build/harness/CPU/health provenance.
+`--calibration` supplies `{status:'complete',policyId,baseline,controls}`;
+`--reference` supplies the active `{baseline,repeat}` captures; `--capture`
+supplies candidate capture (optional sole `confirmation`). Each capture has
+`report` and `plan` entries. Existing `--baseline`, `--repeat`, `--report` must
+match these bound raw captures. The stable checker and guarded activation require
+all of them; absent/incomplete calibration cannot become a pass boolean.
+
+`perf/check.mjs --initial-screen` explicitly reports an initial diagnostic screen
+only. It cannot authorize activation. Normal checking requires complete bundles;
+`--repeatability` remains a directional pair diagnostic, not method calibration.
+No runtime/calibration collection is authorized merely by this documentation.

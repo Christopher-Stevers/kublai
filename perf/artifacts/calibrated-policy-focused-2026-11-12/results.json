@@ -1,0 +1,37 @@
+{
+  "runtimeScope": "Node unit tests and syntax only; no application/browser/DB/calibration",
+  "uniquePassingTests": 32,
+  "policyTests": 15,
+  "checkerTests": 7,
+  "activationTests": 5,
+  "switchTests": 4,
+  "smallChangeTests": 1,
+  "initialRun": {
+    "passed": 29,
+    "failed": 1,
+    "reason": "Planted activation fixture did not rebind changed raw report; fixed fixture only"
+  },
+  "reviewFixRun": {
+    "failed": 1,
+    "reason": "Moved candidate chronology fixture did not coherently move certificate timestamps; fixed fixture only"
+  },
+  "impactedRerunsPassed": true,
+  "syntaxPassed": true,
+  "byteScriptsUnchanged": true,
+  "byteTargetsUnchanged": true,
+  "actualCalibrationRun": false,
+  "candidateAccepted": false,
+  "activated": false,
+  "logs": {
+    "calibrated-policy-unit-attempt1.log": "64b667be88256594b69741d2b3e00a43e95f931d15842468baa6d79c425ed9fa",
+    "calibrated-policy-activation-rerun.log": "94ae6db9c2b1b1f82d5b4da9b25ec68e68785cb95697e711e61ca8e16e575f3c",
+    "calibrated-policy-review-fixes.log": "edc804c5771d84d6e346a3a2bce785b68a76559cf23af6e20c089e062ae888c8",
+    "calibrated-policy-review-fixes-rerun.log": "cb2d2421089fc93b63ecf112a584098b983ccf3d0d6beb18e220ce35fd32c80e",
+    "final-formatted-tests.log": "133da1d9ddeb52d45f5650d094a760fd51c79eef0e9b0b97f7e5fe8143d997ee"
+  },
+  "finalFormattedCombinedRun": {
+    "tests": 32,
+    "pass": 32,
+    "fail": 0
+  }
+}

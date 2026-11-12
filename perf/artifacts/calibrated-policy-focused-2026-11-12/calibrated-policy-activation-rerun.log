@@ -1,0 +1,13 @@
+✔ accepts full independent comparable lab runs bound to their source releases (19.901626ms)
+✔ rejects missing, self-repeated, stale source, and unbound reports (49.761891ms)
+✔ blocks planted added script, 100 ms tap, and new polling regressions (41.207049ms)
+✔ blocks protocol or frozen method changes at activation (13.024735ms)
+✔ checks actual immutable history, compressed bytes, and changed gzip payload (5.812788ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 171.404709

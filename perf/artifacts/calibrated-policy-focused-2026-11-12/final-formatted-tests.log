@@ -1,0 +1,40 @@
+✔ strict dual threshold, equality and fifteen-sample median index7 (0.500215ms)
+✔ calibration requires twenty internally bound complete runs, faster controls pass (42.703701ms)
+✔ one exact fresh confirmation can resolve first failure without pooling (32.725557ms)
+✔ tampering, extra retries/cells and wrong parent/source/method fail closed (65.740428ms)
+✔ timing confirmation cannot bypass unchanged byte limits or missing active pair (21.676282ms)
+✔ method calibration is reusable across sources but active source pair remains exact (20.946031ms)
+✔ multi-cell confirmation exactness, stale plan, coherent source and second retry rejection (83.211817ms)
+✔ initial idle proof remains authoritative when confirmation timestamps differ (20.711353ms)
+✔ all full plans need the supported fixture prelude before any retry exists (4.082296ms)
+✔ failed/aborted complete-shaped reports never pass at any role (32.60099ms)
+✔ prefix progress cannot authorize a candidate and stops on persistent failure (6.744759ms)
+✔ candidate must start after completed method calibration, actual report protocol enforced (23.502893ms)
+✔ per-cell declarations alone cannot replace successful bound prelude certificates (59.163067ms)
+✔ initial screen validates baseline and blocks health/static failures before retries (7.893558ms)
+✔ stale/reset/drain/server identity evidence cannot certify a restored cell (58.682262ms)
+✔ unchanged report passes; incomplete and invented provenance fail (2.71434ms)
+✔ planted 100ms tap, 30KB script and poll regressions fail (1.249366ms)
+✔ independent Phase 0 runs require same build and medians within ten percent (1.508112ms)
+✔ fixture and database failures cannot become accepted timing evidence (0.986962ms)
+✔ different journey protocols cannot be compared (0.506923ms)
+✔ changed frozen harness or mismatched method blocks comparison (0.501268ms)
+✔ new rule uses15 samples and requires both strict thresholds (1.057541ms)
+✔ accepts full independent comparable lab runs bound to their source releases (19.93218ms)
+✔ rejects missing, self-repeated, stale source, and unbound reports (52.626956ms)
+✔ blocks planted added script, 100 ms tap, and new polling regressions (43.922836ms)
+✔ blocks protocol or frozen method changes at activation (15.640026ms)
+✔ checks actual immutable history, compressed bytes, and changed gzip payload (7.833428ms)
+✔ selects the exact candidate before restarting and checking its output (3.421697ms)
+✔ restores the old symlink and service after a failed candidate check (1.265266ms)
+✔ reports rollback failure separately and leaves the symlink pointing to the old build (0.821137ms)
+✔ refuses a stale preflight without restarting anything (0.474202ms)
+✔ delta gate excludes retained history and rejects excess bytes and URL collisions (79.040142ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 878.636909

@@ -1,0 +1,23 @@
+✔ strict dual threshold, equality and fifteen-sample median index7 (0.488443ms)
+✔ calibration requires twenty internally bound complete runs, faster controls pass (42.709723ms)
+✔ one exact fresh confirmation can resolve first failure without pooling (32.569836ms)
+✔ tampering, extra retries/cells and wrong parent/source/method fail closed (64.117007ms)
+✔ timing confirmation cannot bypass unchanged byte limits or missing active pair (20.823373ms)
+✔ method calibration is reusable across sources but active source pair remains exact (20.593699ms)
+✔ multi-cell confirmation exactness, stale plan, coherent source and second retry rejection (82.692071ms)
+✔ initial idle proof remains authoritative when confirmation timestamps differ (20.612646ms)
+✔ all full plans need the supported fixture prelude before any retry exists (4.048631ms)
+✔ failed/aborted complete-shaped reports never pass at any role (32.153656ms)
+✔ prefix progress cannot authorize a candidate and stops on persistent failure (6.857879ms)
+✔ candidate must start after completed method calibration, actual report protocol enforced (23.47293ms)
+✔ per-cell declarations alone cannot replace successful bound prelude certificates (60.270541ms)
+✔ initial screen validates baseline and blocks health/static failures before retries (8.124038ms)
+✔ stale/reset/drain/server identity evidence cannot certify a restored cell (60.477591ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 530.900902

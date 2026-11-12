@@ -1,0 +1,61 @@
+✔ strict dual threshold, equality and fifteen-sample median index7 (0.538274ms)
+✔ calibration requires twenty internally bound complete runs, faster controls pass (43.275239ms)
+✔ one exact fresh confirmation can resolve first failure without pooling (32.281044ms)
+✔ tampering, extra retries/cells and wrong parent/source/method fail closed (65.873716ms)
+✔ timing confirmation cannot bypass unchanged byte limits or missing active pair (21.264362ms)
+✔ method calibration is reusable across sources but active source pair remains exact (20.988576ms)
+✔ multi-cell confirmation exactness, stale plan, coherent source and second retry rejection (82.001668ms)
+✔ initial idle proof remains authoritative when confirmation timestamps differ (20.502673ms)
+✔ all full plans need the supported fixture prelude before any retry exists (4.035089ms)
+✔ failed/aborted complete-shaped reports never pass at any role (32.431783ms)
+✔ prefix progress cannot authorize a candidate and stops on persistent failure (6.271408ms)
+✖ candidate must start after completed method calibration, actual report protocol enforced (12.404863ms)
+✔ per-cell declarations alone cannot replace successful bound prelude certificates (59.658728ms)
+✔ initial screen validates baseline and blocks health/static failures before retries (6.173659ms)
+✔ stale/reset/drain/server identity evidence cannot certify a restored cell (61.441596ms)
+✔ accepts full independent comparable lab runs bound to their source releases (20.110087ms)
+✔ rejects missing, self-repeated, stale source, and unbound reports (51.717401ms)
+✔ blocks planted added script, 100 ms tap, and new polling regressions (52.400297ms)
+✔ blocks protocol or frozen method changes at activation (17.658555ms)
+✔ checks actual immutable history, compressed bytes, and changed gzip payload (7.784315ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 19
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 703.835877
+
+✖ failing tests:
+
+test at perf/calibrated-policy.test.mjs:79:1
+✖ candidate must start after completed method calibration, actual report protocol enforced (12.404863ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /calibration|independent/. Input:
+  
+  'Error: Invalid private fixture certificate'
+  
+      at TestContext.<anonymous> (file:///home/tim/.openclaw/workspace/kublai/perf/calibrated-policy.test.mjs:83:334)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: Invalid private fixture certificate
+        at fail (file:///home/tim/.openclaw/workspace/kublai/perf/calibrated-policy.mjs:14:28)
+        at inspect (file:///home/tim/.openclaw/workspace/kublai/perf/calibrated-policy.mjs:46:974)
+        at evaluateCapture (file:///home/tim/.openclaw/workspace/kublai/perf/calibrated-policy.mjs:53:13)
+        at evaluateCalibratedRelease (file:///home/tim/.openclaw/workspace/kublai/perf/calibrated-policy.mjs:102:15)
+        at file:///home/tim/.openclaw/workspace/kublai/perf/calibrated-policy.test.mjs:83:345
+        at getActual (node:assert:580:5)
+        at strict.throws (node:assert:728:24)
+        at TestContext.<anonymous> (file:///home/tim/.openclaw/workspace/kublai/perf/calibrated-policy.test.mjs:83:334)
+        at Test.runInAsyncScope (node:async_hooks:226:14)
+        at Test.run (node:internal/test_runner/test:1402:25),
+    expected: /calibration|independent/,
+    operator: 'throws',
+    diff: 'simple'
+  }

@@ -1,7 +1,10 @@
 // Stable deploy-chain entry point.
 import "../perf/check.mjs";
 import fs from "node:fs";
-import { compareReports } from "../perf/check.mjs";
+import {
+  evaluateCalibratedRelease,
+  decodeEntry,
+} from "../perf/calibrated-policy.mjs";
 try {
   const read = (name) => {
     const i = process.argv.indexOf(name);
@@ -20,9 +23,22 @@ try {
       report.sourceFingerprintAlgorithm !== "foremanhq-lab-source-v1")
   )
     throw new Error("Lab report is not bound to the expected source release");
-  const errors = compareReports(read("--baseline"), report);
+  const reference = read("--reference"),
+    capture = read("--capture");
+  if (
+    JSON.stringify(decodeEntry(reference.baseline.report)) !==
+      JSON.stringify(read("--baseline")) ||
+    JSON.stringify(decodeEntry(capture.report)) !== JSON.stringify(report)
+  )
+    throw Error("Raw capture/report mismatch");
+  const evaluation = evaluateCalibratedRelease(
+    read("--calibration"),
+    capture,
+    reference,
+  );
+  const errors = evaluation.errors;
   if (errors.length) throw new Error(errors.join("\n"));
-  console.log("Speed regression budgets pass");
+  console.log(JSON.stringify(evaluation));
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;

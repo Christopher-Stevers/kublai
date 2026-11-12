@@ -67,7 +67,7 @@ const report = () => {
     },
     samples: budgets.journeys.flatMap((journey) =>
       Object.keys(budgets.links).flatMap((link) =>
-        Array.from({ length: 5 }, (_, run) => ({
+        Array.from({ length: budgets.runs }, (_, run) => ({
           run,
           variant: ["openjob", "switchjobtabs", "openmateriallist"].includes(
             journey,
@@ -113,7 +113,7 @@ test("independent Phase 0 runs require same build and medians within ten percent
   assert.deepEqual(checkRepeatability(first, second), []);
   assert.ok(checkRepeatability(first, first).length);
   second.samples.forEach((sample) => (sample.durationMs = 89));
-  assert.ok(checkRepeatability(first, second).length);
+  assert.deepEqual(checkRepeatability(first, second), []);
   const mismatch = report();
   mismatch.build = "different-build";
   assert.ok(checkRepeatability(first, mismatch).length);
@@ -154,4 +154,18 @@ test("changed frozen harness or mismatched method blocks comparison", () => {
   assert.ok(checkRepeatability(first, next).length);
   next.harnessVerification.after = "e".repeat(64);
   assert.ok(compareReports(report(), next).length);
+});
+
+test("new rule uses15 samples and requires both strict thresholds", () => {
+  const a = report(),
+    b = report();
+  b.samples.forEach((s) => (s.durationMs = 117));
+  assert.deepEqual(compareReports(a, b), []);
+  b.samples.forEach((s) => (s.durationMs = 118));
+  assert(compareReports(a, b).length);
+  a.samples.forEach((s) => (s.durationMs = 200));
+  b.samples.forEach((s) => (s.durationMs = 220));
+  assert.deepEqual(compareReports(a, b), []);
+  b.samples.forEach((s) => (s.durationMs = 221));
+  assert(compareReports(a, b).length);
 });

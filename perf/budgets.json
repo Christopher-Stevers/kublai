@@ -1,7 +1,7 @@
 {
-  "version": 1,
+  "version": 2,
   "cpuSlowdown": 4,
-  "runs": 5,
+  "runs": 15,
   "noiseRatio": 0.1,
   "journeys": [
     "coldstart",
@@ -48,5 +48,12 @@
     "newSheetReadableMs": 3000,
     "newSheetSharpMs": 8000
   },
-  "status": "Phase 0 incomplete: field, hardware, and repeatability evidence required before tightening measured budgets"
+  "status": "Phase 0 incomplete: field, hardware, and repeatability evidence required before tightening measured budgets",
+  "timingPolicy": {
+    "id": "ready-then-pinch-v2-calibrated-15-v1",
+    "absoluteRegressionMs": 17,
+    "confirmationAttempts": 1,
+    "calibrationFullRuns": 20,
+    "durationDefinition": "f9/v2-original-wallclock"
+  }
 }

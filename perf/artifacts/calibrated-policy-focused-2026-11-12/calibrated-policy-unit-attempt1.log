@@ -1,0 +1,61 @@
+✔ strict dual threshold, equality and fifteen-sample median index7 (0.470073ms)
+✔ calibration requires twenty internally bound complete runs, faster controls pass (40.159752ms)
+✔ one exact fresh confirmation can resolve first failure without pooling (31.131088ms)
+✔ tampering, extra retries/cells and wrong parent/source/method fail closed (60.288664ms)
+✔ timing confirmation cannot bypass unchanged byte limits or missing active pair (17.435228ms)
+✔ method calibration is reusable across sources but active source pair remains exact (18.391907ms)
+✔ multi-cell confirmation exactness, stale plan, coherent source and second retry rejection (78.792625ms)
+✔ initial idle proof remains authoritative when confirmation timestamps differ (18.550462ms)
+✔ all full plans need the supported fixture prelude before any retry exists (3.58044ms)
+✔ failed/aborted complete-shaped reports never pass at any role (29.564995ms)
+✔ prefix progress cannot authorize a candidate and stops on persistent failure (5.91933ms)
+✔ candidate must start after completed method calibration, actual report protocol enforced (21.854625ms)
+✔ per-cell declarations alone cannot replace successful bound prelude certificates (54.758177ms)
+✔ unchanged report passes; incomplete and invented provenance fail (2.634162ms)
+✔ planted 100ms tap, 30KB script and poll regressions fail (1.298841ms)
+✔ independent Phase 0 runs require same build and medians within ten percent (1.510989ms)
+✔ fixture and database failures cannot become accepted timing evidence (0.968504ms)
+✔ different journey protocols cannot be compared (0.497086ms)
+✔ changed frozen harness or mismatched method blocks comparison (0.494535ms)
+✔ new rule uses15 samples and requires both strict thresholds (1.032162ms)
+✔ accepts full independent comparable lab runs bound to their source releases (19.578234ms)
+✔ rejects missing, self-repeated, stale source, and unbound reports (49.593487ms)
+✖ blocks planted added script, 100 ms tap, and new polling regressions (4.574826ms)
+✔ blocks protocol or frozen method changes at activation (12.217723ms)
+✔ checks actual immutable history, compressed bytes, and changed gzip payload (8.960422ms)
+✔ selects the exact candidate before restarting and checking its output (3.344898ms)
+✔ restores the old symlink and service after a failed candidate check (1.171357ms)
+✔ reports rollback failure separately and leaves the symlink pointing to the old build (0.82523ms)
+✔ refuses a stale preflight without restarting anything (0.549482ms)
+✔ delta gate excludes retained history and rejects excess bytes and URL collisions (76.48209ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 29
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 740.405244
+
+✖ failing tests:
+
+test at scripts/release/activation-gate.node-test.mjs:150:1
+✖ blocks planted added script, 100 ms tap, and new polling regressions (4.574826ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /sharedGzipBytes/. Input:
+  
+  'Calibration/confirmation blocked: Raw bound capture differs from supplied release report'
+  
+      at TestContext.<anonymous> (file:///home/tim/.openclaw/workspace/kublai/scripts/release/activation-gate.node-test.mjs:153:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Calibration/confirmation blocked: Raw bound capture differs from supplied release report',
+    expected: /sharedGzipBytes/,
+    operator: 'match',
+    diff: 'simple'
+  }
