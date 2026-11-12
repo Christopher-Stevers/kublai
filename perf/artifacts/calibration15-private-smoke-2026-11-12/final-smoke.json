@@ -1,0 +1,30 @@
+{
+  "smokeOnly": true,
+  "timingSamples": 0,
+  "status": 0,
+  "ownerStopped": true,
+  "familyAbsent": true,
+  "allRecordedPidsAbsent": true,
+  "portClosed": true,
+  "privateSocketRemoved": true,
+  "postgresAbsent": true,
+  "sourceStable": true,
+  "schemaStable": true,
+  "unexpectedPgErrors": 0,
+  "cleanup": {
+    "finalExitCode": 0,
+    "preservationOrShutdownFailed": 0,
+    "privatePgStopped": 1
+  },
+  "smoke": {
+    "smokeOnly": true,
+    "timingSamples": 0,
+    "status": "passed",
+    "restoredExactStageSeed": true,
+    "sourceBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+    "initialStateSha256": "84c47d4ae09bbdaacc2bb3ee8f8137c40c1899e0009f145717b26ff510301b5f",
+    "restoredStateSha256": "84c47d4ae09bbdaacc2bb3ee8f8137c40c1899e0009f145717b26ff510301b5f",
+    "preflightQueriesPerStart": 14
+  },
+  "passed": true
+}

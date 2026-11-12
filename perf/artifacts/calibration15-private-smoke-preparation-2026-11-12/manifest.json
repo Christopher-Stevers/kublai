@@ -1,0 +1,10 @@
+{
+  "status": "prepared-not-executed",
+  "harnessRoot": "/tmp/foremanhq-perf-method-oMDyHJ",
+  "harnessFingerprint": "ad23c121cc009c84e1c805d5caa99bdcf38536f06637bada178b9cd1af0a2794",
+  "files": {
+    "/tmp/foremanhq-calibration15-smoke-command.sh": "73103732f7aedaf9af3b5069e919e33361f4d09740b9e1f7e998e6fe14409c81",
+    "/tmp/foremanhq-calibration15-private-smoke.sh": "9b1cd98b6288483c960af5c4dca6da35f96dd40168e634b3359acaa011171253",
+    "/tmp/foremanhq-calibration15-smoke-perturb.mjs": "40e4e134bdd4de1999f2979e2128908034e67a39824d12044ed68e148c56d81b"
+  }
+}

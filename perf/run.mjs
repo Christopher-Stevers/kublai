@@ -3,6 +3,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import { randomBytes } from "node:crypto";
+import { execFileSync } from "node:child_process";
+import { loadCapturePlan } from "./capture-plan.mjs";
+import { PROTOCOL_ID } from "./calibrated-policy.mjs";
 import { verifyFrozenHarness } from "./harness-fingerprint.mjs";
 import { chromium } from "@playwright/test";
 import { budgets, validateReport } from "./check.mjs";
@@ -36,12 +40,53 @@ if (
 for (const name of budgets.journeys)
   if (typeof adapter[name] !== "function")
     throw new Error(`Missing scripted journey ${name}`);
+const sourceEvidence = fs.existsSync("source-evidence.json")
+  ? JSON.parse(fs.readFileSync("source-evidence.json"))
+  : {};
+const capture = loadCapturePlan({
+  env: process.env,
+  budgets,
+  source: { ...sourceEvidence, build: process.env.PERF_BUILD },
+  harnessFingerprint: harnessBefore.harnessFingerprint,
+});
+const browserOwnershipToken = randomBytes(16).toString("hex");
 const browser = await chromium.launch({
+  env: {
+    ...process.env,
+    PERF_CALIBRATION_BROWSER_TOKEN: browserOwnershipToken,
+  },
   executablePath: process.env.CHROMIUM_PATH ?? "/usr/bin/chromium",
   headless: true,
   args: ["--no-sandbox"],
 });
 try {
+  // Browser ownership inventory once before all cells. Separate reviewed stage/Next
+  // supervisors poll every100ms; this new-method overhead is declared and fixed.
+  const ownerSession = await browser.newBrowserCDPSession();
+  const processes = (await ownerSession.send("SystemInfo.getProcessInfo"))
+    .processInfo;
+  await ownerSession.detach();
+  const browserPid = processes.find((p) => p.type === "browser")?.id;
+  if (!Number.isSafeInteger(browserPid))
+    throw Error("Browser ownership PID unavailable");
+  const fields = fs
+    .readFileSync(`/proc/${browserPid}/stat`, "utf8")
+    .slice(
+      fs.readFileSync(`/proc/${browserPid}/stat`, "utf8").lastIndexOf(")") + 1,
+    )
+    .trim()
+    .split(/\s+/);
+  if (Number(fields[2]) !== browserPid)
+    throw Error("Dedicated owned browser process group required");
+  fs.writeFileSync(
+    path.join(process.env.PERF_STAGE_EVIDENCE_DIR, "browser-identity.json"),
+    JSON.stringify({
+      pid: browserPid,
+      pgid: browserPid,
+      startTime: fields[19],
+      token: browserOwnershipToken,
+    }) + "\n",
+  );
   const harnessToolchain = {
     node: process.version,
     playwright: createRequire(import.meta.url)("@playwright/test/package.json")
@@ -59,16 +104,20 @@ try {
       immutable: true,
     },
   };
-  const sourceEvidence = fs.existsSync("source-evidence.json")
-    ? JSON.parse(fs.readFileSync("source-evidence.json"))
-    : {};
   const labStatic = fs.existsSync("lab-static-bytes.json")
     ? JSON.parse(fs.readFileSync("lab-static-bytes.json"))
     : undefined;
   const samples = [];
   const timestamp = new Date().toISOString();
+  const cellPreludes = [];
   const protocol = {
-    id: process.env.PERF_SHEET_PROTOCOL ?? "early-pinch-v1",
+    id: PROTOCOL_ID,
+    sheetProtocol: "ready-then-pinch-v2",
+    durationDefinition: "f9/v2-original-wallclock",
+    sampleCountPerCell: 15,
+    fixturePrelude: capture.plan.fixturePrelude,
+    ownershipSupervision:
+      "reviewed-stage-and-Next-100ms-polling-held-identical",
     sheetCost:
       "Outer wallclock includes sheet-open click, any readiness wait, verified pinch and final PDF coverage. Browser stage marks are dispatch-to-sampled-ready measures, not same-frame proof.",
     coveragePollMs: 50,
@@ -135,6 +184,8 @@ try {
           timestamp,
           status,
           protocol,
+          measurement: capture.measurement,
+          cellPreludes,
           device: {
             kind: "desktop-chromium-mobile-emulation",
             viewport: { width: 390, height: 844 },
@@ -150,102 +201,120 @@ try {
         2,
       ),
     );
-  for (const [link, profile] of Object.entries(budgets.links).filter(
-    ([name]) =>
-      process.env.PERF_LINKS
-        ? process.env.PERF_LINKS.split(",").includes(name)
-        : !process.env.PERF_PILOT || name === "Office",
-  ))
-    for (const journey of budgets.journeys.filter(
-      (name) =>
-        !process.env.PERF_JOURNEYS ||
-        process.env.PERF_JOURNEYS.split(",").includes(name),
-    ))
-      for (
-        let run = 0;
-        run < Number(process.env.PERF_RUNS ?? (process.env.PERF_PILOT ? 1 : 5));
-        run++
-      ) {
-        const context = await browser.newContext({
-          viewport: { width: 390, height: 844 },
-          deviceScaleFactor: 3,
-          isMobile: true,
-          hasTouch: true,
-        });
-        // A hard boundary: browser traffic cannot escape to production, Clerk or any other host.
-        await context.route("**/*", (route) => {
-          const u = new URL(route.request().url());
-          return u.origin === base.origin ||
-            ["data:", "blob:"].includes(u.protocol)
-            ? route.continue()
-            : route.abort("blockedbyclient");
-        });
-        const page = await context.newPage();
-        const pageErrors = [];
-        const encodings = new Set();
-        if (process.env.PERF_DIAGNOSTICS === "1")
-          page.on("response", async (response) => {
-            const url = new URL(response.url());
-            if (
-              url.origin !== base.origin ||
-              !url.pathname.startsWith("/_next/static/")
-            )
-              return;
-            const encoding = await response
-              .headerValue("content-encoding")
-              .catch(() => null);
-            encodings.add(encoding ?? "identity");
-          });
-        let rejectApi;
-        const apiFailure = new Promise((_, reject) => {
-          rejectApi = reject;
-        });
-        void apiFailure.catch(() => undefined);
+  for (const { link, journey } of capture.plan.requestedCells) {
+    const profile = budgets.links[link];
+    // All old contexts are closed. Restore/drain/reset is OUTSIDE every timer.
+    const preludeFile = path.join(
+      harnessRoot,
+      "perf/lab/calibration-cell-prelude.sh",
+    );
+    if (process.env.PERF_CELL_PRELUDE !== preludeFile)
+      throw Error("Exact frozen per-cell prelude required");
+    const certificate = JSON.parse(
+      execFileSync("bash", [preludeFile], {
+        env: {
+          ...process.env,
+          PERF_CELL_JOURNEY: journey,
+          PERF_CELL_LINK: link,
+        },
+        timeout: 60000,
+        maxBuffer: 1024 * 1024,
+        encoding: "utf8",
+      }),
+    );
+    if (
+      certificate.status !== "passed" ||
+      certificate.journey !== journey ||
+      certificate.link !== link ||
+      JSON.stringify(certificate.fixturePrelude) !==
+        JSON.stringify(capture.plan.fixturePrelude) ||
+      certificate.sourceBuild !== sourceEvidence.sourceBuild ||
+      certificate.privateDatabase?.socket !== process.env.PERF_LAB_SOCKET ||
+      certificate.stateVerified !== true
+    )
+      throw Error("Per-cell fixture certificate failed");
+    cellPreludes.push(certificate);
+    for (let run = 0; run < 15; run++) {
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+      });
+      // A hard boundary: browser traffic cannot escape to production, Clerk or any other host.
+      await context.route("**/*", (route) => {
+        const u = new URL(route.request().url());
+        return u.origin === base.origin ||
+          ["data:", "blob:"].includes(u.protocol)
+          ? route.continue()
+          : route.abort("blockedbyclient");
+      });
+      const page = await context.newPage();
+      const pageErrors = [];
+      const encodings = new Set();
+      if (process.env.PERF_DIAGNOSTICS === "1")
         page.on("response", async (response) => {
           const url = new URL(response.url());
           if (
             url.origin !== base.origin ||
-            !url.pathname.startsWith("/api/trpc/")
+            !url.pathname.startsWith("/_next/static/")
           )
             return;
-          const procedure = decodeURIComponent(
-            url.pathname.slice("/api/trpc/".length),
-          );
-          if (!/^[A-Za-z0-9_,.]+$/.test(procedure)) return;
-          try {
-            const text = await response.text();
-            const code = text.match(
-              /"code"\s*:\s*"(INTERNAL_SERVER_ERROR|BAD_REQUEST|UNAUTHORIZED|FORBIDDEN|NOT_FOUND|TIMEOUT)"/,
-            )?.[1];
-            if (response.status() >= 400 || code)
-              rejectApi(
-                new Error(
-                  `Application tRPC error ${procedure}: ${code ?? response.status()}; SQL/parameters omitted`,
-                ),
-              );
-          } catch {
-            /* Cancelled navigations can close a response body. */
-          }
+          const encoding = await response
+            .headerValue("content-encoding")
+            .catch(() => null);
+          encodings.add(encoding ?? "identity");
         });
-        page.on("pageerror", (error) => pageErrors.push(error.message));
-        const cdp = await context.newCDPSession(page);
-        await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
-        await cdp.send("Network.enable");
-        await cdp.send("Network.emulateNetworkConditions", {
-          offline: false,
-          latency: profile.latencyMs,
-          downloadThroughput: profile.bytesPerSecond,
-          uploadThroughput: profile.bytesPerSecond,
-        });
+      let rejectApi;
+      const apiFailure = new Promise((_, reject) => {
+        rejectApi = reject;
+      });
+      void apiFailure.catch(() => undefined);
+      page.on("response", async (response) => {
+        const url = new URL(response.url());
+        if (
+          url.origin !== base.origin ||
+          !url.pathname.startsWith("/api/trpc/")
+        )
+          return;
+        const procedure = decodeURIComponent(
+          url.pathname.slice("/api/trpc/".length),
+        );
+        if (!/^[A-Za-z0-9_,.]+$/.test(procedure)) return;
         try {
-          await Promise.race([
-            adapter.prepare?.({ page, base: base.href, journey, run }),
-            apiFailure,
-          ]);
-          const browserStart =
-            journey === "coldstart"
-              ? null
-              : await page.evaluate(() => performance.now());
+          const text = await response.text();
+          const code = text.match(
+            /"code"\s*:\s*"(INTERNAL_SERVER_ERROR|BAD_REQUEST|UNAUTHORIZED|FORBIDDEN|NOT_FOUND|TIMEOUT)"/,
+          )?.[1];
+          if (response.status() >= 400 || code)
+            rejectApi(
+              new Error(
+                `Application tRPC error ${procedure}: ${code ?? response.status()}; SQL/parameters omitted`,
+              ),
+            );
+        } catch {
+          /* Cancelled navigations can close a response body. */
+        }
+      });
+      page.on("pageerror", (error) => pageErrors.push(error.message));
+      const cdp = await context.newCDPSession(page);
+      await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+      await cdp.send("Network.enable");
+      await cdp.send("Network.emulateNetworkConditions", {
+        offline: false,
+        latency: profile.latencyMs,
+        downloadThroughput: profile.bytesPerSecond,
+        uploadThroughput: profile.bytesPerSecond,
+      });
+      try {
+        await Promise.race([
+          adapter.prepare?.({ page, base: base.href, journey, run }),
+          apiFailure,
+        ]);
+        const browserStart =
+          journey === "coldstart"
+            ? null
+            : await page.evaluate(() => performance.now());
           const start = performance.now();
           // Journey must resolve only after its observable painted/sharp state; no fixed-delay completion.
           await Promise.race([
@@ -253,114 +322,115 @@ try {
             apiFailure,
           ]);
           const durationMs = performance.now() - start;
-          if (pageErrors.length)
-            throw new Error(`Browser script error: ${pageErrors.join("; ")}`);
-          const browserMeasures = await page.evaluate(
-            (since) =>
-              performance
-                .getEntriesByType("measure")
-                .filter(
-                  (entry) =>
-                    [
-                      "foremenhq:tap-to-paint",
-                      "foremenhq:write-to-paint",
-                      "foremenhq:app-start-to-last-screen",
-                      "foremenhq:sheet-open-to-sharp",
-                      "lab:sheet-open-to-ready",
-                      "lab:cached-pinch-to-sharp",
-                      "lab:gesture-duration",
-                      "lab:gesture-end-to-sharp",
-                    ].includes(entry.name) &&
-                    (since === null || entry.startTime >= since),
-                )
-                .map((entry) => ({
-                  name: entry.name.replace(/^(foremenhq|lab):/, ""),
-                  durationMs: entry.duration,
-                })),
-            browserStart,
-          );
-          const diagnostics =
-            process.env.PERF_DIAGNOSTICS === "1"
-              ? await page.evaluate(
-                  (since) => ({
-                    drawing: performance
-                      .getEntriesByName("foremanhq:drawing-detail")
-                      .map((entry) => {
-                        const value = entry.detail ?? {};
-                        return {
-                          startMs: entry.startTime,
-                          loadMs: value.loadMs,
-                          renderMs: value.renderMs,
-                          viewToSharpMs: value.viewToSharpMs,
-                          pixels: value.pixels,
-                          outcome: value.outcome,
-                        };
-                      }),
-                    resources: performance
-                      .getEntriesByType("resource")
-                      .filter(
-                        (entry) => since === null || entry.startTime >= since,
-                      )
-                      .map((entry) => {
-                        const path = new URL(entry.name).pathname;
-                        return {
-                          kind: path.includes(".pdf")
-                            ? "pdf"
-                            : path.includes(".webp")
-                              ? "image"
-                              : path.includes("worker")
-                                ? "worker"
-                                : path.includes("/api/trpc/")
-                                  ? "rpc"
-                                  : path.includes(".js")
-                                    ? "script"
-                                    : "other",
-                          startMs: entry.startTime,
-                          durationMs: entry.duration,
-                          encodedBytes: entry.encodedBodySize,
-                          transferBytes: entry.transferSize,
-                        };
-                      }),
-                    browserScale: visualViewport?.scale ?? 1,
-                  }),
-                  browserStart,
-                )
-              : undefined;
-          if (diagnostics) diagnostics.staticResponseEncodings = [...encodings];
-          samples.push({
-            browserMeasures,
-            diagnostics,
+        if (pageErrors.length)
+          throw new Error(`Browser script error: ${pageErrors.join("; ")}`);
+        const browserMeasures = await page.evaluate(
+          (since) =>
+            performance
+              .getEntriesByType("measure")
+              .filter(
+                (entry) =>
+                  [
+                    "foremenhq:tap-to-paint",
+                    "foremenhq:write-to-paint",
+                    "foremenhq:app-start-to-last-screen",
+                    "foremenhq:sheet-open-to-sharp",
+                    "lab:sheet-open-to-ready",
+                    "lab:cached-pinch-to-sharp",
+                    "lab:gesture-duration",
+                    "lab:gesture-end-to-sharp",
+                  ].includes(entry.name) &&
+                  (since === null || entry.startTime >= since),
+              )
+              .map((entry) => ({
+                name: entry.name.replace(/^(foremenhq|lab):/, ""),
+                durationMs: entry.duration,
+              })),
+          browserStart,
+        );
+        const diagnostics =
+          process.env.PERF_DIAGNOSTICS === "1"
+            ? await page.evaluate(
+                (since) => ({
+                  drawing: performance
+                    .getEntriesByName("foremanhq:drawing-detail")
+                    .map((entry) => {
+                      const value = entry.detail ?? {};
+                      return {
+                        startMs: entry.startTime,
+                        loadMs: value.loadMs,
+                        renderMs: value.renderMs,
+                        viewToSharpMs: value.viewToSharpMs,
+                        pixels: value.pixels,
+                        outcome: value.outcome,
+                      };
+                    }),
+                  resources: performance
+                    .getEntriesByType("resource")
+                    .filter(
+                      (entry) => since === null || entry.startTime >= since,
+                    )
+                    .map((entry) => {
+                      const path = new URL(entry.name).pathname;
+                      return {
+                        kind: path.includes(".pdf")
+                          ? "pdf"
+                          : path.includes(".webp")
+                            ? "image"
+                            : path.includes("worker")
+                              ? "worker"
+                              : path.includes("/api/trpc/")
+                                ? "rpc"
+                                : path.includes(".js")
+                                  ? "script"
+                                  : "other",
+                        startMs: entry.startTime,
+                        durationMs: entry.duration,
+                        encodedBytes: entry.encodedBodySize,
+                        transferBytes: entry.transferSize,
+                      };
+                    }),
+                  browserScale: visualViewport?.scale ?? 1,
+                }),
+                browserStart,
+              )
+            : undefined;
+        if (diagnostics) diagnostics.staticResponseEncodings = [...encodings];
+        samples.push({
+          browserMeasures,
+          diagnostics,
+          journey,
+          link,
+          run,
+          durationMs,
+          variant: ["openjob", "switchjobtabs", "openmateriallist"].includes(
             journey,
-            link,
-            run,
-            durationMs,
-            variant: ["openjob", "switchjobtabs", "openmateriallist"].includes(
-              journey,
-            )
-              ? "visited"
-              : "operation",
-          });
-          save("incomplete");
-          const databaseHealth = health().database;
-          if (databaseHealth.count || databaseHealth.fatalCount)
-            throw new Error(
-              "Private database reported ERROR/FATAL during capture; timing evidence invalid",
-            );
-          console.log(
-            `${journey}/${link}/${run + 1}: ${durationMs.toFixed(1)}ms`,
+          )
+            ? "visited"
+            : "operation",
+        });
+        save("incomplete");
+        const databaseHealth = health().database;
+        if (databaseHealth.count || databaseHealth.fatalCount)
+          throw new Error(
+            "Private database reported ERROR/FATAL during capture; timing evidence invalid",
           );
-        } catch (error) {
-          await page
-            .screenshot({
-              path: `${process.env.PERF_OUTPUT ?? "perf-report.json"}.failure.png`,
-              fullPage: true,
-            })
-            .catch(() => undefined);
-          throw error;
-        } finally {
-          await context.close();
-        }
+        console.log(
+          `${journey}/${link}/${run + 1}: ${durationMs.toFixed(1)}ms`,
+        );
+      } catch (error) {
+        await page
+          .screenshot({
+            path: `${process.env.PERF_OUTPUT ?? "perf-report.json"}.failure.png`,
+            fullPage: true,
+          })
+          .catch(() => undefined);
+        throw error;
+      } finally {
+        await context.close();
       }
+    }
+  }
   const harnessAfter = await verifyFrozenHarness(harnessRoot);
   methodBinding.harnessVerification.after = harnessAfter.harnessFingerprint;
   const report = {
@@ -373,6 +443,8 @@ try {
     timestamp,
     status: "complete",
     protocol,
+    measurement: capture.measurement,
+    cellPreludes,
     device: {
       kind: "desktop-chromium-mobile-emulation",
       viewport: { width: 390, height: 844 },
@@ -384,9 +456,8 @@ try {
     static: staticMetrics,
     labStatic,
   };
-  const errors = validateReport(report);
-  if (errors.length && !process.env.PERF_PILOT)
-    throw new Error(errors.join("\n"));
+  const errors = validateReport(report, capture.plan.requestedCells);
+  if (errors.length) throw new Error(errors.join("\n"));
   fs.writeFileSync(
     process.env.PERF_OUTPUT ?? "perf-report.json",
     JSON.stringify(report, null, 2),

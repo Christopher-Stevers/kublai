@@ -1,0 +1,18 @@
+{
+  "smokeOnly": true,
+  "protocolId": "ready-then-pinch-v2-calibrated-15-v1",
+  "sealedAt": "2026-11-12T03:38:23.052Z",
+  "sourceBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+  "sourceFingerprint": "34f0c1508584e40382ad25955b3aa2b5703bdd78ced4e6ef2536e902fd82281d",
+  "build": "wTBAqKGVn-GRqajiTebMf",
+  "harnessFingerprint": "ad23c121cc009c84e1c805d5caa99bdcf38536f06637bada178b9cd1af0a2794",
+  "fixturePrelude": {
+    "id": "private-seed-restore-reset-restart-v1",
+    "algorithm": "pg-custom-v1-sha256",
+    "seedSnapshotScope": "entire-private-db-before-app-start",
+    "drain": "owned-next-absent-and-zero-other-db-sessions",
+    "resetHelperSha256": "55435fd0de6480c37b9623be0860516fe083628bf55b2b213b97338e40a6271d",
+    "serverRestart": true,
+    "readPreflightCount": 14
+  }
+}

@@ -1,0 +1,7 @@
+# Prospective calibration15 —20 full unchanged-source runs
+
+Fixed B plus19 independent controls, each24×15=360 original f9/v2 timing samples and ten-minute jobs idle, same active9aae source. Each initially failing control cell gets exactly one fresh15-sample confirmation against unchanged B. Fail only when both strict conditions hold (>10% AND >17ms) again; symmetric changes are informational. Never pool, exclude, reset B or perform a second retry. Any health/source/provenance or persistent failure stops the calibration. No candidate or activation is part of this command.
+
+Every full/confirmation cell stops the owned Next family, drains database sessions, restores that stage’s sealed whole private seed, runs the pinned reset, verifies state, restarts and performs14read preflight outside the unchanged timers. Stage/per-cell owned supervisors add100ms ownership polling overhead; this new method holds it constant and has a fresh fingerprint/protocol. Historical f9/v2 reports remain untouched and cannot be converted.
+
+Private smoke passed exact state restoration and ownership/log/source/schema checks with zero timing samples.12pure driver/orchestrator tests pass.75min/stage,50h outer bound; nominal~21h20 before confirmations. Current plan is fixed before B. Raw reports/plans remain SHA-bound, retained independently;20 full records are required before the policy can declare calibration complete. Archives retain small metadata/logs only, no assets/seed dumps.

@@ -1,0 +1,20 @@
+✔ twenty complete raw captures only; staged firstpair remains incomplete and resumes fixedB (118.948973ms)
+✔ every failed pair gets exactlyone fresh15 confirmation, no Cartesianexpansion/pooling (4.308202ms)
+✔ persistent failure stops after soleconfirmation, never secondretry/control2 (3.733292ms)
+✔ health/provenance failure stops before anyconfirmation (2.632151ms)
+✔ failedstage preserves terminalfailure and cannotresetbaseline onresume (1.436018ms)
+✔ full plan is original link then journey ordering,24cells and360samples (0.867216ms)
+✔ missing/duplicate/reordered full cell plans fail (0.19672ms)
+✔ one confirmation selects exact pairs without Cartesian product (0.112826ms)
+✔ second retry and confirmation without failures rejected (0.093262ms)
+✔ stale source/method/future plan/no prelude rejected (0.118041ms)
+✔ baseline is fixed self-unreferenced;control needs immutable baseline hash (0.10151ms)
+✔ timed section and all journey definitions remain frozen f9/v2 byte-identical (0.171459ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 175.357055

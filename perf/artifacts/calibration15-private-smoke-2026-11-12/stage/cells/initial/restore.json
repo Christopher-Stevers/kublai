@@ -1,0 +1,1 @@
+{"status":"passed","algorithm":"pg-custom-v1-sha256","seedSnapshotSha256":"b2d99878a4456bc13001a4f2ec96e8f218cb63a97d7bb5269560aad25a54d697","privateDatabase":{"socket":"/tmp/foremanhq-perf-pg.0zfF8b","port":55463,"database":"foremanhq_perf_lab","otherSessions":0}}

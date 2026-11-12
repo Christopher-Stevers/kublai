@@ -1,0 +1,7 @@
+{
+  "dumpRetainedPrivateAt": "/tmp/foremanhq-calibration15-smoke-20261112/stage/private-seed.dump",
+  "dumpExcludedFromGit": true,
+  "seedStateRowsExcludedFromGit": true,
+  "manifest": "stage/private-seed-manifest.json",
+  "assetsExcluded": true
+}

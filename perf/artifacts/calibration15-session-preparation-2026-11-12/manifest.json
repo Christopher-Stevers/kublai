@@ -1,0 +1,8 @@
+{
+  "status": "prepared-not-started",
+  "sessionPlanSha256": "f26b794225fbe527d5ea55a7b2a598283e133561a1b3208ff1f7ceec4204a537",
+  "actualSessionPlan": "/tmp/foremanhq-calibration15-session-plan.json",
+  "harnessFingerprint": "ad23c121cc009c84e1c805d5caa99bdcf38536f06637bada178b9cd1af0a2794",
+  "sourceCommit": "pending-owned-commit",
+  "smoke": "passed-no-timing"
+}

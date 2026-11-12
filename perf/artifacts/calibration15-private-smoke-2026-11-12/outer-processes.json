@@ -1,0 +1,574 @@
+{
+  "version": 1,
+  "token": "45772662a455054abcdd7f4f1cb893dfd078f96aa95393f0",
+  "supervisor": {
+    "pid": 181422,
+    "state": "R",
+    "ppid": 181421,
+    "pgid": 181413,
+    "startTime": "231202931"
+  },
+  "root": {
+    "pid": 181423,
+    "state": "R",
+    "ppid": 181422,
+    "pgid": 181423,
+    "startTime": "231202934"
+  },
+  "processes": [
+    {
+      "pid": 181423,
+      "state": "S",
+      "ppid": 181422,
+      "pgid": 181423,
+      "startTime": "231202934"
+    },
+    {
+      "pid": 181436,
+      "state": "R",
+      "ppid": 181423,
+      "pgid": 181423,
+      "startTime": "231202937"
+    },
+    {
+      "pid": 181445,
+      "state": "R",
+      "ppid": 181423,
+      "pgid": 181423,
+      "startTime": "231203045"
+    },
+    {
+      "pid": 181446,
+      "state": "S",
+      "ppid": 181445,
+      "pgid": 181446,
+      "startTime": "231203048"
+    },
+    {
+      "pid": 181450,
+      "state": "S",
+      "ppid": 181446,
+      "pgid": 181446,
+      "startTime": "231203049"
+    },
+    {
+      "pid": 181457,
+      "state": "S",
+      "ppid": 181450,
+      "pgid": 181446,
+      "startTime": "231203056"
+    },
+    {
+      "pid": 181458,
+      "state": "R",
+      "ppid": 181457,
+      "pgid": 181446,
+      "startTime": "231203056"
+    },
+    {
+      "pid": 181462,
+      "state": "S",
+      "ppid": 181445,
+      "pgid": 181462,
+      "startTime": "231203071"
+    },
+    {
+      "pid": 181463,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181463,
+      "startTime": "231203073"
+    },
+    {
+      "pid": 181464,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181464,
+      "startTime": "231203073"
+    },
+    {
+      "pid": 181465,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181465,
+      "startTime": "231203073"
+    },
+    {
+      "pid": 181466,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181466,
+      "startTime": "231203073"
+    },
+    {
+      "pid": 181467,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181467,
+      "startTime": "231203073"
+    },
+    {
+      "pid": 181469,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181469,
+      "startTime": "231203073"
+    },
+    {
+      "pid": 181470,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181470,
+      "startTime": "231203073"
+    },
+    {
+      "pid": 181471,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181471,
+      "startTime": "231203073"
+    },
+    {
+      "pid": 181474,
+      "state": "S",
+      "ppid": 181446,
+      "pgid": 181446,
+      "startTime": "231203083"
+    },
+    {
+      "pid": 181487,
+      "state": "S",
+      "ppid": 181474,
+      "pgid": 181446,
+      "startTime": "231203275"
+    },
+    {
+      "pid": 181493,
+      "state": "R",
+      "ppid": 181446,
+      "pgid": 181446,
+      "startTime": "231203437"
+    },
+    {
+      "pid": 181506,
+      "state": "S",
+      "ppid": 181493,
+      "pgid": 181446,
+      "startTime": "231203448"
+    },
+    {
+      "pid": 181529,
+      "state": "S",
+      "ppid": 181446,
+      "pgid": 181446,
+      "startTime": "231203472"
+    },
+    {
+      "pid": 181530,
+      "state": "R",
+      "ppid": 181462,
+      "pgid": 181530,
+      "startTime": "231203472"
+    },
+    {
+      "pid": 181531,
+      "state": "S",
+      "ppid": 181446,
+      "pgid": 181446,
+      "startTime": "231203484"
+    },
+    {
+      "pid": 181547,
+      "state": "S",
+      "ppid": 181531,
+      "pgid": 181446,
+      "startTime": "231203489"
+    },
+    {
+      "pid": 181559,
+      "state": "S",
+      "ppid": 181547,
+      "pgid": 181446,
+      "startTime": "231203496"
+    },
+    {
+      "pid": 181566,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181566,
+      "startTime": "231203529"
+    },
+    {
+      "pid": 181620,
+      "state": "S",
+      "ppid": 181446,
+      "pgid": 181446,
+      "startTime": "231204394"
+    },
+    {
+      "pid": 181629,
+      "state": "S",
+      "ppid": 181620,
+      "pgid": 181446,
+      "startTime": "231204397"
+    },
+    {
+      "pid": 181640,
+      "state": "S",
+      "ppid": 181629,
+      "pgid": 181446,
+      "startTime": "231204418"
+    },
+    {
+      "pid": 181641,
+      "state": "S",
+      "ppid": 181640,
+      "pgid": 181446,
+      "startTime": "231204418"
+    },
+    {
+      "pid": 181642,
+      "state": "R",
+      "ppid": 181641,
+      "pgid": 181446,
+      "startTime": "231204418"
+    },
+    {
+      "pid": 181654,
+      "state": "S",
+      "ppid": 181620,
+      "pgid": 181446,
+      "startTime": "231204504"
+    },
+    {
+      "pid": 181657,
+      "state": "S",
+      "ppid": 181654,
+      "pgid": 181446,
+      "startTime": "231204505"
+    },
+    {
+      "pid": 181666,
+      "state": "S",
+      "ppid": 181657,
+      "pgid": 181446,
+      "startTime": "231204508"
+    },
+    {
+      "pid": 181667,
+      "state": "R",
+      "ppid": 181462,
+      "pgid": 181667,
+      "startTime": "231204509"
+    },
+    {
+      "pid": 181686,
+      "state": "R",
+      "ppid": 181445,
+      "pgid": 181446,
+      "startTime": "231204536"
+    },
+    {
+      "pid": 181688,
+      "state": "S",
+      "ppid": 181654,
+      "pgid": 181446,
+      "startTime": "231204536"
+    },
+    {
+      "pid": 181689,
+      "state": "S",
+      "ppid": 181686,
+      "pgid": 181689,
+      "startTime": "231204539"
+    },
+    {
+      "pid": 181713,
+      "state": "S",
+      "ppid": 181654,
+      "pgid": 181446,
+      "startTime": "231204549"
+    },
+    {
+      "pid": 181718,
+      "state": "S",
+      "ppid": 181654,
+      "pgid": 181446,
+      "startTime": "231204559"
+    },
+    {
+      "pid": 181747,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181747,
+      "startTime": "231204601"
+    },
+    {
+      "pid": 181748,
+      "state": "S",
+      "ppid": 181654,
+      "pgid": 181446,
+      "startTime": "231204606"
+    },
+    {
+      "pid": 181756,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181756,
+      "startTime": "231204611"
+    },
+    {
+      "pid": 181757,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181757,
+      "startTime": "231204613"
+    },
+    {
+      "pid": 181758,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181758,
+      "startTime": "231204614"
+    },
+    {
+      "pid": 181759,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181759,
+      "startTime": "231204617"
+    },
+    {
+      "pid": 181760,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181760,
+      "startTime": "231204617"
+    },
+    {
+      "pid": 181761,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181761,
+      "startTime": "231204617"
+    },
+    {
+      "pid": 181762,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181762,
+      "startTime": "231204617"
+    },
+    {
+      "pid": 181763,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181763,
+      "startTime": "231204617"
+    },
+    {
+      "pid": 181781,
+      "state": "S",
+      "ppid": 181620,
+      "pgid": 181446,
+      "startTime": "231204627"
+    },
+    {
+      "pid": 181783,
+      "state": "R",
+      "ppid": 181781,
+      "pgid": 181446,
+      "startTime": "231204627"
+    },
+    {
+      "pid": 181794,
+      "state": "S",
+      "ppid": 181781,
+      "pgid": 181446,
+      "startTime": "231204657"
+    },
+    {
+      "pid": 181803,
+      "state": "S",
+      "ppid": 181794,
+      "pgid": 181446,
+      "startTime": "231204661"
+    },
+    {
+      "pid": 181804,
+      "state": "R",
+      "ppid": 181462,
+      "pgid": 181804,
+      "startTime": "231204661"
+    },
+    {
+      "pid": 181815,
+      "state": "R",
+      "ppid": 181781,
+      "pgid": 181446,
+      "startTime": "231204685"
+    },
+    {
+      "pid": 181824,
+      "state": "S",
+      "ppid": 181445,
+      "pgid": 181446,
+      "startTime": "231204689"
+    },
+    {
+      "pid": 181826,
+      "state": "S",
+      "ppid": 181781,
+      "pgid": 181446,
+      "startTime": "231204689"
+    },
+    {
+      "pid": 181827,
+      "state": "S",
+      "ppid": 181824,
+      "pgid": 181827,
+      "startTime": "231204692"
+    },
+    {
+      "pid": 181852,
+      "state": "S",
+      "ppid": 181781,
+      "pgid": 181446,
+      "startTime": "231204702"
+    },
+    {
+      "pid": 181857,
+      "state": "S",
+      "ppid": 181781,
+      "pgid": 181446,
+      "startTime": "231204712"
+    },
+    {
+      "pid": 181886,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181886,
+      "startTime": "231204754"
+    },
+    {
+      "pid": 181887,
+      "state": "S",
+      "ppid": 181781,
+      "pgid": 181446,
+      "startTime": "231204759"
+    },
+    {
+      "pid": 181895,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181895,
+      "startTime": "231204764"
+    },
+    {
+      "pid": 181896,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181896,
+      "startTime": "231204767"
+    },
+    {
+      "pid": 181897,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181897,
+      "startTime": "231204768"
+    },
+    {
+      "pid": 181898,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181898,
+      "startTime": "231204772"
+    },
+    {
+      "pid": 181899,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181899,
+      "startTime": "231204772"
+    },
+    {
+      "pid": 181900,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181900,
+      "startTime": "231204772"
+    },
+    {
+      "pid": 181901,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181901,
+      "startTime": "231204772"
+    },
+    {
+      "pid": 181902,
+      "state": "S",
+      "ppid": 181462,
+      "pgid": 181902,
+      "startTime": "231204772"
+    },
+    {
+      "pid": 181904,
+      "state": "R",
+      "ppid": 181781,
+      "pgid": 181446,
+      "startTime": "231204775"
+    },
+    {
+      "pid": 181918,
+      "state": "S",
+      "ppid": 181620,
+      "pgid": 181446,
+      "startTime": "231204779"
+    },
+    {
+      "pid": 181920,
+      "state": "R",
+      "ppid": 181918,
+      "pgid": 181446,
+      "startTime": "231204779"
+    },
+    {
+      "pid": 181929,
+      "state": "S",
+      "ppid": 181620,
+      "pgid": 181929,
+      "startTime": "231204804"
+    },
+    {
+      "pid": 181930,
+      "state": "S",
+      "ppid": 181929,
+      "pgid": 181929,
+      "startTime": "231204804"
+    },
+    {
+      "pid": 181941,
+      "state": "R",
+      "ppid": 181620,
+      "pgid": 181446,
+      "startTime": "231204814"
+    },
+    {
+      "pid": 181960,
+      "state": "R",
+      "ppid": 181446,
+      "pgid": 181446,
+      "startTime": "231204829"
+    }
+  ],
+  "status": "stopped",
+  "remaining": [],
+  "groupActions": [],
+  "familyAbsent": true,
+  "ownedIdentitiesAbsent": true,
+  "rootExitCode": 0,
+  "timedOut": false,
+  "requestedSignal": null
+}

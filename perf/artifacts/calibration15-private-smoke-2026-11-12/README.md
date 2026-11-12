@@ -1,0 +1,3 @@
+# Private prelude smoke passed
+
+Zero timing samples and no browser. One fresh source-bound synthetic PG was dumped before app startup, then initial14reads passed. A guarded private perturbation changed quantity/extended price, receipt state and generated chat. The per-cell owned-server stop/drain, sealed snapshot restore, pinned reset and14-read restart restored the exact stage seed state hash. Final ownership/schema/source/error/socket/port checks all passed. Seed dumps/assets and seed row payloads are excluded from Git; their hashes/private paths remain metadata. This is fixture/cleanup evidence only, not calibration.

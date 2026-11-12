@@ -1,0 +1,160 @@
+{
+  "harnessFingerprint": "ad23c121cc009c84e1c805d5caa99bdcf38536f06637bada178b9cd1af0a2794",
+  "harnessFingerprintAlgorithm": "foremanhq-frozen-harness-v1",
+  "harnessFileCount": 38,
+  "files": [
+    {
+      "path": "package.json",
+      "sha256": "d218e29ec01186542b0d85bdc6691d12514e4cdd0ba3b9cd81f253250c8d1e34"
+    },
+    {
+      "path": "perf/auth/clerk-client.jsx",
+      "sha256": "aaf7431cadb66761ee2fedff53e39388eb775c62bc33f3cf2a2ae51e40894039"
+    },
+    {
+      "path": "perf/auth/clerk-server.mjs",
+      "sha256": "31b7c60358bba0473cd23fe6344543a63b311a523eeba30ea7d6d7e9006beebe"
+    },
+    {
+      "path": "perf/budgets.json",
+      "sha256": "2360a10bacd6945341ee1820b2337c5883297ef5035a558ae215add454bdfcf9"
+    },
+    {
+      "path": "perf/calibrated-policy.mjs",
+      "sha256": "289865589d7ccbdf8da45066d845e37c7cb84de341cc34c7d3010d091b187c64"
+    },
+    {
+      "path": "perf/calibration-orchestrator.mjs",
+      "sha256": "73abc7fba03709c1c9c220819cbe7eb4075997b97ec84de37e9e2b9d5e5ccc41"
+    },
+    {
+      "path": "perf/calibration-stage.sh",
+      "sha256": "4de1f2335714bdbea609dc9ce4b6e9fb1dec8c7fb3ed9954a7ab001f57803293"
+    },
+    {
+      "path": "perf/capture-plan.mjs",
+      "sha256": "8f03b4a8ad7fe917f410ab2d33c4b94362af5f93dea1de40e40fa6fff0bb00a8"
+    },
+    {
+      "path": "perf/check.mjs",
+      "sha256": "0b9c29dec5a6163c456c1de8e51064c5b4a3e9da62a5172f289588b5d343317c"
+    },
+    {
+      "path": "perf/create-lab-snapshot.mjs",
+      "sha256": "79b7c7952c1eae02496003ace6895aa14063a78fef0a5c25b0245139743bf715"
+    },
+    {
+      "path": "perf/freeze-harness.mjs",
+      "sha256": "b64ed881c0175952e64464917c37978292af0f03f718f881b02a4b7a6c9323e7"
+    },
+    {
+      "path": "perf/full-baseline.sh",
+      "sha256": "508f3adb603a99eadd8267cfdbc5cc6cf99be43e43717bce44f63822b6259822"
+    },
+    {
+      "path": "perf/harness-fingerprint.mjs",
+      "sha256": "fe448a4e4889bf7af1fd7f27843f7c31717dd1e5011de9b4ec9b3049c8c20a03"
+    },
+    {
+      "path": "perf/idle.mjs",
+      "sha256": "86e737c3846d1b9fb6988267559465bdc320f2aed4de824f077f5aa77462f55a"
+    },
+    {
+      "path": "perf/journeys.mjs",
+      "sha256": "9e030388e3706bb8f2ae863b44773af98ed97523421adcecb2984f619d312683"
+    },
+    {
+      "path": "perf/lab/calibration-cell-prelude.sh",
+      "sha256": "edd263b13feea0ebddc6e3880e639189df11a1241c3a2639e86467b44a15fc60"
+    },
+    {
+      "path": "perf/lab/calibration-finalize.mjs",
+      "sha256": "849e11c56fbdb2e674856e3e58fb4faf944b5dd7f30733e1001c7dbdad53c093"
+    },
+    {
+      "path": "perf/lab/calibration-state.mjs",
+      "sha256": "bce873879f25a08394355866b16c0c72e62041b48b73c541a8b88e5eac2b2bfd"
+    },
+    {
+      "path": "perf/lab/calibration-storage.mjs",
+      "sha256": "49e116614828a4bad1635ee966b6d6fd553589e4c38693d96cbd6f375e775d5a"
+    },
+    {
+      "path": "perf/lab/database.sh",
+      "sha256": "b8a9dea0f647033596fb4bd9a6ece1b6c49c3a2d8666892978cc3b19d16fc438"
+    },
+    {
+      "path": "perf/lab/drizzle.config.ts",
+      "sha256": "52cd30ed639f967af721463c9257a2c06c26fb0bac09614c1dc355b5db8d8211"
+    },
+    {
+      "path": "perf/lab/make-set.mts",
+      "sha256": "32fe6aa2147142cc2d09a303efc4a4d371c0bb1495764d1db048781646a188a8"
+    },
+    {
+      "path": "perf/lab/order-schema.mjs",
+      "sha256": "10347a9375807ca7625e4b3dfc94396109c270f4290db29cf300494cf639499d"
+    },
+    {
+      "path": "perf/lab/owned-process-supervisor.py",
+      "sha256": "90dab4db0710cad855bbef4243e1e3bd2b55f28bfe2538dd4f4c0c344c08de67"
+    },
+    {
+      "path": "perf/lab/pg-error-report.mjs",
+      "sha256": "4214ce175fd44d79bb8082fd8e64be7ab625eed1f96516c86a409318ce3781dc"
+    },
+    {
+      "path": "perf/lab/reset-writes.mjs",
+      "sha256": "55435fd0de6480c37b9623be0860516fe083628bf55b2b213b97338e40a6271d"
+    },
+    {
+      "path": "perf/lab/schema-entry.mjs",
+      "sha256": "f0be5974882e493c108d4ac5b27a066b64d8d37c7471ff81757ef652800a9457"
+    },
+    {
+      "path": "perf/lab/seed.ts",
+      "sha256": "f4bf8a4b66ce237a7cdc921bad58fd98dbaf693e855e10e8ffe53d22b5d87835"
+    },
+    {
+      "path": "perf/pilot.sh",
+      "sha256": "423f003669430947395ca958fdaeadcb56c54c930ac372c6f9a4b78f0f7bc8fa"
+    },
+    {
+      "path": "perf/preflight.mjs",
+      "sha256": "51b571d38d66fbefc0a2ee234eeab250a84948d0701245a0315688cd5fad7530"
+    },
+    {
+      "path": "perf/refresh-lab.mjs",
+      "sha256": "d77c5a63c3e35d84178d076648ad7982481cc47022e98aeb0f147773d631c2f3"
+    },
+    {
+      "path": "perf/run.mjs",
+      "sha256": "6d4479ff064284808bb667e6f5b1fe0fd1d8f61dbeeff5596d06d41c4ebc66be"
+    },
+    {
+      "path": "perf/summarize.mjs",
+      "sha256": "aca38875f525cc8acae6f222de298cfd99df0a8cca2f2ab997271d9672c186a8"
+    },
+    {
+      "path": "scripts/release/script-map.mjs",
+      "sha256": "1574d433deaea2477b44a99a1670eb7f4de07a4918f2861caa51e88d49ddd225"
+    },
+    {
+      "path": "scripts/release/source-fingerprint.mjs",
+      "sha256": "896edf22bdc46654b07f9788f9594b94f07702df5e92659649265c1b9b85c5a9"
+    },
+    {
+      "path": "scripts/release/static-assets.mjs",
+      "sha256": "ae2da59e2536f0d90c8d7610fc910c87f59f1bd25501a20bcecadbdbc979bc29"
+    },
+    {
+      "path": "scripts/release/static-metrics.mjs",
+      "sha256": "d67d327be39081db242b4fb83119f2c4956a067ecf940397255cea2e0e721e2d"
+    },
+    {
+      "path": "tsconfig.json",
+      "sha256": "e3f85e3ec2ecd9cb723766b560b3da55a7f45f049ccbbbfa6bec8af1a3ff9434"
+    }
+  ],
+  "sourceScope": "Application source is separately bound; src/node_modules symlinks are not timing code inputs."
+}

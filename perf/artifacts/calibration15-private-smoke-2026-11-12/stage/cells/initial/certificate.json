@@ -1,0 +1,47 @@
+{
+  "status": "passed",
+  "stateVerified": true,
+  "algorithm": "pg-custom-v1-sha256",
+  "semanticFixture": {
+    "quoteItems": 25,
+    "quantity": 10,
+    "orderItems": 1,
+    "receivedQuantity": 0,
+    "verificationStatus": "pending",
+    "welcomeMessages": 1,
+    "generatedMessages": 0
+  },
+  "stateSha256": "84c47d4ae09bbdaacc2bb3ee8f8137c40c1899e0009f145717b26ff510301b5f",
+  "seedSnapshotSha256": "b2d99878a4456bc13001a4f2ec96e8f218cb63a97d7bb5269560aad25a54d697",
+  "privateDatabase": {
+    "socket": "/tmp/foremanhq-perf-pg.0zfF8b",
+    "port": 55463,
+    "database": "foremanhq_perf_lab",
+    "otherSessions": 0
+  },
+  "fixturePrelude": {
+    "id": "private-seed-restore-reset-restart-v1",
+    "algorithm": "pg-custom-v1-sha256",
+    "seedSnapshotScope": "entire-private-db-before-app-start",
+    "drain": "owned-next-absent-and-zero-other-db-sessions",
+    "resetHelperSha256": "55435fd0de6480c37b9623be0860516fe083628bf55b2b213b97338e40a6271d",
+    "serverRestart": true,
+    "readPreflightCount": 14
+  },
+  "sourceBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+  "resetHelperSha256": "55435fd0de6480c37b9623be0860516fe083628bf55b2b213b97338e40a6271d",
+  "resetCompleted": true,
+  "restoreCompleted": true,
+  "readPreflightCount": 14,
+  "serverIdentity": {
+    "pid": 181689,
+    "startTime": "231204539"
+  },
+  "drain": {
+    "priorServerPid": null,
+    "priorServerAbsent": true,
+    "priorFamilyAbsent": true
+  },
+  "preflightSha256": "28e1828487c2998f772defd9b58fef68d5674488d6cadd2808b8beaf22836628",
+  "observedAt": "2026-11-12T03:38:39.913Z"
+}

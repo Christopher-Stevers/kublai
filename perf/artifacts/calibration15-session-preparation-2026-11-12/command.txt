@@ -1,0 +1,1 @@
+python3 /tmp/foremanhq-perf-method-oMDyHJ/perf/lab/owned-process-supervisor.py run --seconds 180000 --record /tmp/foremanhq-calibration15-20261112-session-outer-processes.json -- node /tmp/foremanhq-perf-method-oMDyHJ/perf/calibration-orchestrator.mjs /tmp/foremanhq-calibration15-session-plan.json f26b794225fbe527d5ea55a7b2a598283e133561a1b3208ff1f7ceec4204a537 19

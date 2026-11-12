@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "token": "68384e12baf71c96622693121b0a19bdf8da17dcece6bbe3",
+  "supervisor": {
+    "pid": 181686,
+    "state": "R",
+    "ppid": 181654,
+    "pgid": 181446,
+    "startTime": "231204536"
+  },
+  "root": {
+    "pid": 181689,
+    "state": "R",
+    "ppid": 181686,
+    "pgid": 181689,
+    "startTime": "231204539"
+  },
+  "processes": [
+    {
+      "pid": 181689,
+      "state": "S",
+      "ppid": 181686,
+      "pgid": 181689,
+      "startTime": "231204539"
+    }
+  ],
+  "status": "stopped",
+  "remaining": [],
+  "groupActions": [],
+  "familyAbsent": true,
+  "ownedIdentitiesAbsent": true,
+  "rootExitCode": 0,
+  "timedOut": false,
+  "requestedSignal": 15,
+  "externalStop": {
+    "supervisorAbsent": true,
+    "familyAbsent": true
+  }
+}

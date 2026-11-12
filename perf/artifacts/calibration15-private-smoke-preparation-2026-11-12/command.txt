@@ -1,0 +1,1 @@
+python3 /tmp/foremanhq-perf-method-oMDyHJ/perf/lab/owned-process-supervisor.py run --seconds 480 --record /tmp/foremanhq-calibration15-smoke-outer-processes.json -- bash /tmp/foremanhq-calibration15-smoke-command.sh
