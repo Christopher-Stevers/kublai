@@ -1674,10 +1674,26 @@
       "src/components/catalogue/CatalogueVisibility.tsx"
     ],
     "rootIndependentSourceCheckPassed": true,
-    "status": "frozen-functional-checks-in-progress-canonical-build-authorized-after-functional-runtime",
+    "status": "full-candidate-capture-running",
     "smallChangeComparison": "Actual active Phase0 build",
     "fullCandidateMatrixRequired": true,
     "activationOnlyIfEveryApplicableGatePasses": true,
-    "activation": false
+    "activation": false,
+    "canonicalBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+    "functionalProofCommit": "767852d6",
+    "unitTestsPassed": 9,
+    "nativeTouchFixturePassed": true,
+    "canonicalProofCommit": "523b218c",
+    "anonymousProofCommit": "a595c9d3",
+    "strictChangedGzipBytes": 33690,
+    "strictBudgetGzipBytes": 100000,
+    "strictSmallChangePassed": true,
+    "formalStaticRatchetsPassed": true,
+    "privateCompilePassed": true,
+    "privateReadPreflightQueries": 14,
+    "lab": "/tmp/foremanhq-speed-app-fxHxrn",
+    "labBuild": "wTBAqKGVn-GRqajiTebMf",
+    "matrixStartedAt": "2026-11-12T00:47:55Z",
+    "matrixPlanSha256": "803de39660e89e3114d7cfb317754a3d7a80245cc5305d54fb0b026c4642c192"
   }
 }

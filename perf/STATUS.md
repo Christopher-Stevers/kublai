@@ -1233,3 +1233,28 @@ The separate full matrix uses the original v2 method and fixed baseline pair.
 All failed checks remain failures; no budget adjustment or R20 waiver is allowed.
 Other notification, receiving, photo, asset-request and drawing changes are excluded.
 At this checkpoint no fastlane build result or activation exists.
+
+## Approved one-file fastlane entered full matrix — 2026-11-12 00:47 UTC
+
+Exact Phase 0 plus CatalogueVisibility.tsx passed its nine unit tests. A browser
+fixture using the actual Phase 0 cards reproduced the old double selection with
+trusted touch events (steps 2, 4) and passed with the approved file (steps 1, 2).
+Keyboard, movement cancellation, long press and listener expiry pass. The
+synthetically suppressed compatibility-click weakness is recorded separately;
+this is not full-app or Pixel evidence. See `fastlane-wizard-component-proof.md`.
+
+Canonical build `9aaeabbe…355b0` passed TypeScript/prerender on the original
+Phase 0 recipe. Shared/heaviest bytes are 502616/758529; all formal byte ratchets
+pass. Strict changed JavaScript is 33690 gzip bytes, six scripts changed and
+249 reused, below 100000. Exact active runtime/public and historical assets are
+preserved. Read-only HTTP checks and anonymous user.getMe 401 pass; both servers
+are cleaned. The old runtime config's two absent false-default values were
+normalized only for comparison; copied runtime config bytes are unchanged.
+Failed setup assertions are preserved. See `fastlane-wizard-canonical-proof.md`.
+
+The fresh private compile and fourteen actual read checks pass, with zero database
+errors and clean teardown. Root and peer independently checked the final source,
+lab and helper hashes. One full capture started at 00:47:55 UTC with the original
+v2 method, fixed baseline pair, ten-minute idle and all 120 samples. Static delta
+uses actual active Phase 0. No other builds/tests run during this window. The
+full result is pending; live production remains Phase 0 and activation is held.
