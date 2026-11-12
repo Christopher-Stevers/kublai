@@ -3128,7 +3128,7 @@ function OrderComparison({
       <Dialog open={!!materialIssue} onOpenChange={open => { if (!open && !savingIssue) setMaterialIssue(null); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{materialIssue?.kind === "supplier" ? "Supplier Entered This Incorrectly" : "Shipped Material Doesn’t Match Slip"}</DialogTitle>
+            <DialogTitle>{materialIssue?.kind === "supplier" ? "Supplier sent the wrong item" : "What arrived doesn’t match the slip"}</DialogTitle>
             <DialogDescription>{materialIssue?.kind === "supplier" ? "What should happen to the material?" : "Record the mismatch, then review what was actually delivered."}</DialogDescription>
           </DialogHeader>
           {materialIssue && materialIssue.lineIds.length > 1 && <select aria-label="Affected slip line" className={field} value={materialIssue.selected} onChange={e => setMaterialIssue({...materialIssue, selected:e.target.value})}>
@@ -3136,8 +3136,8 @@ function OrderComparison({
           </select>}
           <div className="flex flex-col gap-3">
             {materialIssue?.kind === "supplier" ? <>
-              <Button disabled={savingIssue} onClick={() => void saveMaterialIssue("supplier-keep")}>Keep material anyway?</Button>
-              <Button variant="outline" disabled={savingIssue} onClick={() => void saveMaterialIssue("supplier-return")}>Material needs to be returned.</Button>
+              <Button disabled={savingIssue} onClick={() => void saveMaterialIssue("supplier-keep")}>Keep it anyway</Button>
+              <Button variant="outline" disabled={savingIssue} onClick={() => void saveMaterialIssue("supplier-return")}>Send it back</Button>
             </> : <Button disabled={savingIssue} onClick={() => void saveMaterialIssue("shipped-mismatch")}>Record mismatch</Button>}
             <Button variant="ghost" disabled={savingIssue} onClick={() => setMaterialIssue(null)}>Cancel</Button>
           </div>
@@ -3588,8 +3588,8 @@ function OrderComparison({
                 </DropdownMenuItem>
               )}
               {side === "slip" && <>
-              <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"mismatch", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>Shipped Material Doesn’t Match Slip</DropdownMenuItem>
-              <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"supplier", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>Supplier Entered This Incorrectly</DropdownMenuItem>
+              <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"mismatch", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>What arrived doesn’t match the slip</DropdownMenuItem>
+              <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"supplier", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>Supplier sent the wrong item</DropdownMenuItem>
               </>}
               {notItemOption}
               {splitOption}

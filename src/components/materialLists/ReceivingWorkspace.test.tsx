@@ -1672,8 +1672,8 @@ it("letting go of a held half opens its options", async () => {
     await screen.findByText("Drag onto an order item to pair them."),
   ).toBeInTheDocument();
   expect(screen.getByRole("menuitem", { name: "View on slip" })).toBeVisible();
-  expect(screen.getByRole("menuitem", {name:"Shipped Material Doesn’t Match Slip"})).toBeVisible();
-  expect(screen.getByRole("menuitem", {name:"Supplier Entered This Incorrectly"})).toBeVisible();
+  expect(screen.getByRole("menuitem", {name:"What arrived doesn’t match the slip"})).toBeVisible();
+  expect(screen.getByRole("menuitem", {name:"Supplier sent the wrong item"})).toBeVisible();
   fireEvent.click(
     screen.getByRole("menuitem", { name: "Split" }),
   );
@@ -1772,15 +1772,15 @@ it("splits from the order half menu too", async () => {
   await waitFor(() => expect(posts).toContainEqual(expect.objectContaining({ action: "splitComparison", lineIds: ["0"] })));
 });
 
-it.each([['Keep material anyway?', 'supplier-keep'], ['Material needs to be returned.', 'supplier-return']])("records supplier entry choice: %s", async (label, decision) => {
+it.each([['Keep it anyway', 'supplier-keep'], ['Send it back', 'supplier-return']])("records supplier entry choice: %s", async (label, decision) => {
   render(<ReceivingWorkspace jobId="job" />);
   const card = (await screen.findByRole("heading", { name: "Valve" })).closest("li")!;
   const half = within(card).getAllByRole("group", {name:/ reading$/})[0]!;
   fireEvent.touchStart(half, {touches:[{clientX:300,clientY:300}]});
   await hold();
   fireEvent.touchEnd(window,{touches:[]});
-  expect(screen.getByRole("menuitem",{name:"Shipped Material Doesn’t Match Slip"})).toBeVisible();
-  fireEvent.click(screen.getByRole("menuitem",{name:"Supplier Entered This Incorrectly"}));
+  expect(screen.getByRole("menuitem",{name:"What arrived doesn’t match the slip"})).toBeVisible();
+  fireEvent.click(screen.getByRole("menuitem",{name:"Supplier sent the wrong item"}));
   expect(posts).toEqual([]);
   fireEvent.click(await screen.findByRole("button",{name:label}));
   await waitFor(() => expect(posts).toContainEqual(expect.objectContaining({action:"resolve",lineId:"0",materialIssue:decision,delivery:"wrong",match:"unresolved",quantity:"unresolved"})));
@@ -1794,7 +1794,7 @@ it("records a shipped-material mismatch without approving quantities", async () 
   fireEvent.touchStart(half, {touches:[{clientX:300,clientY:300}]});
   await hold();
   fireEvent.touchEnd(window,{touches:[]});
-  fireEvent.click(screen.getByRole("menuitem",{name:"Shipped Material Doesn’t Match Slip"}));
+  fireEvent.click(screen.getByRole("menuitem",{name:"What arrived doesn’t match the slip"}));
   fireEvent.click(await screen.findByRole("button",{name:"Record mismatch"}));
   await waitFor(() => expect(posts).toContainEqual(expect.objectContaining({action:"resolve",lineId:"0",materialIssue:"shipped-mismatch",specification:"unresolved",delivery:"wrong"})));
 });
@@ -2201,8 +2201,8 @@ it("opens slip options by holding the empty left card", async () => {
   fireEvent.touchStart(within(row).getByRole("group", {name:"Order"}), {touches:[{clientX:80,clientY:300}]});
   await hold();fireEvent.touchEnd(window, {touches:[]});
   expect(await screen.findByRole("menuitem", {name:"View on slip"})).toBeVisible();
-  expect(screen.queryByRole("menuitem", {name:"Shipped Material Doesn’t Match Slip"})).not.toBeInTheDocument();
-  expect(screen.queryByRole("menuitem", {name:"Supplier Entered This Incorrectly"})).not.toBeInTheDocument();
+  expect(screen.queryByRole("menuitem", {name:"What arrived doesn’t match the slip"})).not.toBeInTheDocument();
+  expect(screen.queryByRole("menuitem", {name:"Supplier sent the wrong item"})).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("menuitem", {name:"Add this part to material list"}));
   expect(await screen.findByRole("dialog", {name:"Add this part to material list"})).toBeVisible();
   expect(posts).toEqual([]);

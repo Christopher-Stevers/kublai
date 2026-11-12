@@ -7,9 +7,9 @@ import { receiptUnit, type ReceiptOrderItem } from "./packing-slip-review";
 
 /** Independent reviewer decisions. Linking a part never confirms its quantity or delivery. */
 export const materialIssueLabels = {
-  "shipped-mismatch": "Shipped Material Doesn’t Match Slip",
-  "supplier-keep": "Supplier Entered This Incorrectly · Keep material anyway",
-  "supplier-return": "Supplier Entered This Incorrectly · Material needs to be returned",
+  "shipped-mismatch": "What arrived doesn’t match the slip",
+  "supplier-keep": "Supplier sent the wrong item · Keeping it",
+  "supplier-return": "Supplier sent the wrong item · Sending it back",
 } as const;
 export type ReceivingResolution = {
   materialIssue?: keyof typeof materialIssueLabels;
