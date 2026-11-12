@@ -1,0 +1,154 @@
+{
+  "build": "939be58f87e4b945e27d0079bac28b60249f6236c08f7bb44bdbe93324a806ff",
+  "baseline": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+  "method": "Existing gzip/br sidecar file lengths and raw byte hashes only; no recompression; no webpack stats captured by unchanged Phase0 recipe",
+  "changedScripts": [
+    {
+      "path": "chunks/app/jobs/account/settings/page-3516a0a2a338a210.js",
+      "rawBytes": 67211,
+      "gzipSidecarBytes": 21390,
+      "brotliSidecarBytes": 18711,
+      "sameBytesAsOldName": null,
+      "sha256": "f0a21b9cbdc8e45cf21963a3e04ebbf1f43890e7781729537ccaa69aa7c65e7b"
+    },
+    {
+      "path": "chunks/1654-e2b0eabddb44c807.js",
+      "rawBytes": 54670,
+      "gzipSidecarBytes": 17607,
+      "brotliSidecarBytes": 15726,
+      "sameBytesAsOldName": null,
+      "sha256": "de899ff25e3064f30da93f46f21c49d576e87e5f542feaf160b19b61b6da16dd"
+    },
+    {
+      "path": "chunks/2604.e87d5293e8703f66.js",
+      "rawBytes": 49293,
+      "gzipSidecarBytes": 16940,
+      "brotliSidecarBytes": 14883,
+      "sameBytesAsOldName": null,
+      "sha256": "3415a52d243ca69656ca9114b84bc7b0575e5cadcb0d8c0d6c3cedb3ccb8281b"
+    },
+    {
+      "path": "chunks/app/jobs/layout-0288b4ec87705ac7.js",
+      "rawBytes": 45721,
+      "gzipSidecarBytes": 15015,
+      "brotliSidecarBytes": 13236,
+      "sameBytesAsOldName": null,
+      "sha256": "ebc76480316f7f2111424a0d254153d7ca5535b06c51d1a472371c670ddfac68"
+    },
+    {
+      "path": "chunks/3561-50fe16e1a4e11f2c.js",
+      "rawBytes": 46622,
+      "gzipSidecarBytes": 14830,
+      "brotliSidecarBytes": 13185,
+      "sameBytesAsOldName": null,
+      "sha256": "ce06b4cecd47bd4bfcb2b6b2118ab241264d7562bc0a61285a685e5ec75f03d9"
+    },
+    {
+      "path": "chunks/app/layout-435ce58305697685.js",
+      "rawBytes": 27851,
+      "gzipSidecarBytes": 10306,
+      "brotliSidecarBytes": 9177,
+      "sameBytesAsOldName": null,
+      "sha256": "c6fbdd771dd484b989103c98e3751d7b62a8e0a79203db11310e4847f914860b"
+    },
+    {
+      "path": "chunks/app/jobs/[jobId]/rooms/page-7e145af3827776f7.js",
+      "rawBytes": 27538,
+      "gzipSidecarBytes": 9618,
+      "brotliSidecarBytes": 8502,
+      "sameBytesAsOldName": null,
+      "sha256": "437b890a84502d3586375423a384bd2a6c6290effb8353bc5ab94ea164ad6ca7"
+    },
+    {
+      "path": "chunks/app/jobs/page-5f3caf2e28781e2d.js",
+      "rawBytes": 21655,
+      "gzipSidecarBytes": 7329,
+      "brotliSidecarBytes": 6482,
+      "sameBytesAsOldName": null,
+      "sha256": "c92c9b434e001ea63334e5b74ede983b074815cced38a32f88ae2a700783c71d"
+    },
+    {
+      "path": "chunks/app/jobs/[jobId]/chat/page-3e899f9dc7b16bbe.js",
+      "rawBytes": 12547,
+      "gzipSidecarBytes": 4200,
+      "brotliSidecarBytes": 3640,
+      "sameBytesAsOldName": null,
+      "sha256": "4c65c6632eea892436b8769be28483b2c58157f85e0adc07b9744372088b2333"
+    },
+    {
+      "path": "chunks/webpack-abb32cc4941b63e7.js",
+      "rawBytes": 8584,
+      "gzipSidecarBytes": 4122,
+      "brotliSidecarBytes": 3472,
+      "sameBytesAsOldName": null,
+      "sha256": "273c7779a8cbcfb4150ad19a29e2d4753c4ce7cc13831c3699c40d1138783d87"
+    },
+    {
+      "path": "chunks/app/jobs/[jobId]/drawings/page-fb459bedc4210aba.js",
+      "rawBytes": 10751,
+      "gzipSidecarBytes": 3527,
+      "brotliSidecarBytes": 3063,
+      "sameBytesAsOldName": null,
+      "sha256": "d049a09fd0506b8c5fcf27d05b1e1ec9a879b4992b9f0f4f21dbf8bcb23c294e"
+    },
+    {
+      "path": "chunks/app/jobs/[jobId]/systems/page-104b6d812621398f.js",
+      "rawBytes": 10750,
+      "gzipSidecarBytes": 3526,
+      "brotliSidecarBytes": 3057,
+      "sameBytesAsOldName": null,
+      "sha256": "536bde733f1517399492551c5ae7335a1ce3924e19fd996174ced703aab70aea"
+    },
+    {
+      "path": "chunks/app/jobs/[jobId]/documents/page-f4c122463312a44f.js",
+      "rawBytes": 10752,
+      "gzipSidecarBytes": 3510,
+      "brotliSidecarBytes": 3042,
+      "sameBytesAsOldName": null,
+      "sha256": "bee8691bd19aa0ffbc7683d039be83f80bffe13686934659c1f44388f8168d1b"
+    },
+    {
+      "path": "chunks/app/jobs/material-lists/[id]/page-95dece8ff2626c8e.js",
+      "rawBytes": 8640,
+      "gzipSidecarBytes": 2935,
+      "brotliSidecarBytes": 2518,
+      "sameBytesAsOldName": null,
+      "sha256": "0fedbbb61f2bac500d8c0e34d07bbc025f1d13f2f2a2b3a807fca08d464ae935"
+    },
+    {
+      "path": "939be58f87e4b945e27d0079bac28b60249f6236c08f7bb44bdbe93324a806ff/_buildManifest.js",
+      "rawBytes": 4001,
+      "gzipSidecarBytes": 678,
+      "brotliSidecarBytes": 594,
+      "sameBytesAsOldName": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0/_buildManifest.js",
+      "sha256": "d9c440e2e96dbf4a4324c85025b7c15f00844ae6b76161d7b7b7be5129dccae0"
+    },
+    {
+      "path": "939be58f87e4b945e27d0079bac28b60249f6236c08f7bb44bdbe93324a806ff/_ssgManifest.js",
+      "rawBytes": 80,
+      "gzipSidecarBytes": 64,
+      "brotliSidecarBytes": 67,
+      "sameBytesAsOldName": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0/_ssgManifest.js",
+      "sha256": "678f6ce2cb80b1fe72fc67e7412be6e2ab6ada083111b64f7c40d35e3cba5e00"
+    }
+  ],
+  "gzipSidecarTotal": 135597,
+  "findings": {
+    "sharedGrowthGzipBytes": 1060,
+    "centralOldChunk": "chunks/8402-cbe506061232287a.js",
+    "centralNewChunk": "chunks/3561-50fe16e1a4e11f2c.js",
+    "centralNewGzipBytes": 14830,
+    "centralOldGzipBytes": 13771,
+    "newNotificationHeaderFactoryRawBytes": 35223,
+    "oldNotificationHeaderFactoryRawBytes": 32032,
+    "copiedTutorialLoaderModuleId": 99017,
+    "copiedLoaderChangedChunkCount": 10,
+    "copiedLoaderAffectedGzipPayload": 88657,
+    "loaderChange": "Referenced optional chunk ID8402 changes to3561; same factory length5565. This changes ten emitted copies, not ten source implementations.",
+    "otherPropagation": "TutorialExperience module92604 import68402\u219243561; Jobs layout client entry68126 same import change; existing SpeedTelemetry98257 build tag changes; webpack runtime filename map updates. Root framework chunks unchanged.",
+    "manifestBytes": "Two build-ID-scoped manifests have byte-identical older counterparts but count742gzip bytes at new URLs.",
+    "noWebpackStats": "Unchanged old recipe emitted no stats; AST factory IDs/copies are emitted evidence, source associations from inspected content, not module gzip or eager-global claims.",
+    "centralGzipGrowth": 1059,
+    "sharedGrowthExplanation": "Central chunk+1059gzip and changed copied-loader chunk1654+1gzip sum formalshared+1060"
+  }
+}
