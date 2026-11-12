@@ -3408,7 +3408,9 @@ function OrderComparison({
           const canConfirmInformation =
             !sourceChanged && !complete && !!item && !!single &&
             (single.kind ?? r.kind) === "delivery" &&
-            !single.approved && !single.resolution?.materialIssue &&
+            // Existing Resolve decisions must use the preserving link plan;
+            // this shortcut writes every field and is only safe for a new line.
+            !single.approved && !single.resolution &&
             single.orderItemId === item.id && single.quantity !== null &&
             receivedLineQuantity(single) === single.quantity &&
             (single.quantity > 0

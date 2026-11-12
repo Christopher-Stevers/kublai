@@ -1,7 +1,7 @@
 import { AppDialogHost } from "~/components/ui/app-dialogs";
-import { newResolution } from "~/lib/receiving-resolution";
+import { newResolution, resolutionCounterpartFingerprint } from "~/lib/receiving-resolution";
 import type { ReceivingLine } from "~/lib/receiving-review";
-import type { SlipAnalysis } from "~/lib/packing-slip-review";
+import type { ReceiptOrderItem, SlipAnalysis } from "~/lib/packing-slip-review";
 import { afterEach, beforeEach, expect, it, onTestFinished, vi } from "vitest";
 import {
   act,
@@ -2489,4 +2489,49 @@ it("marks a part-received order as still waiting and says what Accept means", as
     "title", "Still waiting for material\n8 · Valve");
   const lines = screen.getByRole("region", { name: "Step 3: Line By Line Matching" });
   expect(within(lines).getByText(/Accept when the slip was read correctly and matched to the right order item\. It does not mean everything arrived\./)).toBeInTheDocument();
+});
+
+
+it("does not let the short-line Accept shortcut clear a partial cancellation decision", async () => {
+  const line = state.review.lines[0] as ReceivingLine;
+  line.checked = false;
+  line.resolution = {
+    ...newResolution(line, "receiver", "now"),
+    counterpartFingerprint: resolutionCounterpartFingerprint(state.items[0] as ReceiptOrderItem),
+    match: "unresolved", specification: "confirmed", quantity: "confirmed",
+    delivery: "confirmed", siteQuantity: 6, acceptedQuantity: 6,
+    remainder: "cancelled", note: "Supplier cancelled the remaining quantity.",
+  };
+  render(<ReceivingWorkspace jobId="job" />);
+  const row = (await screen.findByRole("heading", { name: "Valve" })).closest("li")!;
+  expect(confirmButton(row)).toBeNull();
+  expect(line.resolution.remainder).toBe("cancelled");
+  expect(line.resolution.match).toBe("unresolved");
+  expect(posts).toEqual([]);
+});
+
+it.each(["backordered", "unexplained"] as const)("Accept preserves existing %s and other explicit Resolve decisions", async (remainder) => {
+  confirmSetup();
+  const line = state.review.lines[0] as ReceivingLine;
+  line.checked = false;
+  line.resolution = {
+    ...newResolution(line, "receiver", "now"),
+    counterpartFingerprint: resolutionCounterpartFingerprint(state.items[0] as ReceiptOrderItem),
+    match: "unresolved", specification: "confirmed", quantity: "confirmed",
+    delivery: "short", siteQuantity: 6, acceptedQuantity: 6,
+    remainder, excess: "returned", note: "Keep the recorded receiving decision.",
+  };
+  render(<ReceivingWorkspace jobId="job" />);
+  const row = (await screen.findByRole("heading", { name: "Valve" })).closest("li")!;
+  expect(confirmButton(row)).toBeEnabled();
+  fireEvent.click(confirmButton(row)!);
+  await waitFor(() => expect(posts.filter(p => p.action === "resolve")).toHaveLength(1));
+  const action = posts.find(p => p.action === "resolve")!;
+  expect(action).toMatchObject({ lineId: "0", match: "confirmed" });
+  // The server merges only supplied resolution fields. Existing decisions must
+  // not be reset by the blanket confirmation shortcut or a generic note.
+  for (const field of ["specification", "quantity", "delivery", "siteQuantity", "acceptedQuantity", "remainder", "excess", "note"])
+    expect(action).not.toHaveProperty(field);
+  expect(posts.some(p => p.action === "approve")).toBe(false);
+  expect(line.approved).toBeUndefined();
 });
