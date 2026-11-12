@@ -6,6 +6,18 @@ Current reviewed-build reference remains the prior accepted Phase 0/wizard evide
 
 <!-- DEV_DEPLOY_ENTRIES -->
 
+## 2026-11-12T19:51:55.153Z — Codex
+
+- Change: Prevent size taps and held sub-size choices from clicking through category choices in the part wizard.
+- Commits: f4fb54d4754c55dfb5bf829d616bf615c06c0552
+- Build: `253c23d1ae19ebff258b29737caf7359feb2681f389be944b77dbf0a8e8a7a0b`; replaced: `ce8f5414e212bc7ac0f3ee01ec75d93812b298e96742f50f72a36a24bf4e10e3`.
+- Changed JavaScript gzip bytes: 33765 (review metadata only).
+- Flags: worker/shared worker source=false; shared scripts=false; large change=false.
+- Attempt record: /home/tim/.openclaw/workspace/kublai/.dev-deploy-attempts/2026-11-12T19-50-28.574Z-7b52ed5b-e1b4-463d-b16a-1ff949fd8f35.json.
+- Review status: waiting.
+
+
+
 ## 2026-11-12T11:24:59.093Z — Astra
 
 - Change: Accept short deliveries without requiring a backorder decision; warn when partly received orders still need material; use clearer wrong-item labels and preserve existing receiving decisions.
