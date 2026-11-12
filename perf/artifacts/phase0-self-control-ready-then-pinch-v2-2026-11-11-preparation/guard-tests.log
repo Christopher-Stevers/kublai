@@ -1,0 +1,17 @@
+✔ correct complete original control remains control-only and never release candidate (0.508428ms)
+✔ missing purpose marker fails (0.139903ms)
+✔ a changed-code snapshot cannot masquerade as Phase0 control (0.079095ms)
+✔ Phase0selfzero static comparison is rejected (0.068294ms)
+✔ swapped comparison baseline is rejected (0.069841ms)
+✔ missing or wrong protocol rejected (0.074412ms)
+✔ subset/pilot selector rejected (0.113181ms)
+✔ added diagnostics or nondefault browser rejected (0.120961ms)
+✔ changed accepted baseline identity rejected (0.143562ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 38.443782

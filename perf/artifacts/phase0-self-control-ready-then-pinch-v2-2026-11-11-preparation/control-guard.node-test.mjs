@@ -1,0 +1,12 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';
+import {EXPECTED,validateControlConfig}from'/tmp/foremanhq-phase0-control-only-guard.mjs';
+const first=JSON.parse(fs.readFileSync(EXPECTED.PERF_COMPARISON_BASELINE)),second=JSON.parse(fs.readFileSync(EXPECTED.PERF_STABILITY_REFERENCE));const good={...EXPECTED,PERF_SHEET_PROTOCOL:'ready-then-pinch-v2'};
+test('correct complete original control remains control-only and never release candidate',()=>{const result=validateControlConfig(good,first,second);assert.equal(result.controlOnly,true);assert.equal(result.releaseCandidate,false);assert.equal(result.doesNotClearR20,true);assert.equal(result.authorizedAdditionalTrials,0);});
+test('missing purpose marker fails',()=>assert.throws(()=>validateControlConfig({...good,PERF_CONTROL_ONLY:undefined},first,second)));
+test('a changed-code snapshot cannot masquerade as Phase0 control',()=>assert.throws(()=>validateControlConfig({...good,PERF_REUSE_SNAPSHOT:'/tmp/foremanhq-speed-app-l6aTWB'},first,second)));
+test('Phase0selfzero static comparison is rejected',()=>assert.throws(()=>validateControlConfig({...good,PERF_BASELINE_DIST:EXPECTED.PERF_SOURCE_BUILD_DIST},first,second)));
+test('swapped comparison baseline is rejected',()=>assert.throws(()=>validateControlConfig({...good,PERF_COMPARISON_BASELINE:EXPECTED.PERF_STABILITY_REFERENCE},first,second)));
+test('missing or wrong protocol rejected',()=>{for(const v of [undefined,'early-pinch-v1'])assert.throws(()=>validateControlConfig({...good,PERF_SHEET_PROTOCOL:v},first,second));});
+test('subset/pilot selector rejected',()=>{for(const k of ['PERF_PILOT','PERF_LINKS','PERF_JOURNEYS','PERF_RUNS'])assert.throws(()=>validateControlConfig({...good,[k]:'1'},first,second));});
+test('added diagnostics or nondefault browser rejected',()=>{assert.throws(()=>validateControlConfig({...good,PERF_DIAGNOSTICS:'1'},first,second));assert.throws(()=>validateControlConfig({...good,CHROMIUM_PATH:'/other/browser'},first,second));});
+test('changed accepted baseline identity rejected',()=>assert.throws(()=>validateControlConfig(good,{...first,build:'other'},second)));

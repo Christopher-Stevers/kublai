@@ -1,0 +1,11 @@
+--- perf/artifacts/candidate-r20-ready-then-pinch-v2-2026-11-11-preparation/source-after.mjs	2026-11-11 18:10:55.368655195 -0500
++++ perf/artifacts/phase0-self-control-ready-then-pinch-v2-2026-11-11-preparation/source-after.mjs	2026-11-11 18:51:24.319613526 -0500
+@@ -1,6 +1,6 @@
+ import fs from 'node:fs';
+ import { pathToFileURL } from 'node:url';
+ const { sourceEvidence } = await import(pathToFileURL(process.env.PERF_HARNESS_DIR+'/scripts/release/source-fingerprint.mjs'));
+-const evidence=await sourceEvidence(process.env.PERF_SOURCE_ROOT,process.env.PERF_REUSE_SNAPSHOT,'e9fcb1f86b41ddb9987a260ab2879e5cbcbd7d8798b7f386dc85909ebc44cd7c','after-lab-transforms');
+-if(evidence.sourceFingerprint!=='b6f4093d05deb01c23630d6fcb223fa04a6dacf46625414a5d1ffcafa891ca4f'||evidence.sourceFileCount!==2318||evidence.sourceVerification.unchangedFilesChecked!==2313)throw Error('Source changed during capture');
++const evidence=await sourceEvidence(process.env.PERF_SOURCE_ROOT,process.env.PERF_REUSE_SNAPSHOT,'c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d','after-lab-transforms');
++if(evidence.sourceFingerprint!=='128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2'||evidence.sourceFileCount!==2200||evidence.sourceVerification.unchangedFilesChecked!==2195)throw Error('Source changed during capture');
+ fs.writeFileSync(process.env.PERF_RUN_EVIDENCE_DIR+'/source-evidence-after.json',JSON.stringify(evidence,null,2)+'\n');

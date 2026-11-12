@@ -1,0 +1,30 @@
+{
+  "status": "passed-control-only",
+  "controlOnly": true,
+  "releaseCandidate": false,
+  "doesNotClearR20": true,
+  "prospectiveTrial": 1,
+  "authorizedAdditionalTrials": 0,
+  "sampleCount": 120,
+  "cells": 24,
+  "validationErrors": [],
+  "acceptedBaselineRepeatabilityErrors": [],
+  "comparisonErrors": [],
+  "baseline": "baseline-ready-then-pinch-v2-rerun-2026-11-11-1.json",
+  "stabilityReference": "baseline-ready-then-pinch-v2-rerun-2026-11-11-2.json",
+  "protocol": "ready-then-pinch-v2",
+  "harnessFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+  "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+  "interpretation": "One prospective unchanged-code pass; does not establish twenty-run false-alarm calibration or clear any failed candidate. No retries, exclusions or comparator changes.",
+  "host": "No declared agent-driven heavy work/ADB during quiet; production web/worker and ordinary OS background processes remained running.",
+  "limitations": [
+    "Stub Clerk excludes real authentication startup",
+    "Desktop Chromium mobile emulation, not physical Pixel/Safari",
+    "Stock next start transport, not production Brotli wrapper",
+    "Nonhex isolated build disables private SW-binding/reload branches",
+    "Two-rAF paint opportunity, not physical every-frame or same-frame evidence",
+    "Jobs-only idle HTTP request lifetime is not SSE heartbeat proof",
+    "Static predecessor provenance from canonical release manifest; historical launcher env not independently recovered"
+  ]
+}

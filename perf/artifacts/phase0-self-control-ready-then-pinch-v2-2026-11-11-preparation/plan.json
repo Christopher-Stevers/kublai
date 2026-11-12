@@ -1,0 +1,62 @@
+{
+  "status": "prepared-control-only-not-executed",
+  "controlOnly": true,
+  "releaseCandidate": false,
+  "doesNotClearR20": true,
+  "prospectiveValidationTrial": 1,
+  "authorizedAdditionalTrials": 0,
+  "sourceBuild": "c25f525d3a4755145e22b9977b300607209034ff59196ee170cbe219cf2c2e5d",
+  "sourceFingerprint": "128da6e7cd4b35dce132d543a56ed673f8dce30fae56f7456b1fc3d94f5e8dd2",
+  "sourceFileCount": 2200,
+  "unchangedFilesChecked": 2195,
+  "lab": "/tmp/foremanhq-speed-app-5h2kmq",
+  "labBuild": "cI20Tzl0OAQscfvjfmtFW",
+  "harness": "/tmp/foremanhq-perf-method-f9bHR6",
+  "harnessFingerprint": "25dfa8bfb3977677cfdd0340d7de19cf68895cd80000e19d14e4867f36dd41c4",
+  "protocol": "ready-then-pinch-v2",
+  "sampleCount": 120,
+  "cells": 24,
+  "runsPerCell": 5,
+  "idleDurationMs": 600000,
+  "outerBoundMinutes": 45,
+  "noRetryOrExclusion": true,
+  "staticReference": "Original canonical Phase0 against pre-bootstrap predecessor; actualcollector must match original baseline1 values, not Phase0selfzero.",
+  "files": [
+    {
+      "archive": "full-command.sh",
+      "actual": "/tmp/foremanhq-phase0-control-full-command.sh",
+      "sha256": "403e70ebc4a370a87d72465d5a087fd0a65d2ef8f5f33ec2a363ab5c9f989527"
+    },
+    {
+      "archive": "orchestration.sh",
+      "actual": "/tmp/foremanhq-phase0-control-candidate120-ready-v2.sh",
+      "sha256": "6703b8bd39c01a6c01d0222986a362f5ba1328a1d4c72fb455d1cd5e41cca4ce"
+    },
+    {
+      "archive": "reuse-helper.mjs",
+      "actual": "/tmp/foremanhq-phase0-control-reuse-frozen-app.mjs",
+      "sha256": "e7f8fd3d20e7b16a50ec1b9fe8b082ff8a5be7bf480416a0b1e67e2b7ea1d34c"
+    },
+    {
+      "archive": "protocol-guard.mjs",
+      "actual": "/tmp/foremanhq-phase0-control-protocol-guard.mjs",
+      "sha256": "22c55b91f1ed43c028aaedddce3db839680edb65b6bbc05e54bd3aebfde23722"
+    },
+    {
+      "archive": "control-only-guard.mjs",
+      "actual": "/tmp/foremanhq-phase0-control-only-guard.mjs",
+      "sha256": "944a851c0ab5e3ae5a79094b8959cb83e5d69ccd8153ef9b07949c0882fccf1c"
+    },
+    {
+      "archive": "source-after.mjs",
+      "actual": "/tmp/foremanhq-phase0-control-source-after.mjs",
+      "sha256": "00278aa5c9b7ae70177e2ab14bd8ca413afba54789a3a92d65a265c48986c539"
+    },
+    {
+      "archive": "storage-preflight.mjs",
+      "actual": "/tmp/foremanhq-phase0-control-storage-preflight.mjs",
+      "sha256": "436c0368219543b61db08f06ce6998f143bc8781022ce788bc743991f20f6122"
+    }
+  ],
+  "diagnostics": "Explicit PERF_DIAGNOSTICS=0 matches absence of diagnostic fields in both accepted baseline reports; historical launcher environment not independently recovered."
+}

@@ -1,0 +1,22 @@
+{
+  "checkedAtUTC": "2026-11-11T23:56:41.844435+00:00",
+  "source": "readonly quotactl_fd current-user /tmp",
+  "quota": {
+    "bhardlimit": 52661174,
+    "bsoftlimit": 52661174,
+    "curspace": 44732166144,
+    "ihardlimit": 0,
+    "isoftlimit": 0,
+    "curinodes": 272373,
+    "btime": 0,
+    "itime": 0,
+    "valid": 63
+  },
+  "availableBytes": 9192876032,
+  "conservativeExpectedAssetBytes": 1756721152,
+  "plannedTwoCopiesPlus512MiB": 4050313216,
+  "quotaSufficientAtPreparation": true,
+  "allocationProbeExecuted": false,
+  "databaseOrBrowserExecuted": false,
+  "runtimeGuardWillRecheckAndProbe": true
+}

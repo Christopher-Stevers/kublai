@@ -1,0 +1,25 @@
+{
+  "observedAt": "2026-11-12T00:31:04Z",
+  "runnerExitCode": 0,
+  "next": [
+    {
+      "pid": 103725,
+      "exitCode": 0,
+      "absent": true
+    },
+    {
+      "pid": 106467,
+      "exitCode": 0,
+      "absent": true
+    }
+  ],
+  "postgresPid": 103506,
+  "postgresAbsent": true,
+  "privateSocketDirectory": "/tmp/foremanhq-perf-pg.rNePms",
+  "privateSocketRemoved": true,
+  "port3481Closed": true,
+  "unexpectedPgErrors": 0,
+  "shutdownFailed": 0,
+  "evidenceCopyFailed": 0,
+  "qualification": "Existing helper copied PG log before helper shutdown; post-shutdown process/socket absence independently observed."
+}
