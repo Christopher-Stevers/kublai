@@ -1,0 +1,189 @@
+{
+  "version": 1,
+  "token": "0508ff22ed433576cf02a8b7114a50479323ab0da4421877",
+  "supervisor": {
+    "pid": 419423,
+    "state": "R",
+    "ppid": 3642665,
+    "pgid": 419423,
+    "startTime": "233961540"
+  },
+  "root": {
+    "pid": 419430,
+    "state": "R",
+    "ppid": 419423,
+    "pgid": 419430,
+    "startTime": "233961544"
+  },
+  "processes": [
+    {
+      "pid": 419430,
+      "state": "S",
+      "ppid": 419423,
+      "pgid": 419430,
+      "startTime": "233961544"
+    },
+    {
+      "pid": 419458,
+      "state": "S",
+      "ppid": 419430,
+      "pgid": 419458,
+      "startTime": "233961555"
+    },
+    {
+      "pid": 419459,
+      "state": "S",
+      "ppid": 419458,
+      "pgid": 419458,
+      "startTime": "233961555"
+    },
+    {
+      "pid": 419466,
+      "state": "S",
+      "ppid": 419459,
+      "pgid": 419458,
+      "startTime": "233961563"
+    },
+    {
+      "pid": 419467,
+      "state": "R",
+      "ppid": 419466,
+      "pgid": 419458,
+      "startTime": "233961563"
+    },
+    {
+      "pid": 419469,
+      "state": "S",
+      "ppid": 419430,
+      "pgid": 419469,
+      "startTime": "233961579"
+    },
+    {
+      "pid": 419470,
+      "state": "S",
+      "ppid": 419469,
+      "pgid": 419469,
+      "startTime": "233961579"
+    },
+    {
+      "pid": 419472,
+      "state": "S",
+      "ppid": 419423,
+      "pgid": 419472,
+      "startTime": "233961580"
+    },
+    {
+      "pid": 419473,
+      "state": "S",
+      "ppid": 419472,
+      "pgid": 419473,
+      "startTime": "233961581"
+    },
+    {
+      "pid": 419474,
+      "state": "S",
+      "ppid": 419472,
+      "pgid": 419474,
+      "startTime": "233961581"
+    },
+    {
+      "pid": 419475,
+      "state": "S",
+      "ppid": 419472,
+      "pgid": 419475,
+      "startTime": "233961581"
+    },
+    {
+      "pid": 419476,
+      "state": "R",
+      "ppid": 419472,
+      "pgid": 419476,
+      "startTime": "233961581"
+    },
+    {
+      "pid": 419477,
+      "state": "S",
+      "ppid": 419472,
+      "pgid": 419477,
+      "startTime": "233961581"
+    },
+    {
+      "pid": 419479,
+      "state": "S",
+      "ppid": 419472,
+      "pgid": 419479,
+      "startTime": "233961581"
+    },
+    {
+      "pid": 419480,
+      "state": "S",
+      "ppid": 419472,
+      "pgid": 419480,
+      "startTime": "233961581"
+    },
+    {
+      "pid": 419481,
+      "state": "S",
+      "ppid": 419472,
+      "pgid": 419481,
+      "startTime": "233961581"
+    },
+    {
+      "pid": 419486,
+      "state": "R",
+      "ppid": 419430,
+      "pgid": 419430,
+      "startTime": "233961594"
+    },
+    {
+      "pid": 419487,
+      "state": "S",
+      "ppid": 419486,
+      "pgid": 419487,
+      "startTime": "233961597"
+    },
+    {
+      "pid": 419564,
+      "state": "R",
+      "ppid": 419487,
+      "pgid": 419487,
+      "startTime": "233961618"
+    },
+    {
+      "pid": 419576,
+      "state": "S",
+      "ppid": 419472,
+      "pgid": 419576,
+      "startTime": "233961685"
+    },
+    {
+      "pid": 419579,
+      "state": "S",
+      "ppid": 419430,
+      "pgid": 419579,
+      "startTime": "233961989"
+    },
+    {
+      "pid": 419580,
+      "state": "S",
+      "ppid": 419579,
+      "pgid": 419579,
+      "startTime": "233961989"
+    },
+    {
+      "pid": 419584,
+      "state": "R",
+      "ppid": 419430,
+      "pgid": 419430,
+      "startTime": "233962000"
+    }
+  ],
+  "status": "stopped",
+  "remaining": [],
+  "groupActions": [],
+  "familyAbsent": true,
+  "ownedIdentitiesAbsent": true,
+  "rootExitCode": 1,
+  "timedOut": false,
+  "requestedSignal": null
+}

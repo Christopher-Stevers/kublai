@@ -1,0 +1,182 @@
+(node:419636) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+ RUN  v4.1.4 /home/tim/.openclaw/workspace/releases/speed-phase0-receiving-rc-validation-20261112-dev1
+
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > shows source issues and never receives automatically 134ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > steps back from a slip to the receiving queue 31ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > keeps reader comparison and slip tools in the lab 62ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > opens the full document from its name and removes both redundant buttons 19ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > previews and approves only ready lines, retaining unresolved lines 89ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > keeps the activity log visible when detailed progress is hidden 65ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > requires review of a new source version before approving 29ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > warns when the slip's page numbers show a page that was not scanned 39ms
+(node:419713) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > drafts a message to the supplier once a short delivery is recorded 81ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > links a newly chosen order before confirming the slip details 48ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > confirms the matched order in one tap and only then compares lines 27ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > leaves out a line that was not delivered in one tap 43ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > warns about a repeat scan first and records what it is 17ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > lists every order item beside the slip reading and its reader 110ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > offers to set a part's pack size when the slip counts pieces 103ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > asks to allow over-delivery only when a line exceeds what is due 82ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > shows where a received count came from and lets the slip take over a hand count 85ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > asks whether a slip within what is due repeats a hand count 86ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > lists slips to review with one next step each, suggested orders first 36ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > shows every reader's part match and quantity confidence 36ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > says when Terra found no product on a row and leaves it out in one tap 95ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > allows a matched quantity to reach approval without entering a unit 62ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > shows a suggestion arriving after mount and confirms that order explicitly 8026ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > preserves a manual order choice when a suggestion arrives during polling 4016ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > puts a missed slip line with the order line of its likely part 25ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > adds the likely catalogue part to the material list in one tap 68ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > confirms EA means one complete pipe length before adding it 139ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > adds a new part to ForemanHQ and the material list together 100ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > asks for the quantity before a part goes on the list 75ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > confirms the one order at 90% match confidence without asking 23ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > folds line by line matching once every line is approved or excluded 25ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > includes an auto-confirmed flagged line in review without posting on load 48ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > opens the material-list item from the left column and closes without editing receipts 36ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > opens an enlarged source crop from the right column and keeps editing on the arrow 61ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > shows the source page when a slip line has no crop, and never shows a crop from a replaced file 64ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > completes a matching comparison after Looks right, before receiving approval 42ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > numbers comparisons in displayed order and keeps the number on completed badges 15ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > treats a short line confirmed as read as settled; the rest stays due 16ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > keeps incomplete comparisons pending: {"checked":false,"quantity":8,"orderItemId":"item"} 16ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > keeps incomplete comparisons pending: {"checked":true,"quantity":9,"orderItemId":"item"} 15ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > keeps incomplete comparisons pending: {"checked":true,"quantity":null,"orderItemId":"item"} 16ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > keeps incomplete comparisons pending: {"checked":true,"quantity":8,"orderItemId":null} 16ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > keeps the source model visible when a line is confirmed or edited ({"checked":true,"trial":false}) 18ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > keeps the source model visible when a line is confirmed or edited ({"checked":false,"trial":false}) 16ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > keeps the source model visible when a line is confirmed or edited ({"checked":true,"trial":true}) 17ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > keeps the source model visible when a line is confirmed or edited ({"checked":false,"trial":true}) 16ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > labels a reviewer-added line without model provenance as a manual review 16ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > confirms removal of an unmatched order item without recording delivery 1158ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > opens Resolve in the main window and header back returns to lines 51ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > saves a Resolve correction for review without confirming or approving 57ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > counts only a cancellation of an absent order item in the review count (unresolved) 13ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > counts only a cancellation of an absent order item in the review count (cancel-requested) 13ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > shows what's needed from Resolve on the line's row 13ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > moves a slip line onto an order item by long pressing and dragging, and the likely row goes with it 591ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > a slip line shown beside its likely order item can be dropped there to link it 546ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > scrolling past a slip line or tapping it never starts a drag 547ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > drags an order item onto a slip line to pair them 559ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > letting go of a held half opens its options 573ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > says Empty on the side of a card with no match 27ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > an order item dragged onto another slip line leaves the line it was paired with 560ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > reopens a completed repeat-scan decision without changing it until saved 54ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > puts unresolved comparisons before received comparisons 26ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > splits from the order half menu too 569ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > records supplier entry choice: Keep it anyway 595ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > records supplier entry choice: Send it back 594ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > records a shipped-material mismatch without approving quantities 598ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > marks linked halves with caution borders for a return, but not for kept material 65ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > offers the top three part cards and create instead from the slip menu 596ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > opens a prefilled create form from the fourth card without saving until submitted 596ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > takes a missing-quantity line back to its editor instead of adding an uncounted part 585ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > shows a rejected add inside the chooser and keeps the draft available 594ms
+Not implemented: Window's scrollBy() method
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: Window's scrollBy() method
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > does not offer adding parts to a reviewer without creation permission 538ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > offers one Accept for a line where nothing came, whatever the printed BO (10) 54ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > offers one Accept for a line where nothing came, whatever the printed BO (9) 44ms
+Not implemented: Window's scrollBy() method
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: Window's scrollBy() method
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > offers one Accept for a line where nothing came, whatever the printed BO (null) 45ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > uses the same confirmation action with standard wording for a matching delivery 38ms
+Not implemented: Window's scrollBy() method
+Not implemented: Window's scrollBy() method
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > prefills an explicitly stated package size when the slip is counted in boxes 60ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > accepts a matching comparison with the animated button 47ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > offers Accept only when it settles the row 24ms
+Not implemented: Window's scrollBy() method
+Not implemented: Window's scrollBy() method
+Not implemented: Window's scrollBy() method
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > links a slip line shown beside its likely order item when confirmed 30ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > confirms an order item with nothing on the slip as still due, and it keeps its place 39ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > brings Accept back when the save fails 41ms
+Not implemented: Window's scrollBy() method
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > Modify reverses pair acceptance without unlinking the part or receiving quantities 588ms
+Not implemented: Window's scrollBy() method
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > Modify reopens an accepted order-only pair and allows accepting it again 629ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > opens slip options by holding the empty left card 572ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > confirms not-an-item removal and hides only that detection without receiving anything 1150ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > explains unavailable duplicate scans instead of opening a broken comparison 14ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > opens the new-list form from Match without creating anything until submitted 27ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > creates a new list before any catalogue lines are matched 31ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > opens duplicate comparison in the main viewer and returns to the same review 27ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > shows a trash target while dragging an unmatched order part and confirms its removal 581ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > hides the trash on drag cancellation and never removes an item 546ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > does not offer trash for an order part with received quantities 540ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > drops a detected slip item into the existing removal confirmation 578ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > asks before changing a supplier-code link and respects the answer (true) 83ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > asks before changing a supplier-code link and respects the answer (false) 75ms
+Not implemented: Window's scrollBy() method
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > opens selection from a long press on an empty slip half 538ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > accepts a short line without a backorder question; the rest stays due 29ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > accepts a part match independently when the slip quantity is 12 29ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > returns to the originating material list from a review 16ms
+Not implemented: Window's scrollBy() method
+Not implemented: Window's scrollBy() method
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > excludes only the chosen line from a multi-line part comparison 51ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > shows Review Complete instead of Approval not ready for fully posted lines with an unset document checkbox 12ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > queue separates unchecked lines from ready receipts (1 unchecked) 5ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > queue separates unchecked lines from ready receipts (0 unchecked) 3ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > marks a part-received order as still waiting and says what Accept means 11ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > does not let the short-line Accept shortcut clear a partial cancellation decision 17ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > Accept preserves existing backordered and other explicit Resolve decisions 25ms
+ ✓ src/components/materialLists/ReceivingWorkspace.test.tsx > Accept preserves existing unexplained and other explicit Resolve decisions 24ms
+ ✓ src/components/materialLists/OrderWaitingWarning.test.tsx > waits only once receiving has begun, and lists what is still to come 1ms
+ ✓ src/components/materialLists/OrderWaitingWarning.test.tsx > shows a labelled triangle that opens the outstanding items 101ms
+ ✓ src/components/materialLists/OrderWaitingWarning.test.tsx > shows nothing when the order waits for nothing 6ms
+ ✓ src/components/materialLists/OrderWaitingWarning.test.tsx > marks the order receiving summary when an order came short 10ms
+ ✓ src/components/materialLists/OrderWaitingWarning.test.tsx > gives an order section on the material list what it still waits for 1ms
+ ✓ src/lib/receiving-resolution.test.ts > independent receiving resolutions > keeps an unconverted or missing order unit out of the ready-to-approve count 1ms
+ ✓ src/lib/receiving-resolution.test.ts > independent receiving resolutions > invalidates counterpart specification or packaging edits but not routine received progress 0ms
+ ✓ src/lib/receiving-resolution.test.ts > independent receiving resolutions > matching alone never clears specification, quantity or delivery 0ms
+ ✓ src/lib/receiving-resolution.test.ts > independent receiving resolutions > skip blocks checked and highly confident lines until explicitly resumed 0ms
+ ✓ src/lib/receiving-resolution.test.ts > independent receiving resolutions > invalidates decisions if description changes 0ms
+ ✓ src/lib/receiving-resolution.test.ts > independent receiving resolutions > invalidates decisions if sku changes 0ms
+ ✓ src/lib/receiving-resolution.test.ts > independent receiving resolutions > invalidates decisions if unit changes 0ms
+ ✓ src/lib/receiving-resolution.test.ts > independent receiving resolutions > invalidates decisions if orderItemId changes 0ms
+ ✓ src/lib/receiving-resolution.test.ts > independent receiving resolutions > keeps paper and site counts separate, receiving only the accepted quantity 0ms
+ ✓ src/lib/receiving-resolution.test.ts > independent receiving resolutions > requires delivery issue when actual count differs from paper 0ms
+ ✓ src/lib/receiving-resolution.test.ts > independent receiving resolutions > does not quietly receive a rejected substitute 0ms
+ ✓ src/lib/receiving-resolution.test.ts > independent receiving resolutions > lets a short line through without a remainder decision but cannot cancel an order by receipt 0ms
+ ✓ src/lib/receiving-resolution.test.ts > independent receiving resolutions > keeps blocking an excess, a bad count and a wrong part on a short order 0ms
+ ✓ src/lib/receiving-resolution.test.ts > independent receiving resolutions > totals several printed lines for the same ordered item without inventing shortages 0ms
+ ✓ src/lib/receiving-resolution.test.ts > independent receiving resolutions > keeps excess returning quantities out of accepted receipt totals 0ms
+ ✓ src/lib/receiving-resolution.test.ts > allocation conservation > allows splits and merges with exactly conserved quantities 0ms
+ ✓ src/lib/receiving-resolution.test.ts > allocation conservation > rejects duplication, quantity inflation, implicit conversions, and approved source rows 0ms
+ ✓ src/lib/receiving-resolution.test.ts > accepts a line where nothing came without a backorder decision 0ms
+ ✓ src/lib/receiving-resolution.test.ts > accepts an explicitly confirmed full backorder without receiving any goods 0ms
+ ✓ src/lib/receiving-progress.test.ts > counts a short line confirmed as read as ready, not as still to check 2ms
+ ✓ src/lib/receiving-progress.test.ts > does not count an order item left off the slip, only a requested cancellation 0ms
+ ✓ src/lib/receiving-completion.test.ts > uses matching posted receipts even with an unset document flag 1ms
+ ✓ src/lib/receiving-completion.test.ts > keeps quantity changes in review 0ms
+ ✓ src/lib/receiving-completion.test.ts > keeps item changes in review 0ms
+ ✓ src/lib/receiving-completion.test.ts > keeps kind changes in review 0ms
+ ✓ src/lib/receiving-completion.test.ts > keeps unapproved changes in review 0ms
+ ✓ src/lib/receiving-completion.test.ts > keeps version changes in review 0ms
+ ✓ src/lib/receiving-completion.test.ts > keeps order changes in review 0ms
+ ✓ src/lib/receiving-completion.test.ts > keeps kindConfirmed changes in review 0ms
+ ✓ src/lib/receiving-completion.test.ts > keeps cancel-requested changes in review 0ms
+ ✓ src/lib/receiving-completion.test.ts > keeps unchecked changes in review 0ms
+ ✓ src/lib/receiving-completion.test.ts > keeps trial changes in review 0ms
+ ✓ src/lib/receiving-completion.test.ts > does not infer completion for an empty or entirely excluded slip 0ms
+ ✓ src/lib/receiving-completion.test.ts > preserves older posted receipts without an explicit checked field 0ms
+ ✓ src/lib/receiving-completion.test.ts > does not hold a slip open for an order item left off it (unresolved) 0ms
+ ✓ src/lib/receiving-completion.test.ts > does not hold a slip open for an order item left off it (outstanding) 0ms
+ ✓ src/lib/receiving-completion.test.ts > does not hold a slip open for an order item left off it (backordered) 0ms
+ ✓ src/lib/receiving-completion.test.ts > completes a slip whose accepted line came short of the order 0ms
+
+ Test Files  5 passed (5)
+      Tests  151 passed (151)
+   Start at  06:18:22
+   Duration  33.87s (transform 687ms, setup 97ms, import 1.04s, tests 31.17s, environment 1.24s)
+

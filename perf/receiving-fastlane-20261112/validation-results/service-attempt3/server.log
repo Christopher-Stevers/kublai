@@ -1,0 +1,26 @@
+2026-11-12 06:21:06.565 EST [420811] LOG:  00000: starting PostgreSQL 18.1 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 16.2.1 20260810, 64-bit
+2026-11-12 06:21:06.565 EST [420811] LOCATION:  PostmasterMain, postmaster.c:1102
+2026-11-12 06:21:06.565 EST [420811] LOG:  00000: listening on Unix socket "/tmp/foremanhq-purchase-pg.n0vfLW/.s.PGSQL.55461"
+2026-11-12 06:21:06.565 EST [420811] LOCATION:  ListenServerPort, pqcomm.c:658
+2026-11-12 06:21:06.566 EST [420817] LOG:  00000: database system was shut down at 2026-11-12 06:21:06 EST
+2026-11-12 06:21:06.566 EST [420817] LOCATION:  StartupXLOG, xlog.c:5511
+2026-11-12 06:21:06.567 EST [420811] LOG:  00000: database system is ready to accept connections
+2026-11-12 06:21:06.567 EST [420811] LOCATION:  process_pm_child_exit, postmaster.c:2346
+2026-11-12 06:21:07.985 EST [420923] ERROR:  23514: new row for relation "kublai_packing_slip_review_history" violates check constraint "block_confirmation"
+2026-11-12 06:21:07.985 EST [420923] DETAIL:  Failing row contains (654ac519-9b7f-420e-85a7-4c578284720d, 00000000-0000-4000-8000-000000000001, 00000000-0000-4000-8000-000000000002, 5628683b-a7e6-40bf-8874-072779a5a2aa, 8f403d17-7e37-43fe-8f9f-83133999b773, 97717af1-d20d-45d7-9159-e955ffaeb4ca, confirmation, receiver, unknown, {"source": {"sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..., 2026-11-12 06:21:07.984011-05).
+2026-11-12 06:21:07.985 EST [420923] LOCATION:  ExecConstraints, execMain.c:2072
+2026-11-12 06:21:07.985 EST [420923] STATEMENT:  insert into "kublai_packing_slip_review_history" ("id", "organizationId", "jobId", "documentId", "versionId", "runId", "kind", "userId", "release", "data", "createdAt") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, default) on conflict do nothing
+2026-11-12 06:21:10.753 EST [420811] LOG:  00000: received fast shutdown request
+2026-11-12 06:21:10.753 EST [420811] LOCATION:  process_pm_shutdown_request, postmaster.c:2152
+2026-11-12 06:21:10.753 EST [420811] LOG:  00000: aborting any active transactions
+2026-11-12 06:21:10.753 EST [420811] LOCATION:  process_pm_shutdown_request, postmaster.c:2170
+2026-11-12 06:21:10.754 EST [420811] LOG:  00000: background worker "logical replication launcher" (PID 420820) exited with exit code 1
+2026-11-12 06:21:10.754 EST [420811] LOCATION:  LogChildExit, postmaster.c:2832
+2026-11-12 06:21:10.755 EST [420815] LOG:  00000: shutting down
+2026-11-12 06:21:10.755 EST [420815] LOCATION:  ShutdownXLOG, xlog.c:6653
+2026-11-12 06:21:10.755 EST [420815] LOG:  00000: checkpoint starting: shutdown immediate
+2026-11-12 06:21:10.755 EST [420815] LOCATION:  LogCheckpointStart, xlog.c:6703
+2026-11-12 06:21:10.776 EST [420815] LOG:  00000: checkpoint complete: wrote 1058 buffers (6.5%), wrote 5 SLRU buffers; 0 WAL file(s) added, 0 removed, 1 recycled; write=0.006 s, sync=0.009 s, total=0.022 s; sync files=8089, longest=0.001 s, average=0.000 s; distance=13731 kB, estimate=13731 kB; lsn=0/24CCC68, redo lsn=0/24CCC68
+2026-11-12 06:21:10.776 EST [420815] LOCATION:  LogCheckpointEnd, xlog.c:6793
+2026-11-12 06:21:10.780 EST [420811] LOG:  00000: database system is shut down
+2026-11-12 06:21:10.780 EST [420811] LOCATION:  UnlinkLockFiles, miscinit.c:1197

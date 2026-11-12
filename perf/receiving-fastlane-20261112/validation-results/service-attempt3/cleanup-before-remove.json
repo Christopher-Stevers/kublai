@@ -1,0 +1,14 @@
+{
+  "originalExitCode": 0,
+  "pgStopFailed": 0,
+  "copyFailed": 0,
+  "sourceCheckFailed": 0,
+  "postmasterPid": 420811,
+  "postmasterAbsent": false,
+  "postmasterState": "Z",
+  "postmasterNonlive": true,
+  "socketAbsent": true,
+  "expectedRollback23514Count": 1,
+  "unexpectedPGErrors": 0,
+  "finalPGLogPreserved": true
+}

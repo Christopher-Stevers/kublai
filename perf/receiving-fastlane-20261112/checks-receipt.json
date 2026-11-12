@@ -1,0 +1,39 @@
+{
+  "sourceFingerprint": "f62224056be1245581c9a440a5777a921d8d36f3076e33156214ae78008785c3",
+  "validationSourceFingerprint": "bbd8764c4de45d72e15ffa7798d3fbe4ee41914e246747f6a007716967484ed5",
+  "runtimeManifestSha256": "3f202c043a4e9988b804227f78cace88372d39b1a0ee6ba3a237b526915d304c",
+  "validationManifestSha256": "fac76e6f0444d23fbfb1512f57252248a091e7a3f071a424e27e44e51894c57a",
+  "results": [
+    {
+      "kind": "tests",
+      "exitCode": 0,
+      "command": "vitest run --root /home/tim/.openclaw/workspace/releases/speed-phase0-receiving-rc-validation-20261112-dev1 --config /home/tim/.openclaw/workspace/releases/speed-phase0-receiving-rc-validation-20261112-dev1/receiving-rc-unit.vitest.mts --reporter=verbose",
+      "logPath": "/home/tim/.openclaw/workspace/kublai/perf/receiving-fastlane-20261112/validation-results/units/test.log",
+      "logSha256": "621dfbd330448eb32e5044fe84e982a4c2f31e60c3d82b24f38ee7a539d80bd3",
+      "passedTests": 151,
+      "testPaths": [
+        "src/lib/receiving-completion.test.ts",
+        "src/lib/receiving-progress.test.ts",
+        "src/lib/receiving-resolution.test.ts",
+        "src/components/materialLists/ReceivingWorkspace.test.tsx",
+        "src/components/materialLists/OrderWaitingWarning.test.tsx"
+      ]
+    },
+    {
+      "kind": "tests",
+      "exitCode": 0,
+      "command": "bash perf/receiving-fastlane-20261112/service-private.sh /home/tim/.openclaw/workspace/releases/speed-phase0-receiving-rc-validation-20261112-dev1 /tmp/receiving-rc-service-evidence-20261112-dev1-attempt3 6a511b59d290c75962ef7c9caad7b75de7aec6accb3d77210e339e5cb1b03ea1",
+      "logPath": "/home/tim/.openclaw/workspace/kublai/perf/receiving-fastlane-20261112/validation-results/service-attempt3/test.log",
+      "logSha256": "09ea866f93b1cf724889e0fcdab27dfec110cfb1069d18d3af4ca5f56dd9b304",
+      "passedTests": 100,
+      "testPaths": [
+        "src/server/packing-slips/service.integration.test.ts (generated private-client/lookup-table safety fixture only)"
+      ]
+    }
+  ],
+  "historicalFailedAttempts": [
+    "validation-results/service-attempt1",
+    "validation-results/service-attempt2"
+  ],
+  "scope": "source-bound RC own tests; private synthetic thin schema; no compiled auth/worker/latency claim"
+}

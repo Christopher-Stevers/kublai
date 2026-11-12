@@ -1,0 +1,25 @@
+2026-11-12 06:20:17.433 EST [420288] LOG:  00000: starting PostgreSQL 18.1 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 16.2.1 20260810, 64-bit
+2026-11-12 06:20:17.433 EST [420288] LOCATION:  PostmasterMain, postmaster.c:1102
+2026-11-12 06:20:17.433 EST [420288] LOG:  00000: listening on Unix socket "/tmp/foremanhq-purchase-pg.1zMWQ3/.s.PGSQL.55461"
+2026-11-12 06:20:17.433 EST [420288] LOCATION:  ListenServerPort, pqcomm.c:658
+2026-11-12 06:20:17.434 EST [420294] LOG:  00000: database system was shut down at 2026-11-12 06:20:17 EST
+2026-11-12 06:20:17.434 EST [420294] LOCATION:  StartupXLOG, xlog.c:5511
+2026-11-12 06:20:17.435 EST [420288] LOG:  00000: database system is ready to accept connections
+2026-11-12 06:20:17.435 EST [420288] LOCATION:  process_pm_child_exit, postmaster.c:2346
+2026-11-12 06:20:18.465 EST [420392] ERROR:  42601: syntax error at or near "[" at character 123
+2026-11-12 06:20:18.465 EST [420392] LOCATION:  scanner_yyerror, scan.l:1236
+2026-11-12 06:20:18.465 EST [420392] STATEMENT:  CREATE TABLE "kublai_material" ("id" uuid PRIMARY KEY,"organizationId" uuid,"name" varchar(100),"groupPath" jsonb DEFAULT [],"createdAt" timestamp with time zone)
+2026-11-12 06:20:18.700 EST [420288] LOG:  00000: received fast shutdown request
+2026-11-12 06:20:18.700 EST [420288] LOCATION:  process_pm_shutdown_request, postmaster.c:2152
+2026-11-12 06:20:18.700 EST [420288] LOG:  00000: aborting any active transactions
+2026-11-12 06:20:18.700 EST [420288] LOCATION:  process_pm_shutdown_request, postmaster.c:2170
+2026-11-12 06:20:18.701 EST [420288] LOG:  00000: background worker "logical replication launcher" (PID 420297) exited with exit code 1
+2026-11-12 06:20:18.701 EST [420288] LOCATION:  LogChildExit, postmaster.c:2832
+2026-11-12 06:20:18.701 EST [420292] LOG:  00000: shutting down
+2026-11-12 06:20:18.701 EST [420292] LOCATION:  ShutdownXLOG, xlog.c:6653
+2026-11-12 06:20:18.701 EST [420292] LOG:  00000: checkpoint starting: shutdown immediate
+2026-11-12 06:20:18.701 EST [420292] LOCATION:  LogCheckpointStart, xlog.c:6703
+2026-11-12 06:20:18.706 EST [420292] LOG:  00000: checkpoint complete: wrote 946 buffers (5.8%), wrote 3 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.005 s, sync=0.001 s, total=0.005 s; sync files=305, longest=0.001 s, average=0.000 s; distance=4372 kB, estimate=4372 kB; lsn=0/1BA92E8, redo lsn=0/1BA92E8
+2026-11-12 06:20:18.706 EST [420292] LOCATION:  LogCheckpointEnd, xlog.c:6793
+2026-11-12 06:20:18.709 EST [420288] LOG:  00000: database system is shut down
+2026-11-12 06:20:18.709 EST [420288] LOCATION:  UnlinkLockFiles, miscinit.c:1197

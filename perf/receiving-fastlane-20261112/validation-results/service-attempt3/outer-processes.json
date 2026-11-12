@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "token": "31e9c5b58747109b76f9ec1d34b2bec23001c95ebdfc2159",
+  "supervisor": {
+    "pid": 420760,
+    "state": "R",
+    "ppid": 3642665,
+    "pgid": 420760,
+    "startTime": "233979249"
+  },
+  "root": {
+    "pid": 420767,
+    "state": "R",
+    "ppid": 420760,
+    "pgid": 420767,
+    "startTime": "233979253"
+  },
+  "processes": [
+    {
+      "pid": 420767,
+      "state": "S",
+      "ppid": 420760,
+      "pgid": 420767,
+      "startTime": "233979253"
+    },
+    {
+      "pid": 420795,
+      "state": "S",
+      "ppid": 420767,
+      "pgid": 420795,
+      "startTime": "233979265"
+    },
+    {
+      "pid": 420796,
+      "state": "S",
+      "ppid": 420795,
+      "pgid": 420795,
+      "startTime": "233979265"
+    },
+    {
+      "pid": 420803,
+      "state": "S",
+      "ppid": 420796,
+      "pgid": 420795,
+      "startTime": "233979272"
+    },
+    {
+      "pid": 420804,
+      "state": "R",
+      "ppid": 420803,
+      "pgid": 420795,
+      "startTime": "233979272"
+    },
+    {
+      "pid": 420821,
+      "state": "R",
+      "ppid": 420767,
+      "pgid": 420767,
+      "startTime": "233979298"
+    },
+    {
+      "pid": 420825,
+      "state": "S",
+      "ppid": 420767,
+      "pgid": 420767,
+      "startTime": "233979301"
+    },
+    {
+      "pid": 420826,
+      "state": "S",
+      "ppid": 420825,
+      "pgid": 420826,
+      "startTime": "233979304"
+    },
+    {
+      "pid": 420903,
+      "state": "R",
+      "ppid": 420826,
+      "pgid": 420826,
+      "startTime": "233979326"
+    },
+    {
+      "pid": 420940,
+      "state": "R",
+      "ppid": 420767,
+      "pgid": 420767,
+      "startTime": "233979701"
+    },
+    {
+      "pid": 420941,
+      "state": "S",
+      "ppid": 420767,
+      "pgid": 420941,
+      "startTime": "233979707"
+    },
+    {
+      "pid": 420942,
+      "state": "S",
+      "ppid": 420941,
+      "pgid": 420941,
+      "startTime": "233979707"
+    },
+    {
+      "pid": 420946,
+      "state": "R",
+      "ppid": 420767,
+      "pgid": 420767,
+      "startTime": "233979718"
+    }
+  ],
+  "status": "stopped",
+  "remaining": [],
+  "groupActions": [],
+  "familyAbsent": true,
+  "ownedIdentitiesAbsent": true,
+  "rootExitCode": 0,
+  "timedOut": false,
+  "requestedSignal": null
+}

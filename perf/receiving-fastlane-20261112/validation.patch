@@ -1,0 +1,559 @@
+--- a/src/lib/receiving-completion.test.ts
++++ b/src/lib/receiving-completion.test.ts
+@@ -12,7 +12,7 @@
+ it("uses matching posted receipts even with an unset document flag", () => {
+   expect(receivingReviewComplete(posted(), "version")).toBe(true);
+ });
+-it.each(["quantity", "item", "kind", "unapproved", "version", "order", "kindConfirmed", "unresolved", "unchecked", "trial"])("keeps %s changes in review", change => {
++it.each(["quantity", "item", "kind", "unapproved", "version", "order", "kindConfirmed", "cancel-requested", "unchecked", "trial"])("keeps %s changes in review", change => {
+   const review = posted();
+   const line = review.lines[0]!;
+   if (change === "quantity") line.quantity = 3;
+@@ -22,7 +22,7 @@
+   if (change === "version") review.versionId = "old";
+   if (change === "order") review.orderConfirmed = false;
+   if (change === "kindConfirmed") review.kindConfirmed = false;
+-  if (change === "unresolved") review.orderResolutions = { item: {disposition:"unresolved",note:"check",by:"user",at:"now"} };
++  if (change === "cancel-requested") review.orderResolutions = { item: {disposition:"cancel-requested",note:"cancel",by:"user",at:"now"} };
+   if (change === "unchecked") line.checked = false;
+   if (change === "trial") { review.sourceTrial = {runId:"trial",reader:"terra"}; line.checked = false; }
+   expect(receivingReviewComplete(review, "version")).toBe(false);
+@@ -41,3 +41,16 @@
+   delete review.lines[0]!.checked;
+   expect(receivingReviewComplete(review, "version")).toBe(true);
+ });
++
++it.each(["unresolved", "outstanding", "backordered"] as const)("does not hold a slip open for an order item left off it (%s)", disposition => {
++  const review = posted();
++  review.orderResolutions = { other: {disposition,note:"",by:"user",at:"now"} };
++  expect(receivingReviewComplete(review, "version")).toBe(true);
++});
++
++it("completes a slip whose accepted line came short of the order", () => {
++  const review = posted();
++  const line = review.lines[0]!;
++  line.ordered = 10;
++  expect(receivingReviewComplete(review, "version")).toBe(true);
++});
+--- /dev/null
++++ b/src/lib/receiving-progress.test.ts
+@@ -0,0 +1,77 @@
++import { expect, it } from "vitest";
++import type { ReceiptOrderItem } from "./packing-slip-review";
++import { initialReview } from "./receiving-review";
++import { receivingProgress } from "./receiving-progress";
++import {
++  newResolution,
++  resolutionCounterpartFingerprint,
++} from "./receiving-resolution";
++
++const item = (id: string): ReceiptOrderItem => ({
++  id,
++  description: "Valve",
++  sku: "V",
++  aliases: [],
++  ordered: 10,
++  received: 0,
++  verificationStatus: "pending",
++  unit: "ea",
++  piecesPerPack: null,
++  individualUnit: null,
++});
++function review() {
++  const r = initialReview(undefined, "version", "user");
++  r.kindConfirmed = true;
++  r.orderConfirmed = true;
++  r.lines = [
++    {
++      id: "line",
++      page: 1,
++      evidence: "Valve 6",
++      description: "Valve",
++      sku: "V",
++      unit: "ea",
++      quantity: 6,
++      ordered: 10,
++      unitPrice: null,
++      orderItemId: "a",
++      issues: ["Short"],
++      checked: true,
++    },
++  ];
++  return r;
++}
++
++it("counts a short line confirmed as read as ready, not as still to check", () => {
++  const r = review();
++  const line = r.lines[0]!;
++  line.resolution = {
++    ...newResolution(line, "user", "now"),
++    counterpartFingerprint: resolutionCounterpartFingerprint(item("a")),
++    match: "confirmed",
++    specification: "confirmed",
++    quantity: "confirmed",
++    delivery: "confirmed",
++    siteQuantity: 6,
++    acceptedQuantity: 6,
++    note: "Reviewer confirmed the displayed information is correct.",
++  };
++  const progress = receivingProgress(r, [item("a"), item("b")]);
++  expect(progress.ready.map((l) => l.id)).toEqual(["line"]);
++  expect(progress.toReview).toBe(0);
++});
++
++it("does not count an order item left off the slip, only a requested cancellation", () => {
++  const r = review();
++  r.orderResolutions = {
++    b: { disposition: "unresolved", note: "", by: "user", at: "now" },
++  };
++  expect(receivingProgress(r, [item("a"), item("b")]).toReview).toBe(0);
++  r.orderResolutions.b = {
++    disposition: "cancel-requested",
++    note: "Not needed",
++    by: "user",
++    at: "now",
++  };
++  expect(receivingProgress(r, [item("a"), item("b")]).toReview).toBe(1);
++});
+--- a/src/lib/receiving-resolution.test.ts
++++ b/src/lib/receiving-resolution.test.ts
+@@ -144,18 +144,41 @@
+     expect(resolutionBlockers(l)).toEqual([]);
+     expect(readyLine(l)).toBe(true);
+   });
+-  it("requires an explicit remainder decision and cannot cancel an order by receipt", () => {
++  it("lets a short line through without a remainder decision but cannot cancel an order by receipt", () => {
+     const l = resolved();
+     l.quantity = 6;
+     l.resolution!.evidenceFingerprint = resolutionEvidenceFingerprint(l);
+-    expect(resolutionBlockers(l, item)).toHaveLength(1);
++    // The four still stay outstanding on the order; nothing more is asked.
++    expect(resolutionBlockers(l, item)).toEqual([]);
++    expect(receivingLineReady(l, "delivery", item)).toBe(true);
++    l.resolution!.remainder = "unexplained";
++    l.resolution!.note = "Supplier did not say";
++    expect(resolutionBlockers(l, item)).toEqual([]);
+     l.resolution!.remainder = "cancelled";
+     l.resolution!.note = "Supplier cancelled remainder";
+-    expect(resolutionBlockers(l, item)[0]).toContain(
+-      "authorized order correction",
+-    );
++    expect(resolutionBlockers(l, item)).toEqual([
++      "Cancellation is recorded; an authorized order correction is still required.",
++    ]);
+     l.resolution!.remainder = "backordered";
+     expect(resolutionBlockers(l, item)).toEqual([]);
++  });
++  it("keeps blocking an excess, a bad count and a wrong part on a short order", () => {
++    const over = resolved();
++    over.quantity = 12;
++    over.resolution!.evidenceFingerprint = resolutionEvidenceFingerprint(over);
++    expect(resolutionBlockers(over, item)).toContain(
++      "Accept the excess explicitly, or exclude the quantity being returned from the accepted count.",
++    );
++    const count = resolved();
++    count.quantity = 6;
++    count.resolution!.evidenceFingerprint = resolutionEvidenceFingerprint(count);
++    count.resolution!.siteQuantity = -1;
++    expect(resolutionBlockers(count, item)).toContain("Enter a valid actual site count.");
++    const wrong = resolved();
++    wrong.resolution = { ...wrong.resolution!, delivery: "wrong", siteQuantity: 10, note: "Wrong valve" };
++    expect(resolutionBlockers(wrong, item)).toContain(
++      "Accept the substitution explicitly, or record zero accepted for the wrong part.",
++    );
+   });
+   it("totals several printed lines for the same ordered item without inventing shortages", () => {
+     const a = resolved(),
+@@ -242,6 +265,16 @@
+     ).toThrow("cannot be combined");
+   });
+ });
++it("accepts a line where nothing came without a backorder decision", () => {
++  const l = line();
++  l.quantity = 0;
++  l.resolution = { ...newResolution(l, "u", "now"),
++    counterpartFingerprint: resolutionCounterpartFingerprint(item),
++    match: "confirmed", specification: "confirmed", quantity: "confirmed",
++    delivery: "short", siteQuantity: 0, acceptedQuantity: 0, note: "Nothing delivered on this slip." };
++  expect(resolutionBlockers(l, item, [l], "delivery")).toEqual([]);
++  expect(receivingLineReady(l, "delivery", item)).toBe(true);
++});
+ it("accepts an explicitly confirmed full backorder without receiving any goods", () => {
+   const l = line();
+   l.quantity = 0;
+--- a/src/server/packing-slips/service.integration.test.ts
++++ b/src/server/packing-slips/service.integration.test.ts
+@@ -1234,6 +1234,19 @@
+     for(const lineId of ids) await resolveAction(f,{...allResolved,remainder:null},lineId);
+     await reviewAction(f.access,f.doc.documentId,{action:"approve",lineIds:ids,fingerprint:await finger(f.access)});
+     expect(Number((await item()).receivedQuantity)).toBe(8);
++  });
++  it("approves a short line without a backorder decision and leaves the rest due",async()=>{
++    const f=await confirmedHeader();
++    await resolveAction(f,{...allResolved,remainder:null,siteQuantity:6,acceptedQuantity:6,note:"Reviewer confirmed the displayed information is correct."});
++    await reviewAction(f.access,f.doc.documentId,{action:"approve",lineIds:["0"],fingerprint:await finger(f.access)});
++    expect(Number((await item()).receivedQuantity)).toBe(8);
++    expect(Number((await item()).quantity)).toBe(10);
++  });
++  it("still refuses a line whose remainder is cancelled until the order is corrected",async()=>{
++    const f=await confirmedHeader();
++    await resolveAction(f,{...allResolved,remainder:"cancelled",note:"Supplier cancelled the rest"});
++    await expect(reviewAction(f.access,f.doc.documentId,{action:"approve",lineIds:["0"],fingerprint:await finger(f.access)})).rejects.toThrow("authorized order correction");
++    expect(Number((await item()).receivedQuantity)).toBe(2);
+   });
+   it("records and undoes absent-item dispositions without creating receipt rows or changing orders",async()=>{
+     const f=await confirmedHeader();
+--- /dev/null
++++ b/src/components/materialLists/OrderWaitingWarning.test.tsx
+@@ -0,0 +1,121 @@
++import { afterEach, expect, it } from "vitest";
++import { cleanup, fireEvent, render, screen } from "@testing-library/react";
++import { orderStillWaiting } from "~/lib/order-waiting";
++import { OrderWaitingWarning } from "./OrderWaitingWarning";
++import { DeliveryTracker } from "./DeliveryTracker";
++import { materialSections } from "./MaterialSectionHeading";
++import type { ReceiptOrderItem } from "~/lib/packing-slip-review";
++
++afterEach(cleanup);
++
++const item = (
++  id: string,
++  description: string,
++  ordered: number,
++  received: number,
++  unit = "ea",
++): ReceiptOrderItem => ({
++  id,
++  description,
++  sku: "",
++  aliases: [],
++  ordered,
++  received,
++  verificationStatus: "pending",
++  unit,
++  piecesPerPack: null,
++  individualUnit: null,
++});
++
++it("waits only once receiving has begun, and lists what is still to come", () => {
++  expect(
++    orderStillWaiting([item("a", "Valve", 10, 0), item("b", "Elbow", 4, 0)]),
++  ).toEqual([]);
++  expect(
++    orderStillWaiting([
++      item("a", "Valve", 10, 6),
++      item("b", "Elbow", 4, 0),
++      item("c", "Tee", 2, 2),
++      item("d", "Cap", 1, 3),
++    ]),
++  ).toEqual([
++    { description: "Valve", outstanding: 4, unit: "ea" },
++    { description: "Elbow", outstanding: 4, unit: "ea" },
++  ]);
++  expect(orderStillWaiting([item("a", "Valve", 10, 10)])).toEqual([]);
++});
++
++it("shows a labelled triangle that opens the outstanding items", () => {
++  render(
++    <OrderWaitingWarning
++      items={[
++        { description: "Copper pipe", outstanding: 3, unit: "m" },
++        { description: "Valve", outstanding: 4, unit: "ea" },
++      ]}
++    />,
++  );
++  const triangle = screen.getByRole("button", {
++    name: "Still waiting for material: 2 items",
++  });
++  expect(triangle).toHaveAttribute(
++    "title",
++    "Still waiting for material\n3 m · Copper pipe\n4 · Valve",
++  );
++  fireEvent.keyDown(triangle, { key: "Enter" });
++  const menu = screen.getByRole("menu");
++  expect(menu).toHaveTextContent("Still waiting for material");
++  expect(menu).toHaveTextContent("3 mCopper pipe");
++  expect(menu).toHaveTextContent("4Valve");
++});
++
++it("shows nothing when the order waits for nothing", () => {
++  const { container } = render(<OrderWaitingWarning items={[]} />);
++  expect(container).toBeEmptyDOMElement();
++});
++
++it("marks the order receiving summary when an order came short", () => {
++  render(<DeliveryTracker items={[item("a", "Valve", 10, 6)]} slips={[]} />);
++  expect(
++    screen.getByRole("button", { name: "Still waiting for material: 1 item" }),
++  ).toBeInTheDocument();
++  cleanup();
++  render(<DeliveryTracker items={[item("a", "Valve", 10, 0)]} slips={[]} />);
++  expect(
++    screen.queryByRole("button", { name: /Still waiting for material/ }),
++  ).toBeNull();
++});
++
++it("gives an order section on the material list what it still waits for", () => {
++  const order = (receivedQuantity: string) => ({
++    id: "o1",
++    number: "PO-1",
++    status: "sent",
++    quantity: "10",
++    receivedQuantity,
++  });
++  const sections = materialSections(
++    [
++      {
++        id: "a",
++        sentOrderItemId: "x",
++        sentOrder: order("6"),
++        partDefinition: { displayName: "Valve" },
++      },
++      {
++        id: "b",
++        sentOrderItemId: "y",
++        sentOrder: order("10"),
++        descriptionSnapshot: "Elbow",
++      },
++    ],
++    "m",
++  );
++  expect(sections[0]!.waiting).toEqual([
++    { description: "Valve", outstanding: 4, unit: "" },
++  ]);
++  const unstarted = materialSections(
++    [{ id: "a", sentOrderItemId: "x", sentOrder: order("0") }],
++    "m",
++  );
++  expect(unstarted[0]!.waiting).toBeUndefined();
++});
+--- a/src/components/materialLists/ReceivingWorkspace.test.tsx
++++ b/src/components/materialLists/ReceivingWorkspace.test.tsx
+@@ -1,7 +1,7 @@
+ import { AppDialogHost } from "~/components/ui/app-dialogs";
+-import { newResolution } from "~/lib/receiving-resolution";
++import { newResolution, resolutionCounterpartFingerprint } from "~/lib/receiving-resolution";
+ import type { ReceivingLine } from "~/lib/receiving-review";
+-import type { SlipAnalysis } from "~/lib/packing-slip-review";
++import type { ReceiptOrderItem, SlipAnalysis } from "~/lib/packing-slip-review";
+ import { afterEach, beforeEach, expect, it, onTestFinished, vi } from "vitest";
+ import {
+   act,
+@@ -1297,9 +1297,16 @@
+   expect(badges[1]!.querySelector("svg")).not.toBeNull();
+ });
+ 
++it("treats a short line confirmed as read as settled; the rest stays due", async () => {
++  Object.assign(state.review.lines[0]!, { checked: true, quantity: 6 });
++  render(<ReceivingWorkspace jobId="job" />);
++  const row = (await screen.findByRole("heading", { name: "Valve" })).closest("li")!;
++  expect(row.querySelector("[data-comparison-state]")).toHaveAttribute("data-comparison-state", "complete");
++  expect(within(row).getByText("2 short")).toBeInTheDocument();
++});
++
+ it.each([
+   { checked: false, quantity: 8, orderItemId: "item" },
+-  { checked: true, quantity: 6, orderItemId: "item" },
+   { checked: true, quantity: 9, orderItemId: "item" },
+   { checked: true, quantity: null, orderItemId: "item" },
+   { checked: true, quantity: 8, orderItemId: null },
+@@ -1456,11 +1463,14 @@
+   expect(posts.some((p) => p.action === "approve")).toBe(false);
+ });
+ 
+-it("keeps unresolved absent-order-item notes in the review count", async () => {
++it.each([
++  ["unresolved", "1 still to review"],
++  ["cancel-requested", "2 still to review"],
++] as const)("counts only a cancellation of an absent order item in the review count (%s)", async (disposition, text) => {
+   Object.assign(state.review, {
+     orderResolutions: {
+       absent: {
+-        disposition: "unresolved",
++        disposition,
+         note: "Ask supplier",
+         by: "user",
+         at: "now",
+@@ -1468,7 +1478,7 @@
+     },
+   });
+   render(<ReceivingWorkspace jobId="job" />);
+-  await screen.findByText("2 still to review");
++  await screen.findByText(text);
+ });
+ 
+ it("shows what's needed from Resolve on the line's row", async () => {
+@@ -1651,8 +1661,8 @@
+     await screen.findByText("Drag onto an order item to pair them."),
+   ).toBeInTheDocument();
+   expect(screen.getByRole("menuitem", { name: "View on slip" })).toBeVisible();
+-  expect(screen.getByRole("menuitem", {name:"Shipped Material Doesn’t Match Slip"})).toBeVisible();
+-  expect(screen.getByRole("menuitem", {name:"Supplier Entered This Incorrectly"})).toBeVisible();
++  expect(screen.getByRole("menuitem", {name:"What arrived doesn’t match the slip"})).toBeVisible();
++  expect(screen.getByRole("menuitem", {name:"Supplier sent the wrong item"})).toBeVisible();
+   fireEvent.click(
+     screen.getByRole("menuitem", { name: "Split" }),
+   );
+@@ -1751,15 +1761,15 @@
+   await waitFor(() => expect(posts).toContainEqual(expect.objectContaining({ action: "splitComparison", lineIds: ["0"] })));
+ });
+ 
+-it.each([['Keep material anyway?', 'supplier-keep'], ['Material needs to be returned.', 'supplier-return']])("records supplier entry choice: %s", async (label, decision) => {
++it.each([['Keep it anyway', 'supplier-keep'], ['Send it back', 'supplier-return']])("records supplier entry choice: %s", async (label, decision) => {
+   render(<ReceivingWorkspace jobId="job" />);
+   const card = (await screen.findByRole("heading", { name: "Valve" })).closest("li")!;
+   const half = within(card).getAllByRole("group", {name:/ reading$/})[0]!;
+   fireEvent.touchStart(half, {touches:[{clientX:300,clientY:300}]});
+   await hold();
+   fireEvent.touchEnd(window,{touches:[]});
+-  expect(screen.getByRole("menuitem",{name:"Shipped Material Doesn’t Match Slip"})).toBeVisible();
+-  fireEvent.click(screen.getByRole("menuitem",{name:"Supplier Entered This Incorrectly"}));
++  expect(screen.getByRole("menuitem",{name:"What arrived doesn’t match the slip"})).toBeVisible();
++  fireEvent.click(screen.getByRole("menuitem",{name:"Supplier sent the wrong item"}));
+   expect(posts).toEqual([]);
+   fireEvent.click(await screen.findByRole("button",{name:label}));
+   await waitFor(() => expect(posts).toContainEqual(expect.objectContaining({action:"resolve",lineId:"0",materialIssue:decision,delivery:"wrong",match:"unresolved",quantity:"unresolved"})));
+@@ -1773,7 +1783,7 @@
+   fireEvent.touchStart(half, {touches:[{clientX:300,clientY:300}]});
+   await hold();
+   fireEvent.touchEnd(window,{touches:[]});
+-  fireEvent.click(screen.getByRole("menuitem",{name:"Shipped Material Doesn’t Match Slip"}));
++  fireEvent.click(screen.getByRole("menuitem",{name:"What arrived doesn’t match the slip"}));
+   fireEvent.click(await screen.findByRole("button",{name:"Record mismatch"}));
+   await waitFor(() => expect(posts).toContainEqual(expect.objectContaining({action:"resolve",lineId:"0",materialIssue:"shipped-mismatch",specification:"unresolved",delivery:"wrong"})));
+ });
+@@ -1874,7 +1884,7 @@
+   expect(await screen.findByRole("menuitem", {name:"View on slip"})).toBeVisible();
+   expect(screen.queryByRole("menuitem", {name:"Add this part to material list"})).not.toBeInTheDocument();
+ });
+-it.each([10, 9, null])("only offers Accept With Backorder when printed BO accounts for the full shortage (%s)", async (bo) => {
++it.each([10, 9, null])("offers one Accept for a line where nothing came, whatever the printed BO (%s)", async (bo) => {
+   state.items[0]!.received = 0;
+   state.review.lines[0]!.quantity = 0;
+   Object.assign(state.review, { analysisRunId: "run" });
+@@ -1893,14 +1903,17 @@
+     expect(backorder?.parentElement?.querySelectorAll("dt")[1]).toHaveTextContent("Received");
+     expect(screen.queryByText(/accounts for the shortage/)).not.toBeInTheDocument();
+   }
+-  const accept = screen.queryByRole("button", { name: "Accept With Backorder" });
+-  if (bo !== 10) { expect(accept).toBeNull(); return; }
+-  expect(accept).toBeEnabled();
+-  fireEvent.click(accept!);
++  // A BO figure that disagrees is a note on the line, not a block.
++  if (bo === 9) expect(screen.getByText(/BO mismatch/)).toBeInTheDocument();
++  if (bo === null) expect(screen.getByText(/BO quantity not found/)).toBeInTheDocument();
++  expect(screen.queryByRole("button", { name: "Accept With Backorder" })).toBeNull();
++  const accept = screen.getByRole("button", { name: "Accept" });
++  fireEvent.click(accept);
+   await waitFor(() => expect(posts).toHaveLength(1));
+   expect(posts[0]).toMatchObject({ action: "resolve", lineId: "0",
+     delivery: "short", siteQuantity: 0, acceptedQuantity: 0,
+-    remainder: "backordered", match: "confirmed", quantity: "confirmed" });
++    remainder: bo === 10 ? "backordered" : null, match: "confirmed", quantity: "confirmed" });
++  expect(state.items[0]!.received).toBe(0);
+   expect(state.items[0]!.received).toBe(0);
+ });
+ it("uses the same confirmation action with standard wording for a matching delivery", async () => {
+@@ -2025,8 +2038,9 @@
+ });
+ it("offers Accept only when it settles the row", async () => {
+   confirmSetup();
+-  render(<ReceivingWorkspace jobId="job" />);
+-  // 6 of the 8 still due, and a line with no quantity.
++  state.review.lines[0]!.quantity = 9;
++  render(<ReceivingWorkspace jobId="job" />);
++  // 9 for the 8 still due, and a line with no quantity.
+   const valve = (await screen.findByRole("heading", { name: "Valve" })).closest(
+     "li",
+   )!;
+@@ -2176,8 +2190,8 @@
+   fireEvent.touchStart(within(row).getByRole("group", {name:"Order"}), {touches:[{clientX:80,clientY:300}]});
+   await hold();fireEvent.touchEnd(window, {touches:[]});
+   expect(await screen.findByRole("menuitem", {name:"View on slip"})).toBeVisible();
+-  expect(screen.queryByRole("menuitem", {name:"Shipped Material Doesn’t Match Slip"})).not.toBeInTheDocument();
+-  expect(screen.queryByRole("menuitem", {name:"Supplier Entered This Incorrectly"})).not.toBeInTheDocument();
++  expect(screen.queryByRole("menuitem", {name:"What arrived doesn’t match the slip"})).not.toBeInTheDocument();
++  expect(screen.queryByRole("menuitem", {name:"Supplier sent the wrong item"})).not.toBeInTheDocument();
+   fireEvent.click(screen.getByRole("menuitem", {name:"Add this part to material list"}));
+   expect(await screen.findByRole("dialog", {name:"Add this part to material list"})).toBeVisible();
+   expect(posts).toEqual([]);
+@@ -2382,7 +2396,20 @@
+ });
+ 
+ 
+-it.each([3, 12])("accepts a part match independently when the slip quantity is %s", async (quantity) => {
++it("accepts a short line without a backorder question; the rest stays due", async () => {
++  confirmSetup();
++  render(<ReceivingWorkspace jobId="job" />);
++  // 6 of the 8 still due.
++  const row = (await screen.findByRole("heading", { name: "Valve" })).closest("li")!;
++  expect(within(row).queryByRole("button", { name: "Accept Match" })).toBeNull();
++  fireEvent.click(confirmButton(row)!);
++  await waitFor(() => expect(posts).toHaveLength(1));
++  expect(posts[0]).toMatchObject({ action: "resolve", lineId: "0", match: "confirmed",
++    quantity: "confirmed", delivery: "confirmed", siteQuantity: 6, acceptedQuantity: 6, remainder: null });
++  expect(state.review.lines[0]!.approved).toBeUndefined();
++});
++
++it.each([12])("accepts a part match independently when the slip quantity is %s", async (quantity) => {
+   confirmSetup();
+   state.review.lines[0]!.quantity = quantity;
+   render(<ReceivingWorkspace jobId="job" />);
+@@ -2442,3 +2469,57 @@
+   expect(await screen.findByText(toReview ? "1 to check" : "10 ready to approve")).toBeInTheDocument();
+   expect(screen.queryByText("10 to check")).not.toBeInTheDocument();
+ });
++
++it("marks a part-received order as still waiting and says what Accept means", async () => {
++  render(<ReceivingWorkspace jobId="job" />);
++  const match = await screen.findByRole("region", { name: "Step 2: Match" });
++  expect(within(match).getByRole("button", { name: "Still waiting for material: 1 item" })).toHaveAttribute(
++    "title", "Still waiting for material\n8 · Valve");
++  const lines = screen.getByRole("region", { name: "Step 3: Line By Line Matching" });
++  expect(within(lines).getByText(/Accept when the slip was read correctly and matched to the right order item\. It does not mean everything arrived\./)).toBeInTheDocument();
++});
++
++
++it("does not let the short-line Accept shortcut clear a partial cancellation decision", async () => {
++  const line = state.review.lines[0] as ReceivingLine;
++  line.checked = false;
++  line.resolution = {
++    ...newResolution(line, "receiver", "now"),
++    counterpartFingerprint: resolutionCounterpartFingerprint(state.items[0] as ReceiptOrderItem),
++    match: "unresolved", specification: "confirmed", quantity: "confirmed",
++    delivery: "confirmed", siteQuantity: 6, acceptedQuantity: 6,
++    remainder: "cancelled", note: "Supplier cancelled the remaining quantity.",
++  };
++  render(<ReceivingWorkspace jobId="job" />);
++  const row = (await screen.findByRole("heading", { name: "Valve" })).closest("li")!;
++  expect(confirmButton(row)).toBeNull();
++  expect(line.resolution.remainder).toBe("cancelled");
++  expect(line.resolution.match).toBe("unresolved");
++  expect(posts).toEqual([]);
++});
++
++it.each(["backordered", "unexplained"] as const)("Accept preserves existing %s and other explicit Resolve decisions", async (remainder) => {
++  confirmSetup();
++  const line = state.review.lines[0] as ReceivingLine;
++  line.checked = false;
++  line.resolution = {
++    ...newResolution(line, "receiver", "now"),
++    counterpartFingerprint: resolutionCounterpartFingerprint(state.items[0] as ReceiptOrderItem),
++    match: "unresolved", specification: "confirmed", quantity: "confirmed",
++    delivery: "short", siteQuantity: 6, acceptedQuantity: 6,
++    remainder, excess: "returned", note: "Keep the recorded receiving decision.",
++  };
++  render(<ReceivingWorkspace jobId="job" />);
++  const row = (await screen.findByRole("heading", { name: "Valve" })).closest("li")!;
++  expect(confirmButton(row)).toBeEnabled();
++  fireEvent.click(confirmButton(row)!);
++  await waitFor(() => expect(posts.filter(p => p.action === "resolve")).toHaveLength(1));
++  const action = posts.find(p => p.action === "resolve")!;
++  expect(action).toMatchObject({ lineId: "0", match: "confirmed" });
++  // The server merges only supplied resolution fields. Existing decisions must
++  // not be reset by the blanket confirmation shortcut or a generic note.
++  for (const field of ["specification", "quantity", "delivery", "siteQuantity", "acceptedQuantity", "remainder", "excess", "note"])
++    expect(action).not.toHaveProperty(field);
++  expect(posts.some(p => p.action === "approve")).toBe(false);
++  expect(line.approved).toBeUndefined();
++});

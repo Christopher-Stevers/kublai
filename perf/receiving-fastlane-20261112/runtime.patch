@@ -1,0 +1,525 @@
+--- a/src/lib/receiving-resolution.ts
++++ b/src/lib/receiving-resolution.ts
+@@ -7,9 +7,9 @@
+ 
+ /** Independent reviewer decisions. Linking a part never confirms its quantity or delivery. */
+ export const materialIssueLabels = {
+-  "shipped-mismatch": "Shipped Material Doesn’t Match Slip",
+-  "supplier-keep": "Supplier Entered This Incorrectly · Keep material anyway",
+-  "supplier-return": "Supplier Entered This Incorrectly · Material needs to be returned",
++  "shipped-mismatch": "What arrived doesn’t match the slip",
++  "supplier-keep": "Supplier sent the wrong item · Keeping it",
++  "supplier-return": "Supplier sent the wrong item · Sending it back",
+ } as const;
+ export type ReceivingResolution = {
+   materialIssue?: keyof typeof materialIssueLabels;
+@@ -77,10 +77,11 @@
+   );
+ }
+ 
++/** Order items left off the slip need no decision; they stay outstanding.
++ * A requested cancellation still waits for an order correction. */
+ export function pendingOrderResolutions(review: ReceivingReview) {
+   return Object.values(review.orderResolutions ?? {}).filter(
+-    (r) =>
+-      r.disposition === "unresolved" || r.disposition === "cancel-requested",
++    (r) => r.disposition === "cancel-requested",
+   ).length;
+ }
+ 
+@@ -288,11 +289,11 @@
+         item.received +
+         (line.approved?.kind === "delivery" ? line.approved.quantity : 0),
+     );
+-    if (total < outstanding - 1e-6 && r.remainder !== "backordered")
++    // A shortfall never blocks: what did not come stays outstanding on the
++    // order. Only a cancellation needs an order correction first.
++    if (total < outstanding - 1e-6 && r.remainder === "cancelled")
+       problems.push(
+-        r.remainder === "cancelled"
+-          ? "Cancellation is recorded; an authorized order correction is still required."
+-          : "Confirm whether the remaining quantity is backordered or resolve the unexplained remainder.",
++        "Cancellation is recorded; an authorized order correction is still required.",
+       );
+     if (total > outstanding + 1e-6 && r.excess !== "accepted")
+       problems.push(
+--- a/src/components/materialLists/DeliveryTracker.tsx
++++ b/src/components/materialLists/DeliveryTracker.tsx
+@@ -3,6 +3,8 @@
+ import { ChevronDownIcon } from "lucide-react";
+ import { cn } from "~/lib/utils";
+ import type { ReceiptOrderItem, SlipAnalysis } from "~/lib/packing-slip-review";
++import { orderStillWaiting } from "~/lib/order-waiting";
++import { OrderWaitingWarning } from "./OrderWaitingWarning";
+ 
+ const round = (n: number) => Math.round(n * 1e6) / 1e6;
+ 
+@@ -48,7 +50,13 @@
+       <summary className="cursor-pointer list-none space-y-2 p-3 sm:p-4">
+         <span className="flex items-center gap-3">
+           <span className="min-w-0 flex-1">
+-            <span className="block font-medium">Order receiving</span>
++            <span className="flex items-center gap-1 font-medium">
++              Order receiving
++              <OrderWaitingWarning
++                className="-my-1"
++                items={orderStillWaiting(items)}
++              />
++            </span>
+             <span className="text-muted-foreground block text-xs">
+               {complete} of {items.length} items fully received ·{" "}
+               {deliveries.length}{" "}
+--- a/src/components/materialLists/MaterialListScreen.tsx
++++ b/src/components/materialLists/MaterialListScreen.tsx
+@@ -474,7 +474,7 @@
+                 <div data-tutorial="material-items" className="space-y-4">
+                   {sections.map((section) => (
+                   <MaterialFocusSection focused={!verifyOrderId && section.key === focusedSection?.key} key={section.key} aria-label={section.label ? `${section.label} parts` : undefined} data-order-id={section.orderId} className="space-y-3">
+-                    {section.label && <MaterialSectionHeading label={section.label} detail={section.detail} href={section.href} count={section.items.length} orderId={section.orderId} sectionKey={section.key} />}
++                    {section.label && <MaterialSectionHeading label={section.label} detail={section.detail} href={section.href} count={section.items.length} orderId={section.orderId} sectionKey={section.key} waiting={section.waiting} />}
+                     <div className="grid items-stretch grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-3">
+                       {section.items.map((item) => {
+                         const verifyOrderItem = verifyOrder?.items.find((orderItem) =>
+--- a/src/components/materialLists/MaterialListSheet.tsx
++++ b/src/components/materialLists/MaterialListSheet.tsx
+@@ -69,6 +69,7 @@
+             count={section.items.length}
+             orderId={section.orderId}
+             sectionKey={section.key}
++            waiting={section.waiting}
+             className={`sticky left-0 px-3 pb-2 ${index ? "pt-5" : "pt-3"}`}
+           />
+         )}
+--- a/src/components/materialLists/MaterialSectionHeading.tsx
++++ b/src/components/materialLists/MaterialSectionHeading.tsx
+@@ -1,4 +1,6 @@
+ import Link from "next/link";
++import { orderStillWaiting, type WaitingItem } from "~/lib/order-waiting";
++import { OrderWaitingWarning } from "./OrderWaitingWarning";
+ 
+ /** Divides a material list into its orders and the parts not ordered yet. */
+ export function MaterialSectionHeading({
+@@ -8,6 +10,7 @@
+   count,
+   orderId,
+   sectionKey,
++  waiting,
+   className = "",
+ }: {
+   label: string;
+@@ -18,6 +21,8 @@
+    * once the heading scrolls up. */
+   orderId?: string;
+   sectionKey?: string;
++  /** What the order still waits for once receiving has begun. */
++  waiting?: WaitingItem[];
+   className?: string;
+ }) {
+   return (
+@@ -35,6 +40,9 @@
+           label
+         )}
+       </h2>
++      {waiting && (
++        <OrderWaitingWarning className="-my-1 -ml-2" items={waiting} />
++      )}
+       {detail && (
+         <span className="text-muted-foreground text-xs">{detail}</span>
+       )}
+@@ -48,7 +56,15 @@
+ 
+ type SectionItem = {
+   sentOrderItemId?: string | null;
+-  sentOrder?: { id: string; number: string | null; status: string; receivedQuantity?: string | number | null } | null;
++  sentOrder?: {
++    id: string;
++    number: string | null;
++    status: string;
++    quantity?: string | number | null;
++    receivedQuantity?: string | number | null;
++  } | null;
++  descriptionSnapshot?: string | null;
++  partDefinition?: { displayName?: string | null } | null;
+   supplierPart?: { supplier?: { name: string } | null } | null;
+ };
+ export type MaterialSection<T> = {
+@@ -59,6 +75,8 @@
+   ordered: boolean;
+   /** Outstanding quantities are only back ordered after receiving has begun. */
+   hasReceivedItems?: boolean;
++  /** Parts on this list the order still waits for, once receiving began. */
++  waiting?: WaitingItem[];
+   /** The order these parts were sent on, when it is still open. */
+   orderId?: string;
+   items: T[];
+@@ -105,6 +123,26 @@
+       section.hasReceivedItems = true;
+     }
+   }
++  for (const section of orders.values()) {
++    if (!section.hasReceivedItems) continue;
++    const waiting = orderStillWaiting(
++      section.items.flatMap((item) =>
++        item.sentOrder?.quantity != null
++          ? [
++              {
++                description:
++                  item.partDefinition?.displayName ??
++                  item.descriptionSnapshot ??
++                  "Part",
++                ordered: Number(item.sentOrder.quantity),
++                received: Number(item.sentOrder.receivedQuantity ?? 0),
++              },
++            ]
++          : [],
++      ),
++    );
++    if (waiting.length) section.waiting = waiting;
++  }
+   return [
+     ...(notOrdered.length
+       ? [
+--- /dev/null
++++ b/src/components/materialLists/OrderWaitingWarning.tsx
+@@ -0,0 +1,64 @@
++"use client";
++import { AlertTriangleIcon } from "lucide-react";
++import {
++  DropdownMenu,
++  DropdownMenuContent,
++  DropdownMenuLabel,
++  DropdownMenuSeparator,
++  DropdownMenuTrigger,
++} from "~/components/ui/dropdown-menu";
++import type { WaitingItem } from "~/lib/order-waiting";
++import { receivingQuantity } from "~/lib/receiving-quantity-display";
++
++const TITLE = "Still waiting for material";
++
++/** A warning triangle on an order that has begun receiving and still has
++ * material to come. Tap or hover it for the items and quantities. */
++export function OrderWaitingWarning({
++  items,
++  className = "",
++}: {
++  items: WaitingItem[];
++  className?: string;
++}) {
++  if (!items.length) return null;
++  const lines = items.map(
++    (i) => `${receivingQuantity(i.outstanding, i.unit)} · ${i.description}`,
++  );
++  return (
++    <DropdownMenu>
++      <DropdownMenuTrigger asChild>
++        <button
++          type="button"
++          aria-label={`${TITLE}: ${items.length} ${items.length === 1 ? "item" : "items"}`}
++          title={[TITLE, ...lines].join("\n")}
++          // Inside a <summary>, a tap opens the list without folding it.
++          onClick={(event) => {
++            event.preventDefault();
++            event.stopPropagation();
++          }}
++          className={`focus-visible:ring-ring inline-flex size-6 shrink-0 items-center justify-center rounded text-amber-700 hover:bg-amber-500/10 focus-visible:ring-2 focus-visible:outline-none dark:text-amber-300 ${className}`}
++        >
++          <AlertTriangleIcon aria-hidden className="size-4" />
++        </button>
++      </DropdownMenuTrigger>
++      <DropdownMenuContent align="start" className="w-72">
++        <DropdownMenuLabel className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300">
++          <AlertTriangleIcon aria-hidden className="size-4 shrink-0" />
++          {TITLE}
++        </DropdownMenuLabel>
++        <DropdownMenuSeparator />
++        <ul className="space-y-1 px-2 pb-1.5 text-sm">
++          {items.map((i, n) => (
++            <li key={n} className="flex gap-2">
++              <span className="shrink-0 font-medium tabular-nums">
++                {receivingQuantity(i.outstanding, i.unit)}
++              </span>
++              <span className="min-w-0 break-words">{i.description}</span>
++            </li>
++          ))}
++        </ul>
++      </DropdownMenuContent>
++    </DropdownMenu>
++  );
++}
+--- a/src/components/materialLists/ReceivingResolve.tsx
++++ b/src/components/materialLists/ReceivingResolve.tsx
+@@ -1498,9 +1498,7 @@
+                   <option value="">No decision</option>
+                   <option value="backordered">Backordered, still due</option>
+                   <option value="cancelled">Cancellation requested</option>
+-                  <option value="unexplained">
+-                    Unexplained, keep unresolved
+-                  </option>
++                  <option value="unexplained">Unexplained, still due</option>
+                 </select>
+               </Field>
+               <Field name="Excess quantity">
+--- a/src/components/materialLists/ReceivingWorkspace.tsx
++++ b/src/components/materialLists/ReceivingWorkspace.tsx
+@@ -14,6 +14,8 @@
+ import { supplierClaim } from "~/lib/supplier-claim";
+ import { SupplierClaimDialog } from "./SupplierClaimDialog";
+ import { AutopilotNotice } from "./AutopilotNotice";
++import { OrderWaitingWarning } from "./OrderWaitingWarning";
++import { orderStillWaiting } from "~/lib/order-waiting";
+ import { materialIssueLabels, materialMarkedForReturn } from "~/lib/receiving-resolution";
+ import {
+   receivingDisplayUnit,
+@@ -1112,13 +1114,16 @@
+                   }
+                   action={
+                     orderStep === "done" && (
+-                      <Button
+-                        variant="ghost"
+-                        size="sm"
+-                        onClick={() => setChangingOrder(true)}
+-                      >
+-                        Change
+-                      </Button>
++                      <>
++                        <OrderWaitingWarning items={orderStillWaiting(detail.items)} />
++                        <Button
++                          variant="ghost"
++                          size="sm"
++                          onClick={() => setChangingOrder(true)}
++                        >
++                          Change
++                        </Button>
++                      </>
+                     )
+                   }
+                 >
+@@ -1188,6 +1193,13 @@
+                             }}
+                           />
+                         </div>
++                      )}
++                      {!linesDone && detail.items.length > 0 && (
++                        <p className="text-muted-foreground px-4 pt-3 pb-1 text-xs">
++                          Accept when the slip was read correctly and matched
++                          to the right order item. It does not mean everything
++                          arrived. Anything still to come stays on the order.
++                        </p>
+                       )}
+                       {(detail.items.length > 0 || r.lines.length > 0) && (
+                         <OrderComparison
+@@ -2156,7 +2168,10 @@
+     </dl>
+   );
+ }
+-type Verdict = { ok: boolean; label: string; text: string };
++type Verdict = { ok: boolean; label: string; text: string; short?: boolean };
++/** A short count is right information: the rest stays due on the order. */
++const settlesOrder = (v: Verdict | null | undefined) =>
++  v?.ok === true || v?.short === true;
+ /** Whether a count, already in the order's unit, covers what is still due.
+  * Parts counted by hand on the order may be the slip's own, so a count they
+  * cover is not more than needed. */
+@@ -2187,6 +2202,7 @@
+           ok: false,
+           label: `${receivingQuantity(qtyRound(due - got), item.unit)} short`,
+           text: amber.text,
++          short: true,
+         }
+       : {
+           ok: false,
+@@ -2815,11 +2831,13 @@
+           line.checked === true &&
+           resolutionBlockers(line, item, r.lines, r.kind).length === 0,
+       ) &&
+-      compareToOrder(
+-        item,
+-        live.map(({ line }) => line),
+-        byHand,
+-      )?.ok === true &&
++      settlesOrder(
++        compareToOrder(
++          item,
++          live.map(({ line }) => line),
++          byHand,
++        ),
++      ) &&
+       status !== "correction";
+     const disposition = item ? r.orderResolutions?.[item.id] : undefined;
+     const complete =
+@@ -2837,7 +2855,8 @@
+   // What Accept saves for a row: each slip line
+   // linked to the order item and confirmed as read, or an order item no slip
+   // line covers marked still due. Null unless that alone settles the row, so
+-  // a short count or an open decision still goes through Resolve.
++  // an excess, a unit question or an open decision still goes through
++  // Resolve. A short count settles: the rest stays due on the order.
+   type Plan = {
+     actions: Action[];
+     fit?: { fit: PartFit; unit: string; index: number };
+@@ -2988,7 +3007,7 @@
+       (l) =>
+         l.checked === true &&
+         resolutionBlockers(l, item, all, r.kind).length === 0,
+-    ) && compareToOrder(item, settled, byHand)?.ok === true
++    ) && settlesOrder(compareToOrder(item, settled, byHand))
+       ? { actions, fit: fits.length === 1 ? fits[0] : undefined }
+       : null;
+   };
+@@ -3109,7 +3128,7 @@
+       <Dialog open={!!materialIssue} onOpenChange={open => { if (!open && !savingIssue) setMaterialIssue(null); }}>
+         <DialogContent>
+           <DialogHeader>
+-            <DialogTitle>{materialIssue?.kind === "supplier" ? "Supplier Entered This Incorrectly" : "Shipped Material Doesn’t Match Slip"}</DialogTitle>
++            <DialogTitle>{materialIssue?.kind === "supplier" ? "Supplier sent the wrong item" : "What arrived doesn’t match the slip"}</DialogTitle>
+             <DialogDescription>{materialIssue?.kind === "supplier" ? "What should happen to the material?" : "Record the mismatch, then review what was actually delivered."}</DialogDescription>
+           </DialogHeader>
+           {materialIssue && materialIssue.lineIds.length > 1 && <select aria-label="Affected slip line" className={field} value={materialIssue.selected} onChange={e => setMaterialIssue({...materialIssue, selected:e.target.value})}>
+@@ -3117,8 +3136,8 @@
+           </select>}
+           <div className="flex flex-col gap-3">
+             {materialIssue?.kind === "supplier" ? <>
+-              <Button disabled={savingIssue} onClick={() => void saveMaterialIssue("supplier-keep")}>Keep material anyway?</Button>
+-              <Button variant="outline" disabled={savingIssue} onClick={() => void saveMaterialIssue("supplier-return")}>Material needs to be returned.</Button>
++              <Button disabled={savingIssue} onClick={() => void saveMaterialIssue("supplier-keep")}>Keep it anyway</Button>
++              <Button variant="outline" disabled={savingIssue} onClick={() => void saveMaterialIssue("supplier-return")}>Send it back</Button>
+             </> : <Button disabled={savingIssue} onClick={() => void saveMaterialIssue("shipped-mismatch")}>Record mismatch</Button>}
+             <Button variant="ghost" disabled={savingIssue} onClick={() => setMaterialIssue(null)}>Cancel</Button>
+           </div>
+@@ -3381,53 +3400,58 @@
+             });
+           };
+           const main = copies[0]!;
+-          const backorderLine = live.length === 1 ? live[0]!.line : undefined;
+-          const canAcceptBackorder = !sourceChanged && !complete && !!item && !!backorderLine &&
+-            (backorderLine.kind ?? r.kind) === "delivery" &&
+-            !backorderLine.approved && !backorderLine.resolution?.materialIssue &&
+-            backorderLine.orderItemId === item.id && backorderLine.quantity === 0 &&
+-            receivedLineQuantity(backorderLine) === 0 &&
+-            receiptUnit(backorderLine.unit) === receiptUnit(item.unit) &&
+-            due > 0 && backorderLine.ordered !== null && Math.abs(backorderLine.ordered - due) < 1e-6 &&
+-            !!main.backorderChecks?.length && main.backorderChecks.every(check => check.ok) &&
+-            !approvable(backorderLine, r.kind, item, r.lines);
+-          const canConfirmInformation = canAcceptBackorder || (
+-            !sourceChanged && !complete && !!item && !!backorderLine &&
+-            (backorderLine.kind ?? r.kind) === "delivery" &&
+-            !backorderLine.approved && !backorderLine.checked && !backorderLine.resolution?.materialIssue &&
+-            backorderLine.orderItemId === item.id && backorderLine.quantity !== null && backorderLine.quantity > 0 &&
+-            receivedLineQuantity(backorderLine) === backorderLine.quantity &&
+-            compareToOrder(item, [backorderLine], byHand)?.ok === true &&
+-            !main.backorderChecks?.some(check => !check.ok)
+-          );
++          const single = live.length === 1 ? live[0]!.line : undefined;
++          // Accept confirms the slip was read right and matched to this
++          // item. A short count is fine; the rest stays due on the order.
++          // A slip BO figure is recorded when it accounts for the shortage,
++          // and shown as a note when it does not.
++          const canConfirmInformation =
++            !sourceChanged && !complete && !!item && !!single &&
++            (single.kind ?? r.kind) === "delivery" &&
++            // Existing Resolve decisions must use the preserving link plan;
++            // this shortcut writes every field and is only safe for a new line.
++            !single.approved && !single.resolution &&
++            single.orderItemId === item.id && single.quantity !== null &&
++            receivedLineQuantity(single) === single.quantity &&
++            (single.quantity > 0
++              ? !single.checked &&
++                settlesOrder(compareToOrder(item, [single], byHand))
++              : due > 0 &&
++                receiptUnit(single.unit) === receiptUnit(item.unit) &&
++                !approvable(single, r.kind, item, r.lines));
++          const nothingCame = single?.quantity === 0;
++          const slipBackorder =
++            !!single && single.quantity !== null && due - single.quantity > 1e-6 &&
++            !!main.backorderChecks?.length && main.backorderChecks.every((check) => check.ok);
+           // One Accept button: the slip's own confirmation when it fits,
+           // otherwise the links and decisions that settle the row.
+           const plan: Plan | null =
+             complete || mine || cheer
+               ? null
+-              : canConfirmInformation && backorderLine && item
++              : canConfirmInformation && single && item
+                 ? {
+                     actions: [{
+                       action: "resolve",
+-                      lineId: backorderLine.id,
+-                      evidenceFingerprint: resolutionEvidenceFingerprint(backorderLine),
++                      lineId: single.id,
++                      evidenceFingerprint: resolutionEvidenceFingerprint(single),
+                       counterpartFingerprint: resolutionCounterpartFingerprint(item),
+                       match: "confirmed",
+                       specification: "confirmed",
+                       quantity: "confirmed",
+-                      delivery: canAcceptBackorder ? "short" : "confirmed",
+-                      siteQuantity: backorderLine.quantity,
+-                      acceptedQuantity: backorderLine.quantity,
+-                      remainder: canAcceptBackorder ? "backordered" : null,
++                      delivery: nothingCame ? "short" : "confirmed",
++                      siteQuantity: single.quantity,
++                      acceptedQuantity: single.quantity,
++                      remainder: slipBackorder ? "backordered" : null,
+                       skipped: false,
+-                      note: canAcceptBackorder ? "Nothing delivered; the slip BO accounts for the full outstanding quantity." : "Reviewer confirmed the displayed information is correct.",
++                      note: nothingCame
++                        ? slipBackorder
++                          ? "Nothing delivered; the slip BO accounts for the outstanding quantity."
++                          : "Nothing delivered on this slip; the quantity stays outstanding."
++                        : "Reviewer confirmed the displayed information is correct.",
+                     }],
+-                    label: canAcceptBackorder ? "Accept With Backorder" : "Accept",
+-                    message: canAcceptBackorder ? "Backorder accepted. Nothing received; the full quantity remains outstanding." : undefined,
++                    message: nothingCame ? "Information confirmed. Nothing received; the quantity stays outstanding." : undefined,
+                   }
+-                : main.backorderChecks?.some((check) => !check.ok)
+-                  ? null
+-                  : linkPlan;
++                : linkPlan;
+ 
+ 
+           // Confirming the identity of a part is independent of how many arrived.
+@@ -3566,8 +3590,8 @@
+                 </DropdownMenuItem>
+               )}
+               {side === "slip" && <>
+-              <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"mismatch", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>Shipped Material Doesn’t Match Slip</DropdownMenuItem>
+-              <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"supplier", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>Supplier Entered This Incorrectly</DropdownMenuItem>
++              <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"mismatch", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>What arrived doesn’t match the slip</DropdownMenuItem>
++              <DropdownMenuItem disabled={sourceChanged} onSelect={() => setMaterialIssue({kind:"supplier", lineIds:live.map(x => x.line.id), selected:live[0]!.line.id})}>Supplier sent the wrong item</DropdownMenuItem>
+               </>}
+               {notItemOption}
+               {splitOption}
+--- /dev/null
++++ b/src/lib/order-waiting.ts
+@@ -0,0 +1,32 @@
++/** What an order is still waiting for once receiving has begun on it. A
++ * delivery can be accepted short; the rest stays here, not on the slip. */
++export type WaitingItem = {
++  description: string;
++  outstanding: number;
++  unit: string;
++};
++
++const round = (n: number) => Math.round(n * 1e6) / 1e6;
++
++export function orderStillWaiting(
++  items: ReadonlyArray<{
++    description: string;
++    ordered: number;
++    received: number;
++    unit?: string | null;
++  }>,
++): WaitingItem[] {
++  if (!items.some((i) => i.received > 1e-6)) return [];
++  return items.flatMap((i) => {
++    const outstanding = round(i.ordered - i.received);
++    return outstanding > 1e-6
++      ? [
++          {
++            description: i.description,
++            outstanding,
++            unit: i.unit?.trim() ?? "",
++          },
++        ]
++      : [];
++  });
++}

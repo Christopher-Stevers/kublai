@@ -1,0 +1,2 @@
+import {defineConfig} from 'vitest/config';
+export default defineConfig({test:{include:['src/lib/receiving-completion.test.ts','src/lib/receiving-progress.test.ts','src/lib/receiving-resolution.test.ts','src/components/materialLists/ReceivingWorkspace.test.tsx','src/components/materialLists/OrderWaitingWarning.test.tsx'],environment:'jsdom',setupFiles:['./receiving-rc-unit.setup.ts'],maxWorkers:1,fileParallelism:false},resolve:{alias:{'~':'/home/tim/.openclaw/workspace/releases/speed-phase0-receiving-rc-validation-20261112-dev1/src'}}});

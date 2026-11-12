@@ -1,0 +1,124 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.4 [39m[90m/home/tim/.openclaw/workspace/releases/speed-phase0-receiving-rc-validation-20261112-dev1[39m
+
+(node:420303) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mfreezes the actual order unit and pack conversion in job matching candidates
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mreserves Terra spending durably and never repeats an uncertain paid attempt
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mreuses a finished Terra call only for identical job, file and request inputs
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mpersists queued analysis without inline reading and a worker commits it once
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mpublishes an unconfirmed order suggestion before checking lines
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mpreviews saved detections and confirms the same order without a new reader call
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrecovers an expired claim and rejects writes from the previous owner
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mleaves failed result persistence recoverable after a database outage
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrecords an extraction failure as a failed queue run
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mdoes not read or receive a queued slip after receiving permission is revoked
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mdoes not restore analysis cleared after it was queued
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mdoes not receive anything during analysis and applies a confirmed delivery only once
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mretains failed attempts after a successful retry
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22marchives original matches and human changes once, without calling receipt differences OCR truth
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrolls back receipt changes if correction history cannot be saved
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mflags differences between actual delivery and slip
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrejects stale receipts until totals are refreshed
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrejects cancelled orders, foreign item IDs, revoked permission, and changed documents
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mclears unconfirmed detection while retaining the file and rejecting an old review
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mpreserves a confirmed receipt through clearing and rereading
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mreruns detection without reversing approved quantities
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mpreserves later receipt changes when detection is cleared
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mdoes nothing to quantities when an unconfirmed slip is rerun
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrequires receiving permission and a current run for detection controls
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mdiscards an in-flight result after detection is cleared
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mconverts both ordered and shipped quantities when linking a previously unmatched slip
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mlinking or legacy checked flags cannot bypass unresolved specification, quantity or delivery
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrecords paper, actual site count and accepted count separately and posts only the accepted count
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mskipping high confidence evidence leaves it unresolved until explicitly resumed
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrequires orders permission for accepting substitutions and receiving permission for every resolution
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrejects stale line evidence and invalid accepted counts without changing the draft
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrequires reconfirmation when the counterpart order changes after resolving, even with a fresh approval request
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrejects confirmation of counterpart facts that changed after the reviewer saw them
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mcounts checked lines as ready instead of checks still required
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mshows fully posted receipts as complete even when the document checkbox is cleared
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22msplits a printed line without double receiving and requires each derived line to be reviewed
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrejects inflated allocations atomically
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrejects foreign allocations atomically
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrejects unit allocations atomically
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mprevents restoring ancestors while a nested allocation owns their quantity
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mdoes not revive retired allocation children after restoring or reallocating their source
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mundoes the latest unapproved correction with an audit and refuses undo after later changes
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mkeeps a reviewer's note on the line without confirming, clearing or reopening any check
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mdetects a selected row, links it without receiving, and rejects another run on the linked item
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mpreserves source crop for manually recovered lines and leaves them unchecked
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mposts a financial credit without recording a physical return or reducing received stock
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mcomplete split allocations do not acquire a false partial-shipment blocker mid-approval
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mapproves a short line without a backorder decision and leaves the rest due
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mstill refuses a line whose remainder is cancelled until the order is corrected
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrecords and undoes absent-item dispositions without creating receipt rows or changing orders
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mcounting an absent item as backordered keeps its order due without adding a pending issue
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mremoves an unreceived quoted order line without deleting its material-list entry
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mremoving an absent order item: success
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mremoving an absent order item: received
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mremoving an absent order item: matched
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mremoving an absent order item: stale
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mremoving an absent order item: foreign
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrenames an imported PDF only when the order is confirmed through header
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrenames an imported PDF only when the order is confirmed through link
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mimports astra proposals without changing receipts, and rejects stale or foreign matches
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mimports liquid proposals without changing receipts, and rejects stale or foreign matches
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mstages a development trial once without human labels, receipt changes or overwriting later edits
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mpreserves saved review decisions when cleared detection reuses an identical source
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mauto-confirms saved reader evidence on read, then posts only on explicit approval
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mdoes not auto-confirm a human-edited quantity from the original high-confidence prediction
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrecalculates confidence at approval instead of trusting a stale auto-confirmed flag
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mnormalizes saved ordered pieces only against current source evidence (stale=false)
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mnormalizes saved ordered pieces only against current source evidence (stale=true)
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mnew queue approves once under concurrent requests and preserves unresolved lines
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mcorrections apply only the difference and require a reason
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mlets a slip take over a hand count of the same parts instead of adding to it
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mtakes over only what was counted by hand, and adds the rest
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrejects duplicate files until a person explicitly permits an additional delivery
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mcredits a return without reopening its outstanding quantity
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrejects excessive returns, stale totals, foreign order items and revoked permissions
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22monly job approvers can create shared suppliers
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mpreserves a header confirmed while extraction is still running
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mreplaces a duplicate by transferring its baseline, then applies only the reviewed correction
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mcan exclude a receipt corrected to zero, without leaving a phantom delivery
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mblocks the old receiving controls after a slip has been approved
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mreopens the outstanding quantity for a replacement return, without issuing a credit
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mcreates a new list before catalogue matching and keeps unmatched slip lines for review
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mreconstructs a job-local order without receiving or sending (already linked: false)
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mreconstructs a job-local order without receiving or sending (already linked: true)
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrejects creating a material part in another organization or an asset catalogue
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22maccepts an explicitly checked return on a mixed slip without changing the other line type
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrequires explicit adoption and reconfirmation after the source file changes
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mrequires explicit pack conversion and lets a reviewer restore an excluded line
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22madds a likely part with package and supplier-link confirmation ({"packaged":false,"conflict":false})
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22madds a likely part with package and supplier-link confirmation ({"packaged":true,"conflict":false})
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22madds a likely part with package and supplier-link confirmation ({"packaged":false,"conflict":true})
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22madds a new catalogue part with an optional supplier-link conflict (false)
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22madds a new catalogue part with an optional supplier-link conflict (true)
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22madds nothing when the line already belongs to the order
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mgives an order part the pack size and supplier listing a slip shows
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mreceiving a trusted supplier's slip without a check[2m > [22mwaits for enough clean slips a person checked
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mreceiving a trusted supplier's slip without a check[2m > [22mreceives every line once, tells the scanner, then undoes it exactly
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mreceiving a trusted supplier's slip without a check[2m > [22mcannot be undone once the slip has changed since
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mreceiving a trusted supplier's slip without a check[2m > [22mleaves every tenth slip, an unsure line or a slip without receiving permission to a person
+ [2m[90m↓[39m[22m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions[2m > [22mreceiving a trusted supplier's slip without a check[2m > [22mis tried by the reader after drafting, and says why not
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Suites 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/server/packing-slips/receiving-rc-private.integration.test.ts[2m > [22mpacking slip receipt transactions
+[31m[1mPostgresError[22m: syntax error at or near "["[39m
+[90m [2m❯[22m ErrorResponse ../../kublai/node_modules/.pnpm/postgres@3.4.8/node_modules/postgres/src/connection.js:[2m815:30[22m[39m
+[90m [2m❯[22m handle ../../kublai/node_modules/.pnpm/postgres@3.4.8/node_modules/postgres/src/connection.js:[2m489:6[22m[39m
+[90m [2m❯[22m Socket.data ../../kublai/node_modules/.pnpm/postgres@3.4.8/node_modules/postgres/src/connection.js:[2m324:9[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22m[39m
+[31m[1mSerialized Error:[22m[39m [90m{ severity_local: 'ERROR', severity: 'ERROR', code: '42601', position: '123', file: 'scan.l', routine: 'scanner_yyerror', query: 'CREATE TABLE "kublai_material" ("id" uuid PRIMARY KEY,"organizationId" uuid,"name" varchar(100),"groupPath" jsonb DEFAULT [],"createdAt" timestamp with time zone)', parameters: [], args: [], types: [] }[39m
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [33m100 skipped[39m[90m (100)[39m
+[2m   Start at [22m 06:20:17
+[2m   Duration [22m 678ms[2m (transform 325ms, setup 0ms, import 603ms, tests 10ms, environment 0ms)[22m
+

@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "token": "681abe3e14d568170ac914bbb0d547b5ab853c8e62d89b32",
+  "supervisor": {
+    "pid": 419635,
+    "state": "R",
+    "ppid": 419627,
+    "pgid": 419627,
+    "startTime": "233962885"
+  },
+  "root": {
+    "pid": 419636,
+    "state": "R",
+    "ppid": 419635,
+    "pgid": 419636,
+    "startTime": "233962888"
+  },
+  "processes": [
+    {
+      "pid": 419636,
+      "state": "R",
+      "ppid": 419635,
+      "pgid": 419636,
+      "startTime": "233962888"
+    },
+    {
+      "pid": 419713,
+      "state": "R",
+      "ppid": 419636,
+      "pgid": 419636,
+      "startTime": "233962909"
+    },
+    {
+      "pid": 419833,
+      "state": "R",
+      "ppid": 419636,
+      "pgid": 419636,
+      "startTime": "233966138"
+    },
+    {
+      "pid": 419841,
+      "state": "R",
+      "ppid": 419636,
+      "pgid": 419636,
+      "startTime": "233966194"
+    },
+    {
+      "pid": 419849,
+      "state": "R",
+      "ppid": 419636,
+      "pgid": 419636,
+      "startTime": "233966228"
+    },
+    {
+      "pid": 419857,
+      "state": "R",
+      "ppid": 419636,
+      "pgid": 419636,
+      "startTime": "233966262"
+    }
+  ],
+  "status": "stopped",
+  "remaining": [],
+  "groupActions": [],
+  "familyAbsent": true,
+  "ownedIdentitiesAbsent": true,
+  "rootExitCode": 0,
+  "timedOut": false,
+  "requestedSignal": null
+}

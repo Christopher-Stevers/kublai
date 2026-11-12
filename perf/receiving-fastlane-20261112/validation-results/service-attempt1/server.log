@@ -1,0 +1,32 @@
+2026-11-12 06:18:09.488 EST [419472] LOG:  00000: starting PostgreSQL 18.1 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 16.2.1 20260810, 64-bit
+2026-11-12 06:18:09.488 EST [419472] LOCATION:  PostmasterMain, postmaster.c:1102
+2026-11-12 06:18:09.488 EST [419472] LOG:  00000: listening on Unix socket "/tmp/foremanhq-purchase-pg.H66Ug9/.s.PGSQL.55461"
+2026-11-12 06:18:09.488 EST [419472] LOCATION:  ListenServerPort, pqcomm.c:658
+2026-11-12 06:18:09.489 EST [419478] LOG:  00000: database system was shut down at 2026-11-12 06:18:09 EST
+2026-11-12 06:18:09.489 EST [419478] LOCATION:  StartupXLOG, xlog.c:5511
+2026-11-12 06:18:09.490 EST [419472] LOG:  00000: database system is ready to accept connections
+2026-11-12 06:18:09.490 EST [419472] LOCATION:  process_pm_child_exit, postmaster.c:2346
+2026-11-12 06:18:10.901 EST [419576] ERROR:  23514: new row for relation "kublai_packing_slip_review_history" violates check constraint "block_confirmation"
+2026-11-12 06:18:10.901 EST [419576] DETAIL:  Failing row contains (021e198f-7047-4d6c-b63d-036bc1346eee, 00000000-0000-4000-8000-000000000001, 00000000-0000-4000-8000-000000000002, 93ab7434-7537-4075-ba84-a00a7d5a346d, 447b14af-2de6-491f-883e-ca35860b230a, 866086c6-cfeb-44f5-9a05-9e1eb021159a, confirmation, receiver, unknown, {"source": {"sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..., 2026-11-12 06:18:10.899647-05).
+2026-11-12 06:18:10.901 EST [419576] LOCATION:  ExecConstraints, execMain.c:2072
+2026-11-12 06:18:10.901 EST [419576] STATEMENT:  insert into "kublai_packing_slip_review_history" ("id", "organizationId", "jobId", "documentId", "versionId", "runId", "kind", "userId", "release", "data", "createdAt") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, default) on conflict do nothing
+2026-11-12 06:18:13.198 EST [419576] ERROR:  42P01: relation "kublai_category" does not exist at character 332
+2026-11-12 06:18:13.198 EST [419576] LOCATION:  parserOpenTable, parse_relation.c:1466
+2026-11-12 06:18:13.198 EST [419576] STATEMENT:  select "kublai_part_definition"."id", "kublai_part_definition"."displayName", "kublai_part_definition"."description", "kublai_part_definition"."imageUrl", "kublai_category"."name", "kublai_material"."name", "kublai_part_definition"."sizeLabel", "kublai_size"."nominal", "kublai_unit"."code" from "kublai_part_definition" left join "kublai_category" on "kublai_part_definition"."categoryId" = "kublai_category"."id" left join "kublai_material" on "kublai_part_definition"."materialId" = "kublai_material"."id" left join "kublai_size" on "kublai_part_definition"."sizeId" = "kublai_size"."id" left join "kublai_unit" on "kublai_size"."unitId" = "kublai_unit"."id" where ("kublai_part_definition"."organizationId" = $1 and "kublai_part_definition"."isActive" = $2 and ("kublai_part_definition"."imageUrl" is not null and "kublai_part_definition"."imageUrl" <> $3)) order by "kublai_part_definition"."displayName" asc, "kublai_part_definition"."id" asc limit $4
+2026-11-12 06:18:13.233 EST [419576] ERROR:  42P01: relation "kublai_category" does not exist at character 332
+2026-11-12 06:18:13.233 EST [419576] LOCATION:  parserOpenTable, parse_relation.c:1466
+2026-11-12 06:18:13.233 EST [419576] STATEMENT:  select "kublai_part_definition"."id", "kublai_part_definition"."displayName", "kublai_part_definition"."description", "kublai_part_definition"."imageUrl", "kublai_category"."name", "kublai_material"."name", "kublai_part_definition"."sizeLabel", "kublai_size"."nominal", "kublai_unit"."code" from "kublai_part_definition" left join "kublai_category" on "kublai_part_definition"."categoryId" = "kublai_category"."id" left join "kublai_material" on "kublai_part_definition"."materialId" = "kublai_material"."id" left join "kublai_size" on "kublai_part_definition"."sizeId" = "kublai_size"."id" left join "kublai_unit" on "kublai_size"."unitId" = "kublai_unit"."id" where ("kublai_part_definition"."organizationId" = $1 and "kublai_part_definition"."isActive" = $2 and ("kublai_part_definition"."imageUrl" is not null and "kublai_part_definition"."imageUrl" <> $3)) order by "kublai_part_definition"."displayName" asc, "kublai_part_definition"."id" asc limit $4
+2026-11-12 06:18:13.574 EST [419472] LOG:  00000: received fast shutdown request
+2026-11-12 06:18:13.574 EST [419472] LOCATION:  process_pm_shutdown_request, postmaster.c:2152
+2026-11-12 06:18:13.574 EST [419472] LOG:  00000: aborting any active transactions
+2026-11-12 06:18:13.574 EST [419472] LOCATION:  process_pm_shutdown_request, postmaster.c:2170
+2026-11-12 06:18:13.575 EST [419472] LOG:  00000: background worker "logical replication launcher" (PID 419481) exited with exit code 1
+2026-11-12 06:18:13.575 EST [419472] LOCATION:  LogChildExit, postmaster.c:2832
+2026-11-12 06:18:13.575 EST [419476] LOG:  00000: shutting down
+2026-11-12 06:18:13.575 EST [419476] LOCATION:  ShutdownXLOG, xlog.c:6653
+2026-11-12 06:18:13.575 EST [419476] LOG:  00000: checkpoint starting: shutdown immediate
+2026-11-12 06:18:13.575 EST [419476] LOCATION:  LogCheckpointStart, xlog.c:6703
+2026-11-12 06:18:13.595 EST [419476] LOG:  00000: checkpoint complete: wrote 1057 buffers (6.5%), wrote 5 SLRU buffers; 0 WAL file(s) added, 0 removed, 1 recycled; write=0.004 s, sync=0.009 s, total=0.020 s; sync files=8081, longest=0.001 s, average=0.000 s; distance=13719 kB, estimate=13719 kB; lsn=0/24C9D70, redo lsn=0/24C9D70
+2026-11-12 06:18:13.595 EST [419476] LOCATION:  LogCheckpointEnd, xlog.c:6793
+2026-11-12 06:18:13.598 EST [419472] LOG:  00000: database system is shut down
+2026-11-12 06:18:13.598 EST [419472] LOCATION:  UnlinkLockFiles, miscinit.c:1197

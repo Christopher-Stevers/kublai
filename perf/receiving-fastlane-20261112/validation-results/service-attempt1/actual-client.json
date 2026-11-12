@@ -1,0 +1,11 @@
+{
+  "constructorCheckedBeforeSql": true,
+  "identityCheckedBeforeFixtureSql": true,
+  "database": "purchase_integration",
+  "username": "receiving_rc_fixture",
+  "address": null,
+  "port": "55461",
+  "directory": "/tmp/foremanhq-purchase-pg.H66Ug9/data",
+  "sockets": "/tmp/foremanhq-purchase-pg.H66Ug9",
+  "clientPath": "/tmp/foremanhq-purchase-pg.H66Ug9/.s.PGSQL.55461"
+}

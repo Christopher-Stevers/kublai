@@ -1,0 +1,14 @@
+{
+  "source-before.json": {
+    "originalPath": "/tmp/receiving-rc-service-evidence-20261112-dev1-attempt2/source-before.json",
+    "sha256": "cf8b2e11a51e603d996b1573c6c4134eb2b52062c8b9e81b0b77d3fc01312101",
+    "sourceFingerprint": "bbd8764c4de45d72e15ffa7798d3fbe4ee41914e246747f6a007716967484ed5",
+    "sourceFileCount": 2204
+  },
+  "source-after.json": {
+    "originalPath": "/tmp/receiving-rc-service-evidence-20261112-dev1-attempt2/source-after.json",
+    "sha256": "cf8b2e11a51e603d996b1573c6c4134eb2b52062c8b9e81b0b77d3fc01312101",
+    "sourceFingerprint": "bbd8764c4de45d72e15ffa7798d3fbe4ee41914e246747f6a007716967484ed5",
+    "sourceFileCount": 2204
+  }
+}

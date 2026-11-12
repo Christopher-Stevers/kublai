@@ -1,0 +1,350 @@
+{
+  "status": "source-only-needs-review",
+  "baseSource": "/home/tim/.openclaw/workspace/releases/speed-phase0-wizard-fastlane-20261112",
+  "baseBuild": "9aaeabbebd27c93155b7e4bc0c9535f9224942860b7e4ccd61d134403bc355b0",
+  "baseFingerprint": "34f0c1508584e40382ad25955b3aa2b5703bdd78ced4e6ef2536e902fd82281d",
+  "runtimePaths": {
+    "src/lib/receiving-resolution.ts": {
+      "preimage": "a5d2a87ba54b964f13babf03f93cc5a90e8298c7850b6e4158e895d37d191629",
+      "postimage": "f081410e0196d925c50de06b50b30fb47555744086a08a7d740aa3b0de3db857"
+    },
+    "src/components/materialLists/DeliveryTracker.tsx": {
+      "preimage": "d95644960eed3e4231eae030cb69355a3ee4d769049a53ac0694cd5a67de1231",
+      "postimage": "5bb0803c2b2ef6e48a8e388e527073353ed1f22215a55dc943806fbae23e1569"
+    },
+    "src/components/materialLists/MaterialListScreen.tsx": {
+      "preimage": "af9f991360e11cef398015dc045659759444b79a23712cf64e9d34d4f685147b",
+      "postimage": "c3ae2b38937b81e2b48ea5fd5547324b2ee1e77dd79de4efdee50f1d89d5c02e"
+    },
+    "src/components/materialLists/MaterialListSheet.tsx": {
+      "preimage": "9b6ad5e11e2e081d34b8295ea2804469b43decc477f3dfd44bb6180e5a17b97d",
+      "postimage": "257b33ec646f67dd7046630ea8391eddbbf85722424e6933c7fd0412737ca5fa"
+    },
+    "src/components/materialLists/MaterialSectionHeading.tsx": {
+      "preimage": "78730b980fe628c9be88aa11111e8b3fddea7003f1da86611d30b4c1e08ce3ed",
+      "postimage": "579c871f850a3aba09424fff646632b1b400b02a399b32839ddc53ea56ab5bea"
+    },
+    "src/components/materialLists/OrderWaitingWarning.tsx": {
+      "preimage": null,
+      "postimage": "055440c60e3a854dbb95556e1f251a2b3309aeaaa5174d262b9c63d05c69c42b"
+    },
+    "src/components/materialLists/ReceivingResolve.tsx": {
+      "preimage": "8f5bce3507feeb64fd281ea5baf43cea6024757c89f2e95cb1703d84ba4b51b4",
+      "postimage": "81ade8a1be33887a7ddf6551e521567c0e8c8542d113ade3f081bce37dae9ba1"
+    },
+    "src/components/materialLists/ReceivingWorkspace.tsx": {
+      "preimage": "93e438dee572663d9d1adcbf06ef6e3c107b4710347e59d9cca1c18b4dc525f6",
+      "postimage": "d7ed8670061570ca2aeccddacb3472bf42cb52fa52aceaf966e42e14052c0bd5"
+    },
+    "src/lib/order-waiting.ts": {
+      "preimage": null,
+      "postimage": "1d9246a82de0ef97c18ef1507531468da19b9e9079ad5742c7d7c45e90ebdd86"
+    }
+  },
+  "sequentialHunks": [
+    {
+      "commit": "4284faafff84497dea443e2b5ed8794ef67ddd34",
+      "commitPath": "src/lib/receiving-resolution.ts",
+      "targetPath": "src/lib/receiving-resolution.ts",
+      "inputSha256": "a5d2a87ba54b964f13babf03f93cc5a90e8298c7850b6e4158e895d37d191629",
+      "commitParentExact": true,
+      "outputSha256": "907412e9de6138813ab573614451d4bb9628fb3467e2f2ba621b6b506fef8ef4",
+      "hunks": [
+        {
+          "hunk": 0,
+          "applied": true,
+          "oldContextSha256": "d7bfed81d969907f48e520bdb3bbb4f9c410a59fb6355d0cbf243dafc75c2e04",
+          "newContextSha256": "1f194f7b5062317f8b51d998b2f9c5ced91e43bef694f4921e13259b26b76299"
+        },
+        {
+          "hunk": 1,
+          "applied": true,
+          "oldContextSha256": "cf73804c45e398d0839702e982081d85a18c0f6cb16c9f5d934c94c277e7c5c1",
+          "newContextSha256": "89e1e89929f5d8c62ed1df9eef0edb1a79da858437c1b200b44bbb6dd9168580"
+        }
+      ]
+    },
+    {
+      "commit": "5ae53190b27b640a0142420c3a82c35152c3e157",
+      "commitPath": "src/components/materialLists/DeliveryTracker.tsx",
+      "targetPath": "src/components/materialLists/DeliveryTracker.tsx",
+      "inputSha256": "d95644960eed3e4231eae030cb69355a3ee4d769049a53ac0694cd5a67de1231",
+      "commitParentExact": true,
+      "outputSha256": "5bb0803c2b2ef6e48a8e388e527073353ed1f22215a55dc943806fbae23e1569",
+      "hunks": [
+        {
+          "hunk": 0,
+          "applied": true,
+          "oldContextSha256": "8fb1b4ee5741df49ee2f6df70d13cd6385d6e36d8344bd25b87391777700fd5e",
+          "newContextSha256": "f35784fab440f0821fae5259313fec58015055ee5fb0077cb933b3e653021c86"
+        },
+        {
+          "hunk": 1,
+          "applied": true,
+          "oldContextSha256": "b21fd412a436353cbbd2602382278ade1e7714a8df96c1d0d4d9b19c4455ae61",
+          "newContextSha256": "f6a88a983b40a1e19423dece7d72771ee845f620fe74f408eb6ed851d770792a"
+        }
+      ]
+    },
+    {
+      "commit": "5ae53190b27b640a0142420c3a82c35152c3e157",
+      "commitPath": "src/components/materialLists/MaterialListScreen.tsx",
+      "targetPath": "src/components/materialLists/MaterialListScreen.tsx",
+      "inputSha256": "af9f991360e11cef398015dc045659759444b79a23712cf64e9d34d4f685147b",
+      "commitParentExact": false,
+      "outputSha256": "c3ae2b38937b81e2b48ea5fd5547324b2ee1e77dd79de4efdee50f1d89d5c02e",
+      "hunks": [
+        {
+          "hunk": 0,
+          "applied": true,
+          "oldContextSha256": "41b72d2e4b7ab1e754ea51d839897042d8ba22be3d4d7862a64f2ecb9134e897",
+          "newContextSha256": "2daac86bb8dd248be29c45d47afc092078943453c6e73499fac64e8935bd666b"
+        }
+      ]
+    },
+    {
+      "commit": "5ae53190b27b640a0142420c3a82c35152c3e157",
+      "commitPath": "src/components/materialLists/MaterialListSheet.tsx",
+      "targetPath": "src/components/materialLists/MaterialListSheet.tsx",
+      "inputSha256": "9b6ad5e11e2e081d34b8295ea2804469b43decc477f3dfd44bb6180e5a17b97d",
+      "commitParentExact": true,
+      "outputSha256": "257b33ec646f67dd7046630ea8391eddbbf85722424e6933c7fd0412737ca5fa",
+      "hunks": [
+        {
+          "hunk": 0,
+          "applied": true,
+          "oldContextSha256": "afb0480d684c9da1bef5eeb314ffcaf9c99819d1230046ab204edbb37e0950e3",
+          "newContextSha256": "42fe0cdea4c1c6b428a146a2eefaebdd059f0e15f345e29d8f5fb346c951e086"
+        }
+      ]
+    },
+    {
+      "commit": "5ae53190b27b640a0142420c3a82c35152c3e157",
+      "commitPath": "src/components/materialLists/MaterialSectionHeading.tsx",
+      "targetPath": "src/components/materialLists/MaterialSectionHeading.tsx",
+      "inputSha256": "78730b980fe628c9be88aa11111e8b3fddea7003f1da86611d30b4c1e08ce3ed",
+      "commitParentExact": true,
+      "outputSha256": "579c871f850a3aba09424fff646632b1b400b02a399b32839ddc53ea56ab5bea",
+      "hunks": [
+        {
+          "hunk": 0,
+          "applied": true,
+          "oldContextSha256": "b3718625a6745296e9fc6d534e7f2bec4630fb268bdec03ef0d1570177c639f1",
+          "newContextSha256": "cf4951774657e9317c2b7d1dcb4d3bff2153a77c8a3c24731606545463b3b1c5"
+        },
+        {
+          "hunk": 1,
+          "applied": true,
+          "oldContextSha256": "b0c16dfcc1357777c258bf18b59c2948041b1ca663d08af6d979aeea6f03d6a2",
+          "newContextSha256": "75388dd28b6fcfe2fe803d0ab4eac03726d1729cfb5075eb85cdca90ee8112b4"
+        },
+        {
+          "hunk": 2,
+          "applied": true,
+          "oldContextSha256": "c45353ca70b2e2cb6d1b50f60bc1c51c510a7e7e3c1dd624c9e54b6af3bae828",
+          "newContextSha256": "eee993138cc074d461e43e33f9adba3451243240ce21f898f6c2dd0c6263ab9c"
+        },
+        {
+          "hunk": 3,
+          "applied": true,
+          "oldContextSha256": "a788ca174c7f026b2f32a4fa31af95e164357f31f6e1f8efd5e752b1c5cca8b9",
+          "newContextSha256": "b989b9828d15afdc1ce9953c532f0231232e87a41e446ae3ef561416bf6be650"
+        },
+        {
+          "hunk": 4,
+          "applied": true,
+          "oldContextSha256": "6e4c377fc86c87dc18240f1edbee16084a461bb2c423a609529d92347a322d15",
+          "newContextSha256": "166e432e3739d170073ecfff070a0d575358cca873774a3c698c2556c1da8ca4"
+        },
+        {
+          "hunk": 5,
+          "applied": true,
+          "oldContextSha256": "1e61a0578348700988a4c5af50b2b3751e078a06db523f37a7a954c7e4f4433e",
+          "newContextSha256": "8e4b7c332294f591e7d3412f59a1d4bdfdd27402ee9d579dd48ed89a6a04320f"
+        },
+        {
+          "hunk": 6,
+          "applied": true,
+          "oldContextSha256": "bbfcf9a71dfcdd02c36e6755263c7c9cd545b7cbc241c257d6f4c9933c66bb4a",
+          "newContextSha256": "22d9e0bd353068ec922c9b38569ee15b34bb21672e15a0e1051fdad7434f49ef"
+        }
+      ]
+    },
+    {
+      "commit": "5ae53190b27b640a0142420c3a82c35152c3e157",
+      "commitPath": "src/components/materialLists/OrderWaitingWarning.tsx",
+      "targetPath": "src/components/materialLists/OrderWaitingWarning.tsx",
+      "inputSha256": null,
+      "commitParentExact": true,
+      "outputSha256": "055440c60e3a854dbb95556e1f251a2b3309aeaaa5174d262b9c63d05c69c42b",
+      "hunks": [
+        {
+          "hunk": 0,
+          "applied": true,
+          "oldContextSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "newContextSha256": "055440c60e3a854dbb95556e1f251a2b3309aeaaa5174d262b9c63d05c69c42b"
+        }
+      ]
+    },
+    {
+      "commit": "5ae53190b27b640a0142420c3a82c35152c3e157",
+      "commitPath": "src/components/materialLists/ReceivingResolveContent.tsx",
+      "targetPath": "src/components/materialLists/ReceivingResolve.tsx",
+      "inputSha256": "8f5bce3507feeb64fd281ea5baf43cea6024757c89f2e95cb1703d84ba4b51b4",
+      "commitParentExact": false,
+      "outputSha256": "81ade8a1be33887a7ddf6551e521567c0e8c8542d113ade3f081bce37dae9ba1",
+      "hunks": [
+        {
+          "hunk": 0,
+          "applied": true,
+          "oldContextSha256": "12a8fea52421548e9bc66550dfbd509c61a584558c80866a899a8d21df82d7ae",
+          "newContextSha256": "99a90ea9b6c75ca31f9fe9b37e3fa0e6f5a5e7a7de6b6b712e156be0392c6710"
+        }
+      ]
+    },
+    {
+      "commit": "5ae53190b27b640a0142420c3a82c35152c3e157",
+      "commitPath": "src/components/materialLists/ReceivingWorkspace.tsx",
+      "targetPath": "src/components/materialLists/ReceivingWorkspace.tsx",
+      "inputSha256": "93e438dee572663d9d1adcbf06ef6e3c107b4710347e59d9cca1c18b4dc525f6",
+      "commitParentExact": false,
+      "outputSha256": "8ed7e8a850b471b8b14cb8d827d6014dad199bbdf1cc52fd0179ff351ad0f887",
+      "hunks": [
+        {
+          "hunk": 0,
+          "applied": true,
+          "oldContextSha256": "b6c3879ae343340326e37b548e0aa2fd0652e8fa42410af02fecc874965ba2f9",
+          "newContextSha256": "fafe5a0ac4a2719993cdd9b82fb2a11d0c5c3a2ce523e90a1af6481c9ab212fc"
+        },
+        {
+          "hunk": 1,
+          "applied": true,
+          "oldContextSha256": "f1ab11b80a1e3faba64d3d0f4da3a2da87f077fa3492153b026f597b610277a9",
+          "newContextSha256": "a30b45f3a94ddee4a0f56518940224096303aebe7d9e2552577213b2ec0ede16"
+        },
+        {
+          "hunk": 2,
+          "applied": true,
+          "oldContextSha256": "d3049520992ecaedfce992132477678136b66323ca6b230e87854e4de909305b",
+          "newContextSha256": "9665c89cf9fc65dd5abb939cf6c77caf63c63776b45c6d68ed6d6dae35888797"
+        },
+        {
+          "hunk": 3,
+          "applied": true,
+          "oldContextSha256": "dc4cc8f53f66b66873cf673d79874219881de72c23dc81b61965210786aff5be",
+          "newContextSha256": "5e63200b63917a3451d99c22ce939920a10b7220e82a2bdec4535efaed5b54fb"
+        },
+        {
+          "hunk": 4,
+          "applied": true,
+          "oldContextSha256": "2f5a88eff7666d7ac266c2a2b42028ab6225b2782e33e4e2c2895968da86bed8",
+          "newContextSha256": "0b799e604a9f829f04c0d376dd3571eb4e5ae55ca048f93db149b63da47bdbd5"
+        },
+        {
+          "hunk": 5,
+          "applied": true,
+          "oldContextSha256": "bfeb887c6919690e5ccd3dffa1e636271458e3f8bc0701381672a4abb4d0e508",
+          "newContextSha256": "f1ed8dbd590a603f0450c9d2e6a796d80b5926537b14ad170a712230475fe28a"
+        },
+        {
+          "hunk": 6,
+          "applied": true,
+          "oldContextSha256": "6680374c2693ad4e1e02f8e6947e1053f749e96a0182b87afe1c2d8db97a42c8",
+          "newContextSha256": "998f7e3dac60e8e46d98bf604f20393d086fcd63f15f46e70b2baf272de6d005"
+        },
+        {
+          "hunk": 7,
+          "applied": true,
+          "oldContextSha256": "5dd6e4de9446151aced4bf18d372a7ff8bbf652e06610c2e6cd7aa3b98490134",
+          "newContextSha256": "1277804893d920d34e281fe34f8260649ddf3f2960aa05684296dfe293218aa1"
+        },
+        {
+          "hunk": 8,
+          "applied": true,
+          "oldContextSha256": "a3ee6466ae53284ae1254b4d98b8b14187d7b08d363e26da9d48057c474cb1c4",
+          "newContextSha256": "a17497f0b03f969412778792079fe23bfd25ddac74e0407a539a862fe6100d4e"
+        }
+      ]
+    },
+    {
+      "commit": "5ae53190b27b640a0142420c3a82c35152c3e157",
+      "commitPath": "src/lib/order-waiting.ts",
+      "targetPath": "src/lib/order-waiting.ts",
+      "inputSha256": null,
+      "commitParentExact": true,
+      "outputSha256": "1d9246a82de0ef97c18ef1507531468da19b9e9079ad5742c7d7c45e90ebdd86",
+      "hunks": [
+        {
+          "hunk": 0,
+          "applied": true,
+          "oldContextSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "newContextSha256": "1d9246a82de0ef97c18ef1507531468da19b9e9079ad5742c7d7c45e90ebdd86"
+        }
+      ]
+    },
+    {
+      "commit": "3243df60e34f9c12a246eb0e262ce29c2177a836",
+      "commitPath": "src/components/materialLists/ReceivingWorkspace.tsx",
+      "targetPath": "src/components/materialLists/ReceivingWorkspace.tsx",
+      "inputSha256": "8ed7e8a850b471b8b14cb8d827d6014dad199bbdf1cc52fd0179ff351ad0f887",
+      "commitParentExact": false,
+      "outputSha256": "44a3c653f3fd226684cdf6787f5a149b6e157a2da9bf750fcb5ba84f219077aa",
+      "hunks": [
+        {
+          "hunk": 0,
+          "applied": true,
+          "oldContextSha256": "0864fdc74d0f41d804d754aaad46473e41c680e348df403d02bfa53971424ced",
+          "newContextSha256": "1448d8c424e16c154c6cf99e892517c993fa2f330ceeedf9414b3ccb3ff8bf73"
+        },
+        {
+          "hunk": 1,
+          "applied": true,
+          "oldContextSha256": "fdc68e802eaf69461173da5b9d95442ef0a3a7461ac0e045fc05370e8d955126",
+          "newContextSha256": "b8536f855d89320681b42e52c28914bea4c9be14433ac153d944830a69e55cba"
+        },
+        {
+          "hunk": 2,
+          "applied": true,
+          "oldContextSha256": "12dc5e06cbe1b758a6beca907e4a4db088cab7fad247e33b06386d2a0b545c98",
+          "newContextSha256": "d5692d8fc073cd033eb494b838f42be703ce1c7574754773b6048d0a4e7e559d"
+        }
+      ]
+    },
+    {
+      "commit": "3243df60e34f9c12a246eb0e262ce29c2177a836",
+      "commitPath": "src/lib/receiving-resolution.ts",
+      "targetPath": "src/lib/receiving-resolution.ts",
+      "inputSha256": "907412e9de6138813ab573614451d4bb9628fb3467e2f2ba621b6b506fef8ef4",
+      "commitParentExact": true,
+      "outputSha256": "f081410e0196d925c50de06b50b30fb47555744086a08a7d740aa3b0de3db857",
+      "hunks": [
+        {
+          "hunk": 0,
+          "applied": true,
+          "oldContextSha256": "0d158253e937e446cc3c908e66999c1161e3ce1f919e0d1671c9bba5e232f439",
+          "newContextSha256": "d729d2fea04b1edc763a4a35b937f6af6df1e485611d39df0a7ac7bde116048d"
+        }
+      ]
+    },
+    {
+      "commit": "3a777cc0b0d457eb5a6f3cdb252d171df15d749b",
+      "commitPath": "src/components/materialLists/ReceivingWorkspace.tsx",
+      "targetPath": "src/components/materialLists/ReceivingWorkspace.tsx",
+      "inputSha256": "44a3c653f3fd226684cdf6787f5a149b6e157a2da9bf750fcb5ba84f219077aa",
+      "outputSha256": "d7ed8670061570ca2aeccddacb3472bf42cb52fa52aceaf966e42e14052c0bd5",
+      "hunks": [
+        {
+          "hunk": 0,
+          "applied": true,
+          "oldContextSha256": "ff3690e5a315cb397d80ce77ca15609cfa1191673613837ee102eec1aa62ca1d",
+          "newContextSha256": "e6675471e6c8f9e8532133f7fcf70ba5310815321f29e59a37af3dff182aa141"
+        }
+      ]
+    }
+  ],
+  "failures": [],
+  "serverSchemaWorkerFlagsChanged": false,
+  "buildStarted": false,
+  "activated": false,
+  "cancellationGuardCommit": "3a777cc0"
+}

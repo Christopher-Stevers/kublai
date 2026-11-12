@@ -1,0 +1,211 @@
+{
+  "status": "source-only-unexecuted",
+  "testPaths": {
+    "src/lib/receiving-completion.test.ts": {
+      "preimage": "08a453d25f6fca5dc57b2a7898fc50ce15dd979dbf957162d7b7315092a1e9f2",
+      "postimage": "3fe0db904f539ea76774fe19fc0bb104a66ef9b4dd2d5a8ecff5b69b802b361a"
+    },
+    "src/lib/receiving-progress.test.ts": {
+      "preimage": null,
+      "postimage": "b9f5276ab60b4255a1d4646a295fad9171b3d57c24b0f55bd5a48542627bac32"
+    },
+    "src/lib/receiving-resolution.test.ts": {
+      "preimage": "18a82ec3aaeb2db8673a035ecb49dd300d1915d0b672c3b27be4c9557f708f2e",
+      "postimage": "9ac79d17afdf893a7611d5c6dfff8b3eb0ee43de00efffaafaf4c5df5c502630"
+    },
+    "src/server/packing-slips/service.integration.test.ts": {
+      "preimage": "2c109b2820c51e32ef9a1183569ce139065782910d6e505d8f3d21ab7e36d75e",
+      "postimage": "51516b041ca5e15b42b6a33af0f9743c8d92f1e25e88bb512dc71391c9e2771a"
+    },
+    "src/components/materialLists/OrderWaitingWarning.test.tsx": {
+      "preimage": null,
+      "postimage": "6f3befbffd905a648479d34695ce991ab8b54b43eab1a640942746bd3300f6e1"
+    },
+    "src/components/materialLists/ReceivingWorkspace.test.tsx": {
+      "preimage": "e8376367c08f05d1df9fb2f42724830ede7fbe09456b3ce300c2ec5b32e8de83",
+      "postimage": "b9912bb57606c785cdbffd34d00ae76b55f564f4b21b9e51c3bb6f1bf42dd94c"
+    }
+  },
+  "sequentialHunks": [
+    {
+      "commit": "4284faaf",
+      "path": "src/lib/receiving-completion.test.ts",
+      "before": "08a453d25f6fca5dc57b2a7898fc50ce15dd979dbf957162d7b7315092a1e9f2",
+      "after": "3fe0db904f539ea76774fe19fc0bb104a66ef9b4dd2d5a8ecff5b69b802b361a",
+      "hunks": [
+        {
+          "index": 0,
+          "oldContextSha256": "da2f8e000717ae28baac30b3e4edb7de239046bd53692f6f500c9f969d2995da",
+          "newContextSha256": "23a577abd34c4ebfb3c86f56f66e246933bb168fe7d43e278cbcecfa88df516b"
+        },
+        {
+          "index": 1,
+          "oldContextSha256": "65c29f4cdeee277321dbdd1e7c12c366488ef6d3a362ebf1fa0493c3cb174783",
+          "newContextSha256": "a3b6159a77c8c9069e5ba3606d690cbb7949f72883dd28b6b8c0414247b782cc"
+        },
+        {
+          "index": 2,
+          "oldContextSha256": "df67054ea1aeb8196f3b52913d48bcaef2d32caf3dff71ab90c47f948dad6d0d",
+          "newContextSha256": "8f6dda273f358f1dce5f5460c9932e283c6a04782eb28c8b6fac1c6ebebca81b"
+        }
+      ]
+    },
+    {
+      "commit": "4284faaf",
+      "path": "src/lib/receiving-progress.test.ts",
+      "before": null,
+      "after": "b9f5276ab60b4255a1d4646a295fad9171b3d57c24b0f55bd5a48542627bac32",
+      "hunks": [
+        {
+          "index": 0,
+          "oldContextSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "newContextSha256": "b9f5276ab60b4255a1d4646a295fad9171b3d57c24b0f55bd5a48542627bac32"
+        }
+      ]
+    },
+    {
+      "commit": "4284faaf",
+      "path": "src/lib/receiving-resolution.test.ts",
+      "before": "18a82ec3aaeb2db8673a035ecb49dd300d1915d0b672c3b27be4c9557f708f2e",
+      "after": "9ac79d17afdf893a7611d5c6dfff8b3eb0ee43de00efffaafaf4c5df5c502630",
+      "hunks": [
+        {
+          "index": 0,
+          "oldContextSha256": "e892a387bc0d0dbeab8f35265e6b46f33aafde4c79ae73363d156c47fbf7a238",
+          "newContextSha256": "0b4d9164489300d1f4b053ca6387c2a0eb8f3b9e2de4e86bcacd4ee2aef048a2"
+        },
+        {
+          "index": 1,
+          "oldContextSha256": "fd999de55365e23c2fc8c71620679d2311fb4447a4f59523f58def585be850ad",
+          "newContextSha256": "5ea6a272c3dd6931ea6fed4caf3c6f0300f75a485064fe1a3d3a15613e3725d4"
+        }
+      ]
+    },
+    {
+      "commit": "4284faaf",
+      "path": "src/server/packing-slips/service.integration.test.ts",
+      "before": "2c109b2820c51e32ef9a1183569ce139065782910d6e505d8f3d21ab7e36d75e",
+      "after": "51516b041ca5e15b42b6a33af0f9743c8d92f1e25e88bb512dc71391c9e2771a",
+      "hunks": [
+        {
+          "index": 0,
+          "oldContextSha256": "5733e14ac2f583c0fe5ff95679b3e52c65de2da899fe500faff773fbaff80ba4",
+          "newContextSha256": "9fd844f5565794aea3db503d2306cbc05adb3bfd3197a294134afca131734d53"
+        }
+      ]
+    },
+    {
+      "commit": "5ae53190",
+      "path": "src/components/materialLists/OrderWaitingWarning.test.tsx",
+      "before": null,
+      "after": "6f3befbffd905a648479d34695ce991ab8b54b43eab1a640942746bd3300f6e1",
+      "hunks": [
+        {
+          "index": 0,
+          "oldContextSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "newContextSha256": "6f3befbffd905a648479d34695ce991ab8b54b43eab1a640942746bd3300f6e1"
+        }
+      ]
+    },
+    {
+      "commit": "5ae53190",
+      "path": "src/components/materialLists/ReceivingWorkspace.test.tsx",
+      "before": "e8376367c08f05d1df9fb2f42724830ede7fbe09456b3ce300c2ec5b32e8de83",
+      "after": "ec0aa5f3a76f972edb8fe6f23db3a94e526e2803a77979990c46b6f6623c1c41",
+      "hunks": [
+        {
+          "index": 0,
+          "oldContextSha256": "ec474632da1bfa91de2bb6595e903cff597215581222b8fd47aaff1d5d706391",
+          "newContextSha256": "56daf4b13440edaa9658b770b21c502aa62000f5e94f08d730bee182fba1c740"
+        },
+        {
+          "index": 1,
+          "oldContextSha256": "c17be8a4986d98e89a113d459bd775b765c4a8d790a1a7d400476964dd269e05",
+          "newContextSha256": "f123ad6bef9b4682a1c29719ac6259a16b8288df4259fe3920c213f5d70e4d0f"
+        },
+        {
+          "index": 2,
+          "oldContextSha256": "35d876e72a7a9fb0b9b2b70cbc4ddd94161dce03af30749542a985fb70a36b44",
+          "newContextSha256": "0d70899a56b07fe880145ab2083055574ce0cf02398060c0cd652f1ce28c097c"
+        },
+        {
+          "index": 3,
+          "oldContextSha256": "a9d6b39395fd4e2272f825fe0925c50e7dee2fbc71a0e9f82fbdb075f91ab96c",
+          "newContextSha256": "3611ea368c4c614588e59c0caa0ba7790eee566b764b73b3a16b7d474969c55d"
+        },
+        {
+          "index": 4,
+          "oldContextSha256": "6e30d3fa156f8c57c9d7ce6d51cd3e7a6ada2d9512aadc6a5c97259a06d59f40",
+          "newContextSha256": "ddd734eebccd106dc712e49e0f32fd97fc0c544952293ec006d4b03a378e3deb"
+        },
+        {
+          "index": 5,
+          "oldContextSha256": "f8c473b33584e5b66e2c11563202f7886151486b68dff5247b17077e26b80d9a",
+          "newContextSha256": "b7beca23e8d698402325604c190e387b0644b283e7a88eee9f6cd3e27cac430a"
+        },
+        {
+          "index": 6,
+          "oldContextSha256": "37b153c8b5a109815ba89ddd35482899a3355f0c82e36c3e1bc18d43d8268054",
+          "newContextSha256": "26d4974289d996882c850aa5bbf967cc7de097e60f676702af90b39a988453b7"
+        },
+        {
+          "index": 7,
+          "oldContextSha256": "889c43cd284ae468506a8f59cf291b318d73dd297026f82cb196a798ee766658",
+          "newContextSha256": "cf4522f8583e35409b83f47ca26533a3eff4501bef3417331ffb6794551f9ca0"
+        }
+      ]
+    },
+    {
+      "commit": "3243df60",
+      "path": "src/components/materialLists/ReceivingWorkspace.test.tsx",
+      "before": "ec0aa5f3a76f972edb8fe6f23db3a94e526e2803a77979990c46b6f6623c1c41",
+      "after": "2a3096edc02bf0f8ffe76e632b919d500a017f68fcc4fc54aff4e405ec309ccc",
+      "hunks": [
+        {
+          "index": 0,
+          "oldContextSha256": "e660ea0974654691ae10e84b8e433d63de2b399bfad1a1115569f88eaa362427",
+          "newContextSha256": "8ce1e10029beb505a87c339846be4d683b5220e03477299ebd4af49dc1cbd4e1"
+        },
+        {
+          "index": 1,
+          "oldContextSha256": "152722345b5e4f62fc152eac35da3628d1b725bdd30d7d17df275c4215b123a9",
+          "newContextSha256": "e8e656200f3f081808c79bdc45a8b33f8c7a1c74a818e00f0de704a09dfdf8af"
+        },
+        {
+          "index": 2,
+          "oldContextSha256": "115077e6b4d6868a91645ef44628287597d6acd81e1539d9b65ef9131eac21d8",
+          "newContextSha256": "40a10a376147dee74cfe6ee49dbf9708eb6714fd76fd5842cc8b9d8463ba0aca"
+        },
+        {
+          "index": 3,
+          "oldContextSha256": "589fb1d2cb5656e74faf01d6aa9756e7f1ecb2e1c9e6d636aaff50a121eb8f18",
+          "newContextSha256": "ce8573c644aa1e1397ee1b30577a0e27dafec8b726e574d11d5d093294f2c7c7"
+        }
+      ]
+    },
+    {
+      "commit": "3a777cc0b0d457eb5a6f3cdb252d171df15d749b",
+      "commitPath": "src/components/materialLists/ReceivingWorkspace.test.tsx",
+      "targetPath": "src/components/materialLists/ReceivingWorkspace.test.tsx",
+      "inputSha256": "2a3096edc02bf0f8ffe76e632b919d500a017f68fcc4fc54aff4e405ec309ccc",
+      "outputSha256": "b9912bb57606c785cdbffd34d00ae76b55f564f4b21b9e51c3bb6f1bf42dd94c",
+      "hunks": [
+        {
+          "hunk": 0,
+          "applied": true,
+          "oldContextSha256": "b9d1524cc4e42bc28bb4178c0d37b612cc29629f8dfb2e227594c21d7c865c6a",
+          "newContextSha256": "96074aa48c5450683b7f071d4a2c8420dacdf0528f495fd2a90d0a4b0fd434b9"
+        },
+        {
+          "hunk": 1,
+          "applied": true,
+          "oldContextSha256": "0a910ccb59a01e7152965a151f05e6178bda78e846a00d12e3afc357e6a2fca2",
+          "newContextSha256": "635b3e61d79003c63770ed4479f58aa3c7c2c92574af4205736bf9ecbf397bce"
+        }
+      ]
+    }
+  ],
+  "failures": [],
+  "notRuntimeOverlay": true,
+  "cancellationGuardCommit": "3a777cc0"
+}

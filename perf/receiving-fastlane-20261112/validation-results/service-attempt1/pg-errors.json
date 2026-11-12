@@ -1,0 +1,5 @@
+[
+  "2026-11-12 06:18:10.901 EST [419576] ERROR:  23514: new row for relation \"kublai_packing_slip_review_history\" violates check constraint \"block_confirmation\"",
+  "2026-11-12 06:18:13.198 EST [419576] ERROR:  42P01: relation \"kublai_category\" does not exist at character 332",
+  "2026-11-12 06:18:13.233 EST [419576] ERROR:  42P01: relation \"kublai_category\" does not exist at character 332"
+]

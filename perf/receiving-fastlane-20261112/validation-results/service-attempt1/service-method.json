@@ -1,0 +1,12 @@
+{
+  "scope": "synthetic-private-receiving-service-only",
+  "files": {
+    "service-private.sh": "0156255d7984ac146bbf315401588273ce8d478ba0dd12a002eeaf91f73b3ffa",
+    "service-prepare.mjs": "c4d8134bc7db4ee93fb4f79f8a6c9985d9227307b76c04343ab4fb0aa5e85abf",
+    "service-client-guard.ts": "3f5ebc107ce32a1e1b5aafeb49ebd8bda2a4c4fb8325f2e9696d0e926c08aa79",
+    "manifest.json": "3f202c043a4e9988b804227f78cace88372d39b1a0ee6ba3a237b526915d304c",
+    "validation-manifest.json": "fac76e6f0444d23fbfb1512f57252248a091e7a3f071a424e27e44e51894c57a",
+    "../lab/owned-process-supervisor.py": "90dab4db0710cad855bbef4243e1e3bd2b55f28bfe2538dd4f4c0c344c08de67",
+    "../../scripts/release/source-fingerprint.mjs": "896edf22bdc46654b07f9788f9594b94f07702df5e92659649265c1b9b85c5a9"
+  }
+}
