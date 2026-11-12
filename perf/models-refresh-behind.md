@@ -1,0 +1,11 @@
+# Model workspace refresh behind (source preparation)
+
+Prepared, unexecuted during the 20-run calibration quiet window. No byte, latency or release claim; no tests/lint/build/browser/DB has run for this slice.
+
+`JobModelsView` previously used the default fresh-query mount behavior plus a 15-second interval; a revisited fresh cached workspace could wait for that interval. Any refresh error replaced the entire `ModelWorkspace`, disposing the viewer and losing selected model IDs even when cached data remained available.
+
+The proposed exact `{jobId}` `models.workspace` observer uses existing `useTierOneReadOptions`. Cached metadata paints immediately, with mount/reconnect/focus/internal-page resume refreshing behind. Existing 15-second processing/team-change poll and background=false setting remain. Transient refresh errors retain the same keyed workspace/canvas and show `DeviceReadNotice`; terminal denials use `blocksCachedRead` and remove it. Offline cache misses now say that the workspace is unavailable, rather than an indefinite opening shell or a false empty register. No neighbor/job/model-file prefetch is added.
+
+No persistence allowlist, provider, server, model scene, processing, permission or mutation changes. `models.workspace` is not a persisted query or account-wide AUTHORITY_READS entry; this slice uses the existing terminal-error classification to hide this view, and does not claim new durable revocation. Existing whole-client account/session clearing remains responsible for account transitions. Saved permission flags are not a fresh authority certificate; all existing server model-access/edit assertions remain in place.
+
+Prepared real-QueryClient tests exercise cached immediate DOM, deferred authoritative replacement, selected-model/canvas stability on success and transient error, terminal denial, processing/permission UI, offline unknown versus actual empty, exact job-key/late response isolation and internal-page pause/resume. Only WebGL/IFC scene and adjacent editor dialogs/transport are mocked; actual register, selection, read hook and notice render. Account switching/durable storage and actual WebGL/model geometry are not independently proven by these tests. Existing model mutation tests remain unchanged. Validation awaits explicit quiet release and root review; do not include in frozen calibration inputs.

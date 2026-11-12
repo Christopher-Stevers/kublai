@@ -35,6 +35,13 @@ import { NewCadDialog } from "./NewCadDialog";
 import { ModelDesignEditor } from "./ModelDesignEditor";
 import { TouchNavigation } from "./TouchNavigation";
 import { api } from "~/trpc/react";
+import { getQueryKey } from "@trpc/react-query";
+import {
+  blocksCachedRead,
+  useTierOneReadOptions,
+} from "~/hooks/use-tier-one-read-options";
+import { useOnlineStatus } from "~/hooks/use-online-status";
+import { DeviceReadNotice } from "~/components/ui/device-read-notice";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { confirmAction, notify } from "~/components/ui/app-dialogs";
@@ -103,14 +110,20 @@ const toolInfo: Record<ModelTool, string> = {
   walk: "Touch either half to steer and travel · customize each thumb in Controls → Touch",
 };
 export function JobModelsView({ jobId }: { jobId: string }) {
-  const query = api.models.workspace.useQuery(
-    { jobId },
-    { refetchInterval: 15000, refetchIntervalInBackground: false },
+  const isOnline = useOnlineStatus();
+  const input = { jobId };
+  const readOptions = useTierOneReadOptions(
+    getQueryKey(api.models.workspace, input, "query"),
   );
-  if (query.error)
+  const query = api.models.workspace.useQuery(input, {
+    ...readOptions,
+    refetchInterval: 15000,
+    refetchIntervalInBackground: false,
+  });
+  if (blocksCachedRead(query))
     return (
       <div className="p-6">
-        <p role="alert">{query.error.message}</p>
+        <p role="alert">{query.error?.message}</p>
         <Button
           variant="outline"
           className="mt-3"
@@ -120,6 +133,12 @@ export function JobModelsView({ jobId }: { jobId: string }) {
         </Button>
       </div>
     );
+  if (!query.data && !isOnline)
+    return (
+      <p role="status" className="text-muted-foreground p-6 text-sm">
+        Models are unavailable offline. Connect to load this workspace.
+      </p>
+    );
   if (!query.data)
     return (
       <div role="status" aria-label="Opening model workspace" className="space-y-3">
@@ -128,11 +147,14 @@ export function JobModelsView({ jobId }: { jobId: string }) {
       </div>
     );
   return (
-    <ModelWorkspace
-      key={jobId}
-      workspace={query.data}
-      refresh={() => void query.refetch()}
-    />
+    <>
+      <DeviceReadNotice query={query} />
+      <ModelWorkspace
+        key={jobId}
+        workspace={query.data}
+        refresh={() => void query.refetch()}
+      />
+    </>
   );
 }
 export function ModelWorkspace({
