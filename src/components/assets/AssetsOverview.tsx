@@ -40,7 +40,11 @@ export function AssetsOverview() {
   const utils = api.useUtils();
   const overview = api.assets.overview.useQuery(undefined, useTierOneReadOptions(getQueryKey(api.assets.overview, undefined, "query"), isOnline));
   const holders = api.assets.holders.useQuery(undefined, useTierOneReadOptions(getQueryKey(api.assets.holders, undefined, "query"), isOnline));
-  const requests = api.assets.listRequests.useQuery({ status: "open" }, { enabled: isOnline });
+  const requestInput = { status: "open" as const };
+  const requests = api.assets.listRequests.useQuery(
+    requestInput,
+    useTierOneReadOptions(getQueryKey(api.assets.listRequests, requestInput, "query"), isOnline),
+  );
   const damaged = api.assets.listAssets.useQuery({ status: "damaged", limit: 20 }, useTierOneReadOptions(getQueryKey(api.assets.listAssets, { status: "damaged", limit: 20 }, "query"), isOnline));
   const missing = api.assets.listAssets.useQuery({ status: "missing", limit: 20 }, useTierOneReadOptions(getQueryKey(api.assets.listAssets, { status: "missing", limit: 20 }, "query"), isOnline));
   const setup = api.assets.setup.useMutation({
@@ -116,7 +120,16 @@ export function AssetsOverview() {
                 All requests
               </Link>
             </div>
-            {requests.data && requests.data.length === 0 ? (
+            <DeviceReadNotice query={requests} />
+            {requests.isLoading ? (
+              <ListPageSkeleton label="Loading requests" />
+            ) : blocksCachedRead(requests) ? (
+              <ErrorText message={requests.error?.message} />
+            ) : requests.data === undefined ? (
+              <p role="status" className="text-muted-foreground text-sm">
+                {isOnline ? "Requests are not available yet. Reopen this view to load them." : "Requests are unavailable offline. Connect to load them."}
+              </p>
+            ) : requests.data.length === 0 ? (
               <p className="text-muted-foreground flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm">
                 <InboxIcon className="h-4 w-4" /> Nothing waiting. Foremen send tool requests from a job&apos;s
                 &ldquo;Tool Request&rdquo; list.

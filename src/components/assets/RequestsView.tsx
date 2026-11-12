@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { getQueryKey } from "@trpc/react-query";
+import { useTierOneReadOptions, blocksCachedRead } from "~/hooks/use-tier-one-read-options";
+import { DeviceReadNotice } from "~/components/ui/device-read-notice";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronRightIcon, InboxIcon } from "lucide-react";
 
@@ -27,7 +30,11 @@ export function RequestsView() {
   const isOnline = useIsOnline();
   const status = (["open", "done", "all"] as const).find((s) => s === params.get("status")) ?? "open";
   const kind = (["tool_request", "tool_return"] as const).find((k) => k === params.get("kind"));
-  const requests = api.assets.listRequests.useQuery({ status, kind }, { enabled: isOnline });
+  const input = { status, kind };
+  const requests = api.assets.listRequests.useQuery(
+    input,
+    useTierOneReadOptions(getQueryKey(api.assets.listRequests, input, "query"), isOnline),
+  );
 
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(params.toString());
@@ -64,11 +71,16 @@ export function RequestsView() {
         </div>
       </div>
 
+      <DeviceReadNotice query={requests} />
       {requests.isLoading ? (
         <ListPageSkeleton label="Loading requests" />
-      ) : requests.error ? (
-        <ErrorText message={requests.error.message} />
-      ) : !requests.data?.length ? (
+      ) : blocksCachedRead(requests) ? (
+        <ErrorText message={requests.error?.message} />
+      ) : requests.data === undefined ? (
+        <p role="status" className="text-muted-foreground text-sm">
+          {isOnline ? "Requests are not available yet. Reopen this view to load them." : "Requests are unavailable offline. Connect to load them."}
+        </p>
+      ) : !requests.data.length ? (
         <EmptyState icon={<InboxIcon />} title={status === "open" ? "Nothing waiting" : "Nothing here"}>
           Foremen request tools from a job: Material Lists → Tool Request. Returns are started from a
           job&apos;s tools under Where.
