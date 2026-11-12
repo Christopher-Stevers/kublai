@@ -2,7 +2,7 @@
 
 ## Dev lane — effective 2026-11-12
 
-Use `node scripts/release/dev-deploy.mjs --help` for Omarchy deployments. Tim’s [amendment](../../perf/DEV_LANE.md) supersedes historical pre-activation timing/byte requirements below **for dev only**. The command requires merged committed source and passed source-bound tests/type checks, uses the canonical builder under one deployment lock, retains historical assets, switches only the web service, verifies health and served scripts, and rolls back on health failure. Every switch is recorded newest first in [REVIEW_QUEUE.md](../../perf/REVIEW_QUEUE.md).
+Use `node scripts/release/dev-deploy.mjs --help` for Omarchy deployments; [command and timing registration details](DEV_DEPLOY.md). Tim’s [amendment](../../perf/DEV_LANE.md) supersedes historical pre-activation timing/byte requirements below **for dev only**. The command requires merged committed source and passed source-bound tests/type checks, uses the canonical builder under one deployment lock, retains historical assets, switches only the web service, verifies health and served scripts, and rolls back on health failure. Every switch is recorded newest first in [REVIEW_QUEUE.md](../../perf/REVIEW_QUEUE.md).
 
 Dev deployment takes priority over timing collection: stop the owned lab processes, keep completed evidence and mark the interrupted run spoiled. Measurements resume as batch reviews when free. Findings create tasks; a broken journey or >25% slowdown confirmed twice is escalated to Tim, who decides rollback. Database/schema changes, worker releases, enabling slip autopilot and deleting data/files require separate explicit approval.
 

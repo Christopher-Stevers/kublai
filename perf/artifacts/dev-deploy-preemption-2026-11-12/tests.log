@@ -1,0 +1,20 @@
+✔ committed hunks require exact unique context, including new files (0.62819ms)
+✔ source-bound own tests fail closed on missing, failed and modified evidence (3.313047ms)
+✔ one lock spans work and is removed on success/failure; contention fails (0.941485ms)
+✔ queue entries are atomic newest-first after required marker (1.419177ms)
+✔ failed health restores previous pointer/service and checks rollback (1.050277ms)
+✔ failed queue restores previous pointer/service and checks rollback (0.60214ms)
+✔ successful switch writes queue only after healthy candidate (1.287326ms)
+✔ packaging preserves own public files, carries only packaged extras and normalizes config by value (2.158832ms)
+✔ no registered timing run never stops unrelated processes (0.416511ms)
+✔ registered family is stopped, interruption retained and registry removed (1.116921ms)
+✔ failed stop proof blocks deploy and preserves registry (0.811319ms)
+✔ escaping ownership record and changed registry never kill or remove unrelated registration (0.992531ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 56.149914

@@ -178,6 +178,116 @@ async function publicFingerprint(source) {
   const { manifest, ...fp } = await fingerprintSource(source);
   return fp;
 }
+/** Stop only a registered owned timing family. Completed reports are untouched. */
+export async function preemptTiming({ repo, stop }) {
+  const registry = path.join(repo, ".perf-active-run.json");
+  let bytes;
+  try {
+    bytes = await fs.readFile(registry);
+  } catch (error) {
+    if (error.code === "ENOENT") return { preempted: false };
+    throw error;
+  }
+  const registration = JSON.parse(bytes);
+  if (
+    registration.version !== 1 ||
+    typeof registration.sessionId !== "string" ||
+    !registration.sessionId ||
+    !path.isAbsolute(registration.sessionRoot ?? "") ||
+    !path.isAbsolute(registration.ownershipRecord ?? "")
+  )
+    fail("Invalid registered timing run");
+  const sessionRoot = await fs.realpath(registration.sessionRoot);
+  const record = await fs.realpath(registration.ownershipRecord);
+  const relative = path.relative(sessionRoot, record);
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative))
+    fail("Timing ownership record escapes registered session");
+  for (const file of [registry, sessionRoot, record]) {
+    const stat = await fs.stat(file);
+    if (typeof process.getuid === "function" && stat.uid !== process.getuid())
+      fail("Timing registry must be owned by current user");
+  }
+  const owned = JSON.parse(await fs.readFile(record));
+  if (
+    owned.version !== 1 ||
+    !Number.isSafeInteger(owned.supervisor?.pid) ||
+    !owned.supervisor?.startTime ||
+    !Number.isSafeInteger(owned.root?.pid) ||
+    !owned.root?.startTime ||
+    typeof owned.token !== "string" ||
+    !owned.token
+  )
+    fail("Registered timing record has no supervisor ownership identity");
+  const interruptionPath = path.join(
+    sessionRoot,
+    "dev-interruption-" + randomUUID() + ".json",
+  );
+  const interruption = {
+    at: new Date().toISOString(),
+    reason: "dev-deploy-priority",
+    sessionId: registration.sessionId,
+    activeStage: "unknown",
+    activeStageHint: registration.activeStage ?? null,
+    ownershipRecord: record,
+    status: "stop-requested",
+    spoiled: true,
+    repeatLater: true,
+    scope: "in-flight work only; completed captures/verdicts remain unchanged",
+    priorReportsUnmodified: true,
+  };
+  await fs.writeFile(
+    interruptionPath,
+    JSON.stringify(interruption, null, 2) + "\n",
+    { flag: "wx" },
+  );
+  try {
+    const result = stop
+      ? await stop(record)
+      : spawnSync(
+          "python3",
+          [
+            repo + "/perf/lab/owned-process-supervisor.py",
+            "stop",
+            "--record",
+            record,
+          ],
+          { encoding: "utf8", timeout: 20000 },
+        );
+    const final = JSON.parse(await fs.readFile(record));
+    if (
+      result?.status !== 0 ||
+      final.externalStop?.supervisorAbsent !== true ||
+      final.externalStop?.familyAbsent !== true
+    )
+      fail("Registered timing family did not stop cleanly");
+    if (!(await fs.readFile(registry)).equals(bytes))
+      fail(
+        "Timing registry changed during preemption; newer registration preserved",
+      );
+    interruption.status = "spoiled-repeat-later";
+    interruption.supervisorAbsent = true;
+    interruption.familyAbsent = true;
+    await fs.writeFile(
+      interruptionPath,
+      JSON.stringify(interruption, null, 2) + "\n",
+    );
+    await fs.unlink(registry);
+    return {
+      preempted: true,
+      interruptionPath,
+      sessionId: registration.sessionId,
+    };
+  } catch (error) {
+    interruption.status = "stop-failed";
+    interruption.error = String(error.message).slice(0, 300);
+    await fs.writeFile(
+      interruptionPath,
+      JSON.stringify(interruption, null, 2) + "\n",
+    );
+    throw error;
+  }
+}
+
 export async function withDeployLock(root, run) {
   const lock = path.join(root, ".release-activation.lock");
   await fs.mkdir(lock);
@@ -376,6 +486,7 @@ export async function performSwitch({
 async function deployWithChecks(options) {
   const repo = await fs.realpath(options.repo ?? process.cwd());
   return withDeployLock(repo, async () => {
+    await preemptTiming({ repo });
     const source = await fs.realpath(options.source),
       previous = await fs.realpath(repo + "/.next"),
       build = path.resolve(options.build);

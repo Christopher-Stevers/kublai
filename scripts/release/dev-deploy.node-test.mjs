@@ -240,3 +240,169 @@ test("packaging preserves own public files, carries only packaged extras and nor
     await fs.rm(root, { recursive: true, force: true });
   }
 });
+test("no registered timing run never stops unrelated processes", async () => {
+  const { preemptTiming } = await import("./dev-deploy.mjs");
+  const root = await temp();
+  try {
+    let called = false;
+    assert.deepEqual(
+      await preemptTiming({
+        repo: root,
+        stop: async () => {
+          called = true;
+        },
+      }),
+      { preempted: false },
+    );
+    assert.equal(called, false);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+async function timingFixture(root) {
+  const session = root + "/session";
+  await fs.mkdir(session);
+  const record = session + "/owned.json";
+  const owned = {
+    version: 1,
+    token: "fixture-only",
+    supervisor: { pid: 123, startTime: "1" },
+    root: { pid: 124, startTime: "2" },
+  };
+  await fs.writeFile(record, JSON.stringify(owned));
+  await fs.writeFile(
+    root + "/.perf-active-run.json",
+    JSON.stringify({
+      version: 1,
+      sessionId: "test",
+      sessionRoot: session,
+      ownershipRecord: record,
+      activeStage: "stale-hint",
+    }),
+  );
+  return { session, record, owned };
+}
+test("registered family is stopped, interruption retained and registry removed", async () => {
+  const { preemptTiming } = await import("./dev-deploy.mjs");
+  const root = await temp();
+  try {
+    const f = await timingFixture(root);
+    const result = await preemptTiming({
+      repo: root,
+      stop: async (record) => {
+        assert.equal(record, f.record);
+        await fs.writeFile(
+          record,
+          JSON.stringify({
+            ...f.owned,
+            externalStop: { supervisorAbsent: true, familyAbsent: true },
+          }),
+        );
+        return { status: 0 };
+      },
+    });
+    assert.equal(result.preempted, true);
+    const event = JSON.parse(await fs.readFile(result.interruptionPath));
+    assert.equal(event.status, "spoiled-repeat-later");
+    assert.equal(event.activeStage, "unknown");
+    assert.equal(event.priorReportsUnmodified, true);
+    assert.equal(
+      await fs.stat(root + "/.perf-active-run.json").then(
+        () => true,
+        () => false,
+      ),
+      false,
+    );
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+test("failed stop proof blocks deploy and preserves registry", async () => {
+  const { preemptTiming } = await import("./dev-deploy.mjs");
+  const root = await temp();
+  try {
+    await timingFixture(root);
+    await assert.rejects(
+      preemptTiming({ repo: root, stop: async () => ({ status: 0 }) }),
+      /did not stop/,
+    );
+    assert(await fs.stat(root + "/.perf-active-run.json"));
+    const files = await fs.readdir(root + "/session");
+    const event = JSON.parse(
+      await fs.readFile(
+        root +
+          "/session/" +
+          files.find((n) => n.startsWith("dev-interruption")),
+      ),
+    );
+    assert.equal(event.status, "stop-failed");
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+test("escaping ownership record and changed registry never kill or remove unrelated registration", async () => {
+  const { preemptTiming } = await import("./dev-deploy.mjs");
+  const root = await temp();
+  try {
+    const f = await timingFixture(root);
+    await fs.writeFile(
+      root + "/.perf-active-run.json",
+      JSON.stringify({
+        version: 1,
+        sessionId: "bad",
+        sessionRoot: f.session,
+        ownershipRecord: root + "/outside",
+      }),
+    );
+    await fs.writeFile(root + "/outside", "{}");
+    let called = false;
+    await assert.rejects(
+      preemptTiming({
+        repo: root,
+        stop: async () => {
+          called = true;
+        },
+      }),
+      /escapes/,
+    );
+    assert.equal(called, false);
+    await timingFixtureReplacement();
+    async function timingFixtureReplacement() {
+      await fs.writeFile(
+        root + "/.perf-active-run.json",
+        JSON.stringify({
+          version: 1,
+          sessionId: "test",
+          sessionRoot: f.session,
+          ownershipRecord: f.record,
+        }),
+      );
+      await assert.rejects(
+        preemptTiming({
+          repo: root,
+          stop: async (record) => {
+            await fs.writeFile(
+              record,
+              JSON.stringify({
+                ...f.owned,
+                externalStop: { supervisorAbsent: true, familyAbsent: true },
+              }),
+            );
+            await fs.writeFile(
+              root + "/.perf-active-run.json",
+              '{"newer":true}',
+            );
+            return { status: 0 };
+          },
+        }),
+        /registry changed/,
+      );
+      assert.equal(
+        await fs.readFile(root + "/.perf-active-run.json", "utf8"),
+        '{"newer":true}',
+      );
+    }
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
