@@ -23,7 +23,6 @@ function feature<P extends object>(
   load: () => Promise<{ default: ComponentType<P> }>,
   dialog = false,
 ) {
-  features.add(load);
   return function DeferredFeature(props: P) {
     const [attempt, setAttempt] = useState(0);
     const Component = useMemo(() => lazy(load), [attempt]);
@@ -33,11 +32,15 @@ function feature<P extends object>(
       if (open) setOpened(true);
     }, [open]);
     useEffect(() => {
+      // Closed dialogs and unvisited screens must not download during startup.
+      // Remember only features the user has actually opened for reconnects.
+      if (!open && !opened) return;
+      features.add(load);
       warm(load);
       const onOnline = () => warm(load);
       window.addEventListener("online", onOnline);
       return () => window.removeEventListener("online", onOnline);
-    }, []);
+    }, [open, opened]);
     if (!open && !opened) return null;
     return (
       <FeatureErrorBoundary onRetry={() => setAttempt((value) => value + 1)}>
@@ -57,7 +60,7 @@ function feature<P extends object>(
   };
 }
 
-/** Cache optional features after startup, including ones not yet mounted. */
+/** Rewarm features already opened in this session after reconnecting. */
 export function warmDeferredFeatures() {
   for (const load of features) warm(load);
 }

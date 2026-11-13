@@ -4,6 +4,7 @@ import { purchaseLineTotal } from "~/lib/purchase-quantity";
 import { simulationCacheName } from "./employee-simulation";
 import { QuantityJournal, type QuantityIntent } from "./quantity-journal";
 import { Replicache, dropDatabase, type WriteTransaction } from "replicache";
+import { attachSyncSession } from "./sync-session";
 import type { ReadonlyJSONValue } from "replicache";
 
 import { MATERIAL_LIST_REPLICACHE_SCHEMA_VERSION } from "~/lib/replicache-schema";
@@ -466,6 +467,7 @@ export function makeMaterialListMutators(): MaterialListReplicacheMutators {
 let materialListReplicache: Replicache<MaterialListReplicacheMutators> | null =
   null;
 let materialListReplicacheResetting = false;
+let detachSyncSession: (() => void) | undefined;
 let materialListReplicacheClosing = false;
 let materialListReplicacheSyncTimer: ReturnType<typeof setTimeout> | null =
   null;
@@ -524,6 +526,8 @@ export async function resetMaterialListReplicacheStorage() {
   materialListReplicacheScheduledMode = "pull";
 
   const staleReplicache = materialListReplicache;
+  detachSyncSession?.();
+  detachSyncSession = undefined;
   const staleDbName = staleReplicache?.idbName;
 
   materialListReplicache = null;
@@ -566,6 +570,7 @@ export function getMaterialListReplicache() {
   replicache.onClientStateNotFound = () => {
     void resetMaterialListReplicacheStorage();
   };
+  detachSyncSession = attachSyncSession(replicache);
   replicache.onSync = (syncing) => {
     notifyMaterialListReplicacheSyncing(syncing);
   };
@@ -663,6 +668,8 @@ export async function closeMaterialListReplicache() {
   materialListReplicacheScheduledMode = "pull";
 
   const replicache = materialListReplicache;
+  detachSyncSession?.();
+  detachSyncSession = undefined;
   materialListReplicache = null;
   if (!replicache) return;
 

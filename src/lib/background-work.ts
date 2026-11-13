@@ -71,6 +71,7 @@ async function tick() {
   timer = undefined;
   if (!canWarmInBackground()) return; // online/visibility/connection events resume it
   if (
+    document.getElementById("app-startup-cover") ||
     pointers.size ||
     Date.now() < quietUntil ||
     (navigator as BackgroundNavigator).scheduling?.isInputPending?.()
@@ -85,7 +86,7 @@ async function tick() {
       window.requestIdleCallback(() => resolve(), { timeout: 2000 }),
     );
     running = false;
-    if (!canWarmInBackground() || pointers.size || Date.now() < quietUntil) {
+    if (!canWarmInBackground() || document.getElementById("app-startup-cover") || pointers.size || Date.now() < quietUntil) {
       schedule();
       return;
     }

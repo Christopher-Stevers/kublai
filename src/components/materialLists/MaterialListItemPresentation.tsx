@@ -13,6 +13,7 @@ import { MoreVerticalIcon, TrashIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import type { MaterialListItemProps } from "./MaterialListItem";
 import type { ReplicacheSyncStatus } from "~/hooks/use-replicache-material-list";
+import { syncStatusLabel, useSyncSessionStatus } from "~/hooks/use-sync-session-status";
 import Image from "~/components/catalogue/PartImage";
 import { QuotedBadge } from "~/components/jobPricing/QuotedBadge";
 import { firstText } from "~/lib/first-text";
@@ -39,25 +40,21 @@ function getUserInitials(
 
 export function InitialsSyncBadge({
   user,
-  status,
+  status: itemStatus,
 }: {
   user: MaterialListItemProps["item"]["addedBy"] | null | undefined;
   status: MaterialListSyncStatus;
 }) {
+  const status = useSyncSessionStatus(itemStatus);
   const displayName =
     firstText(user?.name?.trim(), user?.email?.trim()) ?? "Unknown user";
   const initials = getUserInitials(user?.name, user?.email);
-  const statusLabel =
-    status === "syncing"
-      ? "Syncing"
-      : status === "pending"
-        ? "Pending sync"
-        : "Synced";
+  const statusLabel = syncStatusLabel(status);
 
   const statusClasses =
     status === "syncing"
       ? "ring-primary"
-      : status === "pending"
+      : status !== "synced"
         ? "ring-amber-500"
         : "ring-emerald-500";
 

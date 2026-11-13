@@ -3,6 +3,7 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
 import { Fragment, type ReactNode } from "react";
+import { SyncSessionRecovery } from "~/components/offline/SyncSessionRecovery";
 
 const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 const hasUsableClerkKey =
@@ -33,6 +34,7 @@ export function SessionProviderWrapper({ children }: { children: ReactNode }) {
       afterSignInUrl="/onboarding"
       afterSignUpUrl="/onboarding"
     >
+      <SyncSessionRecovery />
       {children}
     </ClerkProvider>
   );

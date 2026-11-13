@@ -1,9 +1,11 @@
 import { simulationCacheName } from "./employee-simulation";
+import { attachSyncSession } from "./sync-session";
 import { Replicache, dropDatabase } from "replicache";
 
 import { CATALOGUE_REPLICACHE_SCHEMA_VERSION } from "~/lib/replicache-schema";
 
 let catalogueReplicache: Replicache | null = null;
+let detachSyncSession: (() => void) | undefined;
 let catalogueReplicacheClosing = false;
 let catalogueReplicacheResetting = false;
 let catalogueReplicachePullTimer: ReturnType<typeof setTimeout> | null = null;
@@ -52,6 +54,8 @@ export async function resetCatalogueReplicacheStorage() {
   catalogueReplicachePullRequested = false;
 
   const staleReplicache = catalogueReplicache;
+  detachSyncSession?.();
+  detachSyncSession = undefined;
   const staleDbName = staleReplicache?.idbName;
   catalogueReplicache = null;
   catalogueReplicacheClosing = true;
@@ -83,6 +87,7 @@ export function getCatalogueReplicache() {
   replicache.onClientStateNotFound = () => {
     void resetCatalogueReplicacheStorage();
   };
+  detachSyncSession = attachSyncSession(replicache);
   replicache.onSync = setCatalogueSyncing;
 
   catalogueReplicache = replicache;
@@ -142,6 +147,8 @@ export async function closeCatalogueReplicache() {
   catalogueReplicachePullRequested = false;
 
   const replicache = catalogueReplicache;
+  detachSyncSession?.();
+  detachSyncSession = undefined;
   catalogueReplicache = null;
   if (!replicache) return;
 

@@ -59,4 +59,14 @@ it("warms only while idle, yields to gestures, and resumes after offline/data-sa
   scheduleBackgroundWork("cancel", cancelled)();
   await vi.advanceTimersByTimeAsync(5000);
   expect(cancelled).not.toHaveBeenCalled();
+  const cover = document.createElement("div");
+  cover.id = "app-startup-cover";
+  document.body.append(cover);
+  const startupWarmup = vi.fn(async () => undefined);
+  scheduleBackgroundWork("startup", startupWarmup);
+  await vi.advanceTimersByTimeAsync(15_000);
+  expect(startupWarmup).not.toHaveBeenCalled();
+  cover.remove();
+  await vi.advanceTimersByTimeAsync(500);
+  expect(startupWarmup).toHaveBeenCalledOnce();
 });

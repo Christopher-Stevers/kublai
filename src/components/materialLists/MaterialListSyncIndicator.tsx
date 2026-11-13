@@ -1,11 +1,18 @@
 "use client";
 import { Loader2Icon, Clock3Icon, CheckCircle2Icon } from "lucide-react";
 import type { ReplicacheSyncStatus } from "~/hooks/use-replicache-material-list";
+import { syncStatusLabel, useSyncSessionStatus } from "~/hooks/use-sync-session-status";
+import { AlertCircleIcon } from "lucide-react";
 export function MaterialListSyncIndicator({
-  status,
+  status: itemStatus,
 }: {
   status: ReplicacheSyncStatus;
 }) {
+  const status = useSyncSessionStatus(itemStatus);
+  if (status === "sign-in-required" || status === "connection-error") return <span
+    className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-amber-900 ring-1 ring-amber-200"
+    title={syncStatusLabel(status)} aria-label={syncStatusLabel(status)}
+  ><AlertCircleIcon className="h-3.5 w-3.5" /></span>;
   if (status === "syncing") {
     return (
       <span

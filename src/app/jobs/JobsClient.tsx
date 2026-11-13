@@ -14,7 +14,6 @@ import { JobRoomsView, JobDrawingsView, JobDocumentsView, JobSystemsView, JobCha
 
 import { JobMaterialListsView } from "~/components/materialLists/JobMaterialListsView";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "~/trpc/react";
 import { EmptyState } from "~/components/ui/empty-state";
@@ -70,7 +69,6 @@ export function JobsClient({
 }) {
   const { getReplicache: getMaterialListReplicache, mutateAndSync: mutateMaterialListAndSync } = useWorkspaceMutations();
   const sandbox = useTutorialSandbox();
-  const router = useRouter();
   const hasRedirectedRef = useRef(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newJobName, setNewJobName] = useState("");
@@ -143,15 +141,8 @@ export function JobsClient({
   const jobs = sandbox || replicacheJobs.length > 0 ? replicacheJobs : initialJobs;
   const isWaitingForJobs = false;
 
-  useEffect(() => {
-    if (sandbox || !isBrowserOnline || jobs.length === 0) return;
-
-    // Warm the App Router/RSC cache while online so tapping a job can work
-    // after the device loses connectivity.
-    for (const job of jobs.slice(0, 50)) {
-      router.prefetch(`/jobs/${job.id}`);
-    }
-  }, [isBrowserOnline, jobs, router, sandbox]);
+  // Jobs open through the local workspace below. Fetching up to 50 separate
+  // App Router pages here competes with startup without serving that navigation.
 
   const openJob = (jobId: string) => {
     navigateWorkspace({ jobId, view: "options", materialListId: null });
