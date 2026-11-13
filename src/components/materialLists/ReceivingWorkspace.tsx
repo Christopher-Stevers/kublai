@@ -106,7 +106,6 @@ import {
 import { dueWithHandCount, type ItemReceipts } from "~/lib/receipt-sources";
 import {
   lineReadings,
-  readSlipQuantity,
   receiptUnit,
   packSizesIn,
   slipHeader,
@@ -2182,31 +2181,6 @@ function dueVerdict(
           text: amber.text,
         };
 }
-/** One reader's count against the order, read as packs or pieces as fits. */
-function readingVerdict(
-  item: ReceiptOrderItem,
-  shipped: number | null,
-  unit: string | null,
-  text: string,
-  byHand: number,
-): Verdict {
-  if (shipped === null)
-    return { ok: false, label: "Quantity not read", text: amber.text };
-  const read = readSlipQuantity(shipped, unit, item, text);
-  if (read === null)
-    return {
-      ok: false,
-      label: `Different unit. The order counts in ${item.unit}.`,
-      text: amber.text,
-    };
-  const verdict = dueVerdict(item, read.amount, byHand);
-  return read.amount === shipped
-    ? verdict
-    : {
-        ...verdict,
-        label: `= ${receivingQuantity(read.amount, item.unit)} · ${verdict.label}`,
-      };
-}
 type ReaderCopy = {
   key: string;
   label: string;
@@ -2220,13 +2194,9 @@ type ReaderCopy = {
   reviewStatus?: "Confirmed" | "Edited";
   backorderChecks?: Array<NonNullable<ReturnType<typeof slipBackorderCheck>> & {backordered?: number | null; unit?: string | null}>;
 };
-const meanScore = (...values: Array<number | null | undefined>) => {
-  const known = values.filter((v): v is number => typeof v === "number");
-  return known.length ? known.reduce((a, b) => a + b, 0) / known.length : null;
-};
 /**
- * What each reader saw for one order item, a whole comparison apiece, most
- * confident first. A person's edit comes before any reader.
+ * The reading shown for one order item: the saved review lines, labelled by
+ * who read or checked them.
  */
 function readerCopies({
   item,
@@ -2309,79 +2279,11 @@ function readerCopies({
       verdict: item ? compareToOrder(item, lines, byHand) : null,
     };
   };
-  const byReader = new Map<string, ReaderCopy & { texts: string[] }>();
-  const add = (
-    reader: SlipReader,
-    ordered: number | null,
-    shipped: number | null,
-    unit: string | null,
-    score: number | null,
-    text: string,
-    backordered?: number | null,
-  ) => {
-    const check = slipBackorderCheck({ ordered, shipped, backordered, unit });
-    const copy = byReader.get(reader);
-    if (copy) {
-      copy.ordered =
-        copy.ordered === null || ordered === null
-          ? null
-          : qtyRound(copy.ordered + ordered);
-      copy.shipped =
-        copy.shipped === null || shipped === null
-          ? null
-          : qtyRound(copy.shipped + shipped);
-      if (check) copy.backorderChecks?.push({...check, backordered, unit});
-      copy.texts.push(text);
-      copy.score = meanScore(copy.score, score);
-      return;
-    }
-    byReader.set(reader, {
-      key: reader,
-      label: readerLabels[reader],
-      score,
-      description: "",
-      ordered,
-      shipped,
-      unit: unit ?? "",
-      verdict: null,
-      texts: [text],
-      backorderChecks: check ? [{...check, backordered, unit}] : [],
-    });
-  };
-  for (const x of readings)
-    add(
-      x.reader,
-      x.ordered,
-      x.shipped,
-      x.unit,
-      meanScore(x.match, x.quantity),
-      x.line.description,
-      x.backordered,
-    );
-  const ranked: ReaderCopy[] = [...byReader.values()]
-    .map(({ texts, ...copy }) => {
-      const description = describe(texts);
-      return {
-        ...copy,
-        description,
-        verdict: item
-          ? readingVerdict(item, copy.shipped, copy.unit, description, byHand)
-          : null,
-      };
-    })
-    .sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
-  if (!live.length) return [review("Slip"), ...ranked];
-  if (live.every((l) => l.checked)) return [review("Confirmed"), ...ranked];
-  if (live.some((l) => l.humanEdited)) return [review("Edited"), ...ranked];
-  if (!ranked.length) return [review("Slip")];
-  // Once received, the top copy says so rather than re-judging the count.
-  if (live.every((l) => l.approved) && item)
-    ranked[0] = {
-      ...ranked[0]!,
-      verdict: compareToOrder(item, lines, byHand),
-    };
-  const active = review("Active saved reading");
-  return [active, ...ranked];
+  if (!live.length) return [review("Slip")];
+  if (live.every((l) => l.checked)) return [review("Confirmed")];
+  if (live.some((l) => l.humanEdited)) return [review("Edited")];
+  if (!readings.length) return [review("Slip")];
+  return [review("Active saved reading")];
 }
 /** The element that scrolls the comparison, for scrolling while dragging. */
 function scrollParent(node: HTMLElement | null) {
