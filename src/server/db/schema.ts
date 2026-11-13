@@ -2252,7 +2252,7 @@ export const assetCountLines = createTable(
 export const syncRevisions = createTable("sync_revision", (d) => ({
   kind: d.text().notNull(),
   scope: d.text().notNull(),
-  revision: d.bigint({ mode: "bigint" }).notNull().default(0n),
+  revision: d.bigint({ mode: "bigint" }).notNull().default(sql`0`),
 }), (t) => [primaryKey({ columns: [t.kind, t.scope] })]);
 
 // Job chat: job-scoped lobby, durable ordered events and private attachments.

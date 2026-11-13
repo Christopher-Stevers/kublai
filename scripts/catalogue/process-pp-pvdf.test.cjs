@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { validate } = require('../import-process-catalogue.cjs');
 const manifest = JSON.parse(fs.readFileSync('data/catalogue/process-pp-pvdf.json', 'utf8'));
-const rows = new Map(manifest.rows.map((r) => [r.sku, r]));
+const rows = new Map(manifest.rows.map((/** @type {any} */ r) => [r.sku, r]));
 
 test('PP/PVDF catalogue contains distinct exact articles with valid genuine photo assets', () => {
   const result = validate(manifest);
@@ -52,9 +52,9 @@ test('verified reducing-bush diameter convention preserves both ends', () => {
 });
 
 test('published PVDF pipe packaging and mixed flange/clamp ends remain visible', () => {
-  const pipes = manifest.rows.filter((r) => r.material === 'PVDF' && r.fittingType === 'Pipe');
+  const pipes = manifest.rows.filter((/** @type {any} */ r) => r.material === 'PVDF' && r.fittingType === 'Pipe');
   assert.equal(pipes.length, 30);
-  assert(pipes.every((r) => r.length === '5 m' && r.displayName.endsWith('x 5 m')));
+  assert(pipes.every((/** @type {any} */ r) => r.length === '5 m' && r.displayName.endsWith('x 5 m')));
   for (const sku of ['735798857', '735790257']) {
     const r = rows.get(sku);
     assert.deepEqual(r.connectionSizes, ['25 mm', '3/4"']);
@@ -69,5 +69,5 @@ test('engineering graphics are excluded and genuine alternate union photo retain
   const excluded = ['wJrNw0QZA', 'kvWJz2dxM', '6BERwE7J2', 'qD3q9OM0m', '2yv4kvKJq', 'Gobg8banA', 'qy9AO916z', 'Axl2Llyzr', 'wjwKawaYk'];
   assert(excluded.every((id) => !manifest.images[`gf:${id}`]));
   assert.equal(rows.get('727518112').imageKey, 'gf:09jVJmN1L');
-  assert(manifest.exclusions.some((r) => r.reason.includes('drawing, cutaway')));
+  assert(manifest.exclusions.some((/** @type {any} */ r) => r.reason.includes('drawing, cutaway')));
 });

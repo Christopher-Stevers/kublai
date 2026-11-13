@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { validate, attributes } = require('../import-process-catalogue.cjs');
 const manifest = JSON.parse(fs.readFileSync('data/catalogue/process-instrumentation.json', 'utf8'));
-const bySku = new Map(manifest.rows.map((row) => [row.sku, row]));
+const bySku = new Map(manifest.rows.map((/** @type {any} */ row) => [row.sku, row]));
 
 test('instrument source articles and genuine image assets pass import validation', () => {
   const checked = validate(manifest);
@@ -47,5 +47,5 @@ test('thermometers preserve Fahrenheit-only and back-mount variants exactly', ()
   const dual = bySku.get('BTB34010D');
   assert.equal(dual.attributes['Measurement range Celsius'], '-20–100°C');
   assert.equal(dual.sizeNominal, 0.5);
-  assert(manifest.rows.filter((r) => r.category === 'Thermometers').every((r) => r.attributes.Mounting === 'Back connection'));
+  assert(manifest.rows.filter((/** @type {any} */ r) => r.category === 'Thermometers').every((/** @type {any} */ r) => r.attributes.Mounting === 'Back connection'));
 });

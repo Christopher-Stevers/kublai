@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 
 import { env } from "~/env";
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "~/server/api/trpc";
 import { hasManagingSeat } from "~/server/auth/permissions";
 import { users } from "~/server/db/schema";
 
@@ -21,10 +21,16 @@ function getStripeClient() {
 }
 
 export const paymentRouter = createTRPCRouter({
+  getCheckoutAvailability: publicProcedure.query(() => ({
+    enabled: process.env.STRIPE_CHECKOUT_ENABLED === "true",
+  })),
   /**
    * Create a Stripe Checkout Session for subscription
    */
   createSubscriptionCheckout: protectedProcedure.mutation(async ({ ctx }) => {
+    if (process.env.STRIPE_CHECKOUT_ENABLED !== "true") {
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Paid subscriptions are temporarily unavailable." });
+    }
     const stripe = getStripeClient();
     const user = ctx.user;
 
@@ -75,7 +81,7 @@ export const paymentRouter = createTRPCRouter({
       }
 
       const baseUrl =
-        process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+        process.env.FOREMANHQ_PUBLIC_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
       const session = await stripe.checkout.sessions.create({
         customer: stripeCustomerId,
         mode: "subscription",
@@ -168,7 +174,7 @@ export const paymentRouter = createTRPCRouter({
 
     try {
       const baseUrl =
-        process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+        process.env.FOREMANHQ_PUBLIC_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
       const session = await stripe.billingPortal.sessions.create({
         customer: user.stripeCustomerId,
         return_url: `${baseUrl}/jobs/account`,

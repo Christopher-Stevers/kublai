@@ -1,0 +1,1 @@
+ALTER TABLE "kublai_part_definition" ADD COLUMN "sortOrder" integer DEFAULT 0 NOT NULL;

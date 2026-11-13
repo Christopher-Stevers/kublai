@@ -1,0 +1,16 @@
+.git
+.github
+node_modules
+.next*
+.env*
+uploads
+state-backups
+exports
+.tmp
+.trash
+infra/terraform
+**/*.tfstate*
+**/*.tfvars
+**/.terraform
+playwright-report
+test-results

@@ -36,6 +36,12 @@
     "count": 2
   },
   {
+    "file": "src/app/api/job-documents/packing-slips/test-review/route.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .review on an `any` value.",
+    "count": 1
+  },
+  {
     "file": "src/app/api/job-rooms/files/[...path]/route.ts",
     "rule": "@typescript-eslint/no-unsafe-assignment",
     "message": "Unsafe assignment of an `any` value.",
@@ -57,25 +63,25 @@
     "file": "src/app/api/job-rooms/upload/route.test.ts",
     "rule": "@typescript-eslint/no-unsafe-argument",
     "message": "Unsafe argument of type `any` assigned to a parameter of type `string`.",
-    "count": 4
+    "count": 7
   },
   {
     "file": "src/app/api/job-rooms/upload/route.test.ts",
     "rule": "@typescript-eslint/no-unsafe-assignment",
     "message": "Unsafe assignment of an `any` value.",
-    "count": 3
+    "count": 5
   },
   {
     "file": "src/app/api/job-rooms/upload/route.test.ts",
     "rule": "@typescript-eslint/no-unsafe-member-access",
     "message": "Unsafe member access .error on an `any` value.",
-    "count": 1
+    "count": 2
   },
   {
     "file": "src/app/api/job-rooms/upload/route.test.ts",
     "rule": "@typescript-eslint/no-unsafe-member-access",
     "message": "Unsafe member access .floors on an `any` value.",
-    "count": 1
+    "count": 2
   },
   {
     "file": "src/app/api/job-rooms/upload/route.test.ts",
@@ -498,6 +504,126 @@
     "count": 1
   },
   {
+    "file": "src/app/jobs/[jobId]/material-lists/page.tsx",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 1
+  },
+  {
+    "file": "src/app/jobs/[jobId]/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 5
+  },
+  {
+    "file": "src/app/jobs/[jobId]/page.tsx",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 1
+  },
+  {
+    "file": "src/app/jobs/[jobId]/rooms/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/jobs/[jobId]/rooms/page.tsx",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 1
+  },
+  {
+    "file": "src/app/jobs/account/page.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
+    "file": "src/app/jobs/account/settings/page.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
+    "file": "src/app/jobs/material-lists/[id]/page.tsx",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 1
+  },
+  {
+    "file": "src/app/jobs/orders/page.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/app/jobs/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `SQLWrapper | AnyColumn`.",
+    "count": 1
+  },
+  {
+    "file": "src/app/jobs/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 8
+  },
+  {
+    "file": "src/app/jobs/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .createdAt on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/jobs/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .foremanName on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/jobs/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .foremanUserId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/jobs/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/app/jobs/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .locationId on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/jobs/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .name on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/app/jobs/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/jobs/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .poNumber on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/app/jobs/page.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .status on an `any` value.",
+    "count": 1
+  },
+  {
     "file": "src/app/join/[token]/route.ts",
     "rule": "@typescript-eslint/no-unsafe-assignment",
     "message": "Unsafe assignment of an `any` value.",
@@ -594,6 +720,30 @@
     "count": 2
   },
   {
+    "file": "src/components/app/AppKeyboardNavigation.test.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty method 'toJSON'.",
+    "count": 1
+  },
+  {
+    "file": "src/components/app/AppKeyboardNavigation.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 5
+  },
+  {
+    "file": "src/components/app/AppKeyboardNavigation.test.tsx",
+    "rule": "react-hooks/immutability",
+    "message": "Error: Cannot reassign variable after render completes",
+    "count": 1
+  },
+  {
+    "file": "src/components/app/AppKeyboardNavigation.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
     "file": "src/components/app/DeferredFeatures.tsx",
     "rule": "@typescript-eslint/no-empty-function",
     "message": "Unexpected empty arrow function.",
@@ -603,6 +753,12 @@
     "file": "src/components/app/DeferredFeatures.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise returned in function argument where a void return was expected.",
+    "count": 1
+  },
+  {
+    "file": "src/components/app/InstallAppButton.tsx",
+    "rule": "react/no-unescaped-entities",
+    "message": "`'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.",
     "count": 1
   },
   {
@@ -672,16 +828,34 @@
     "count": 2
   },
   {
+    "file": "src/components/catalogue/CatalogueVisibility.test.tsx",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 9
+  },
+  {
     "file": "src/components/catalogue/PartDetailsDialog.test.tsx",
     "rule": "@typescript-eslint/no-empty-function",
     "message": "Unexpected empty arrow function.",
-    "count": 5
+    "count": 7
+  },
+  {
+    "file": "src/components/catalogue/PartDetailsDialog.test.tsx",
+    "rule": "@typescript-eslint/no-explicit-any",
+    "message": "Unexpected any. Specify a different type.",
+    "count": 1
+  },
+  {
+    "file": "src/components/catalogue/PartDetailsDialog.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
   },
   {
     "file": "src/components/catalogue/PartDetailsDialog.test.tsx",
     "rule": "@typescript-eslint/no-unsafe-return",
     "message": "Unsafe return of a value of type `any`.",
-    "count": 1
+    "count": 2
   },
   {
     "file": "src/components/catalogue/PartDetailsDialog.tsx",
@@ -699,12 +873,18 @@
     "file": "src/components/catalogue/PartDetailsDialog.tsx",
     "rule": "@typescript-eslint/prefer-nullish-coalescing",
     "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
-    "count": 1
+    "count": 2
   },
   {
     "file": "src/components/catalogue/PartDetailsDialog.tsx",
     "rule": "react-hooks/rules-of-hooks",
     "message": "React Hook \"useFamilyImage\" cannot be called inside a callback. React Hooks must be called in a React function component or a custom React Hook function.",
+    "count": 1
+  },
+  {
+    "file": "src/components/catalogue/PartImage.tsx",
+    "rule": "@typescript-eslint/prefer-optional-chain",
+    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
     "count": 1
   },
   {
@@ -750,10 +930,238 @@
     "count": 1
   },
   {
+    "file": "src/components/jobs/DrawingAnnotationLayer.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 2
+  },
+  {
+    "file": "src/components/jobs/DrawingArcMenu.test.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty method 'disconnect'.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/DrawingArcMenu.test.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty method 'observe'.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/DrawingArcMenu.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/DrawingCompare.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/components/jobs/DrawingCompare.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access [0] on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/components/jobs/DrawingCompare.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access [1] on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/DrawingLineOverlayLayer.stack.test.tsx",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 2
+  },
+  {
+    "file": "src/components/jobs/DrawingOverlayPicker.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/DrawingPdfLayer.test.tsx",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 2
+  },
+  {
+    "file": "src/components/jobs/DrawingPdfLayer.tsx",
+    "rule": "@typescript-eslint/prefer-optional-chain",
+    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/DrawingSheetViewer.pipe.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/components/jobs/DrawingWorkspace.test.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty arrow function.",
+    "count": 2
+  },
+  {
+    "file": "src/components/jobs/DrawingWorkspace.test.tsx",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 3
+  },
+  {
+    "file": "src/components/jobs/DrawingWorkspace.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/components/jobs/DrawingWorkspace.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-call",
+    "message": "Unsafe call of a(n) `any` typed value.",
+    "count": 7
+  },
+  {
+    "file": "src/components/jobs/DrawingWorkspace.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .annotations on an `any` value.",
+    "count": 9
+  },
+  {
+    "file": "src/components/jobs/DrawingWorkspace.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .canEditAnnotation on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/DrawingWorkspace.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .onActivate on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/components/jobs/DrawingWorkspace.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .onUpdate on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/DrawingWorkspace.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .style on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/components/jobs/DrawingWorkspace.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .toolControls on an `any` value.",
+    "count": 7
+  },
+  {
+    "file": "src/components/jobs/DrawingWorkspace.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 3
+  },
+  {
+    "file": "src/components/jobs/DrawingWorkspace.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 2
+  },
+  {
+    "file": "src/components/jobs/FileComparison.test.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty arrow function.",
+    "count": 3
+  },
+  {
+    "file": "src/components/jobs/FileComparison.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 3
+  },
+  {
+    "file": "src/components/jobs/FileComparison.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
     "file": "src/components/jobs/FloorPlanCanvas.tsx",
     "rule": "react-hooks/refs",
     "message": "Error: Cannot access refs during render",
     "count": 3
+  },
+  {
+    "file": "src/components/jobs/HyperlinkScopePicker.tsx",
+    "rule": "@typescript-eslint/unbound-method",
+    "message": "A method that is not declared with `this: void` may cause unintentional scoping of `this` when separated from its object.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/HyperlinkScopePicker.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/InlineTextEditor.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/JobChatThread.tsx",
+    "rule": "@next/next/no-html-link-for-pages",
+    "message": "Do not use an `<a>` element to navigate to `/jobs/chat/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/JobDocumentsView.test.tsx",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/JobDocumentsView.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/JobDrawingsView.test.tsx",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/JobDrawingsView.test.tsx",
+    "rule": "@typescript-eslint/no-this-alias",
+    "message": "Unexpected aliasing of 'this' to local variable.",
+    "count": 2
+  },
+  {
+    "file": "src/components/jobs/JobDrawingsView.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/components/jobs/JobDrawingsView.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-call",
+    "message": "Unsafe call of a(n) `any` typed value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/JobDrawingsView.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .signal on an `any` value.",
+    "count": 1
   },
   {
     "file": "src/components/jobs/JobEditDialog.tsx",
@@ -768,6 +1176,18 @@
     "count": 1
   },
   {
+    "file": "src/components/jobs/JobRoomsView.trace.test.tsx",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/JobRoomsView.trace.test.tsx",
+    "rule": "@typescript-eslint/no-unnecessary-type-assertion",
+    "message": "This assertion is unnecessary since it does not change the type of the expression.",
+    "count": 1
+  },
+  {
     "file": "src/components/jobs/JobRoomsView.tsx",
     "rule": "@typescript-eslint/no-misused-promises",
     "message": "Promise-returning function provided to property where a void return was expected.",
@@ -777,6 +1197,132 @@
     "file": "src/components/jobs/JobRoomsView.tsx",
     "rule": "@typescript-eslint/prefer-nullish-coalescing",
     "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 2
+  },
+  {
+    "file": "src/components/jobs/LegendItemsDialog.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .recognizeText on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/LegendItemsDialog.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .sourceSheetId on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/components/jobs/LegendItemsDialog.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any[]`.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/LegendItemsDialog.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/SheetMeasureBar.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/SheetOfflineButton.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string`.",
+    "count": 4
+  },
+  {
+    "file": "src/components/jobs/SheetOfflineButton.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/components/jobs/SheetOfflineButton.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-call",
+    "message": "Unsafe call of a(n) `any` typed value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/SheetOfflineButton.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .addEventListener on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/SheetOfflineButton.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/SuperEquipmentDialog.test.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty arrow function.",
+    "count": 3
+  },
+  {
+    "file": "src/components/jobs/SuperEquipmentDialog.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .page on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/SuperEquipmentDialog.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/SuperSpecMaterialDialog.test.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty arrow function.",
+    "count": 2
+  },
+  {
+    "file": "src/components/jobs/documents/DocumentDrawingWorkspace.tsx",
+    "rule": "react-hooks/refs",
+    "message": "Error: Cannot access refs during render",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/useDrawingAngles.test.tsx",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 2
+  },
+  {
+    "file": "src/components/jobs/useDrawingFullscreen.test.tsx",
+    "rule": "@typescript-eslint/no-this-alias",
+    "message": "Unexpected aliasing of 'this' to local variable.",
+    "count": 2
+  },
+  {
+    "file": "src/components/jobs/useDrawingFullscreen.test.tsx",
+    "rule": "react-hooks/refs",
+    "message": "Error: Cannot access refs during render",
+    "count": 6
+  },
+  {
+    "file": "src/components/jobs/useDrawingUnit.test.tsx",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 2
+  },
+  {
+    "file": "src/components/jobs/useMeasurementLayers.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of type `any[]` to a variable of type `string[]`.",
+    "count": 1
+  },
+  {
+    "file": "src/components/jobs/useMeasurementLayers.ts",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
     "count": 1
   },
   {
@@ -793,6 +1339,12 @@
   },
   {
     "file": "src/components/materialLists/AddPartDialog.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 3
+  },
+  {
+    "file": "src/components/materialLists/AddPartDialog.tsx",
     "rule": "@typescript-eslint/unbound-method",
     "message": "A method that is not declared with `this: void` may cause unintentional scoping of `this` when separated from its object.",
     "count": 3
@@ -802,6 +1354,48 @@
     "rule": "react-hooks/set-state-in-effect",
     "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
     "count": 3
+  },
+  {
+    "file": "src/components/materialLists/DeletePackingSlipButton.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/DeletePackingSlipButton.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/DeliveryCalendarSettings.test.tsx",
+    "rule": "@typescript-eslint/no-explicit-any",
+    "message": "Unexpected any. Specify a different type.",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/DeliveryCalendarSettings.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 6
+  },
+  {
+    "file": "src/components/materialLists/DeliveryCalendarSettings.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .calendar on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/DeliveryCalendarSettings.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .country on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/DeliveryCalendarSettings.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .revision on an `any` value.",
+    "count": 1
   },
   {
     "file": "src/components/materialLists/ExistingQuotesOrdersDialog.tsx",
@@ -858,6 +1452,18 @@
     "count": 1
   },
   {
+    "file": "src/components/materialLists/MaterialListCard.test.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty method 'ref'.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/MaterialListCard.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 3
+  },
+  {
     "file": "src/components/materialLists/MaterialListItem.tsx",
     "rule": "@typescript-eslint/no-redundant-type-constituents",
     "message": "\"pending\" | \"partial\" | \"complete\" | \"problem\" is overridden by string in this union type.",
@@ -900,6 +1506,12 @@
     "count": 9
   },
   {
+    "file": "src/components/materialLists/PackQuantityControls.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 4
+  },
+  {
     "file": "src/components/materialLists/QuantityControls.tsx",
     "rule": "react-hooks/set-state-in-effect",
     "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
@@ -910,6 +1522,12 @@
     "rule": "@typescript-eslint/no-unsafe-argument",
     "message": "Unsafe argument of type `any` assigned to a parameter of type `SetStateAction<string>`.",
     "count": 2
+  },
+  {
+    "file": "src/components/materialLists/QuotePreviewSheet.tsx",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `string | null | undefined`.",
+    "count": 1
   },
   {
     "file": "src/components/materialLists/QuotePreviewSheet.tsx",
@@ -942,10 +1560,88 @@
     "count": 2
   },
   {
+    "file": "src/components/materialLists/QuotePreviewSheet.tsx",
+    "rule": "react/no-unescaped-entities",
+    "message": "`'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/ReceivingWorkspace.test.tsx",
+    "rule": "@typescript-eslint/no-base-to-string",
+    "message": "'opts.body' may use Object's default stringification format ('[object Object]') when stringified.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/ReceivingWorkspace.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/ReceivingWorkspace.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .action on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/ReceivingWorkspace.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .lineId on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/ReceivingWorkspace.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .reason on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/ReceivingWorkspace.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty method 'onCancel'.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/ReceivingWorkspace.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty method 'onLift'.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/ReceivingWorkspace.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty method 'onMove'.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/ReceivingWorkspace.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/SentMaterialStatus.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
     "file": "src/components/materialLists/SupplierSelector.tsx",
     "rule": "react-hooks/set-state-in-effect",
     "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
     "count": 2
+  },
+  {
+    "file": "src/components/materialLists/UndoOrderButton.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .description on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/UndoOrderButton.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
   },
   {
     "file": "src/components/materialLists/VerifyOrderButton.tsx",
@@ -960,10 +1656,64 @@
     "count": 1
   },
   {
-    "file": "src/components/materialLists/wizard/PartStage.tsx",
-    "rule": "react-hooks/set-state-in-effect",
-    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "file": "src/components/materialLists/prefabs/PrefabsPanel.tsx",
+    "rule": "@typescript-eslint/no-base-to-string",
+    "message": "'new FormData(event.currentTarget).get(\"name\")' may use Object's default stringification format ('[object Object]') when stringified.",
     "count": 1
+  },
+  {
+    "file": "src/components/materialLists/use-card-merge.test.tsx",
+    "rule": "@typescript-eslint/no-explicit-any",
+    "message": "Unexpected any. Specify a different type.",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/use-card-merge.test.tsx",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/use-card-merge.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/use-card-merge.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-call",
+    "message": "Unsafe call of a(n) `any` typed value.",
+    "count": 3
+  },
+  {
+    "file": "src/components/materialLists/use-card-merge.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .onError on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/use-card-merge.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .onSuccess on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/use-card-merge.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 3
+  },
+  {
+    "file": "src/components/materialLists/use-card-merge.test.tsx",
+    "rule": "@typescript-eslint/unbound-method",
+    "message": "A method that is not declared with `this: void` may cause unintentional scoping of `this` when separated from its object.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/wizard/ChosenPartsView.test.tsx",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 2
   },
   {
     "file": "src/components/materialLists/wizard/ChosenPartsView.tsx",
@@ -982,6 +1732,30 @@
     "rule": "react-hooks/set-state-in-effect",
     "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
     "count": 2
+  },
+  {
+    "file": "src/components/materialLists/wizard/MaterialStage.test.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty method 'toJSON'.",
+    "count": 1
+  },
+  {
+    "file": "src/components/materialLists/wizard/MaterialStage.test.tsx",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 2
+  },
+  {
+    "file": "src/components/materialLists/wizard/PartStage.pack.test.tsx",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 12
+  },
+  {
+    "file": "src/components/materialLists/wizard/PartStage.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
   },
   {
     "file": "src/components/materialLists/wizard/use-part-wizard.ts",
@@ -1012,6 +1786,42 @@
     "rule": "react-hooks/set-state-in-effect",
     "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
     "count": 3
+  },
+  {
+    "file": "src/components/organization/CompanySection.tsx",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 1
+  },
+  {
+    "file": "src/components/organization/InvitesSection.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/components/organization/InvitesSection.tsx",
+    "rule": "react-hooks/purity",
+    "message": "Error: Cannot call impure function during render",
+    "count": 1
+  },
+  {
+    "file": "src/components/organization/MembersSection.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a ternary expression, as it is simpler to read.",
+    "count": 1
+  },
+  {
+    "file": "src/components/organization/PermissionEditor.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/components/organization/PresetsSection.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
   },
   {
     "file": "src/components/quotes/QuotesList.tsx",
@@ -1068,6 +1878,30 @@
     "count": 1
   },
   {
+    "file": "src/components/suppliers/SupplierJobPricingDialog.test.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty arrow function.",
+    "count": 3
+  },
+  {
+    "file": "src/components/suppliers/SupplierJobPricingDialog.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/components/suppliers/SupplierLabelProvider.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/components/suppliers/SupplierLabelProvider.tsx",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 2
+  },
+  {
     "file": "src/components/suppliers/SupplierPartsDialog.tsx",
     "rule": "@typescript-eslint/prefer-nullish-coalescing",
     "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
@@ -1078,6 +1912,54 @@
     "rule": "react/no-unescaped-entities",
     "message": "`\"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.",
     "count": 2
+  },
+  {
+    "file": "src/components/suppliers/SupplierPriceBooksDialog.test.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty arrow function.",
+    "count": 1
+  },
+  {
+    "file": "src/components/suppliers/SupplierPriceBooksDialog.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 2
+  },
+  {
+    "file": "src/components/tutorial/TutorialGate.tsx",
+    "rule": "@next/next/no-html-link-for-pages",
+    "message": "Do not use an `<a>` element to navigate to `/jobs/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages",
+    "count": 1
+  },
+  {
+    "file": "src/components/ui/arc-scroller.test.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty method 'toJSON'.",
+    "count": 1
+  },
+  {
+    "file": "src/components/ui/arc-scroller.test.tsx",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 4
+  },
+  {
+    "file": "src/components/ui/arc-scroller.test.tsx",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 1
+  },
+  {
+    "file": "src/components/ui/arc-scroller.tsx",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/components/ui/arc-scroller.tsx",
+    "rule": "@typescript-eslint/prefer-optional-chain",
+    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+    "count": 1
   },
   {
     "file": "src/components/ui/dropdown-menu.tsx",
@@ -1104,10 +1986,34 @@
     "count": 2
   },
   {
+    "file": "src/components/ui/priority-action-bar.test.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty method 'disconnect'.",
+    "count": 1
+  },
+  {
+    "file": "src/components/ui/priority-action-bar.test.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty method 'observe'.",
+    "count": 1
+  },
+  {
     "file": "src/components/ui/textarea.tsx",
     "rule": "@typescript-eslint/no-empty-object-type",
     "message": "An interface declaring no members is equivalent to its supertype.",
     "count": 1
+  },
+  {
+    "file": "src/hooks/use-hyperlink-back.test.tsx",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 3
+  },
+  {
+    "file": "src/hooks/use-hyperlink-back.ts",
+    "rule": "react-hooks/set-state-in-effect",
+    "message": "Error: Calling setState synchronously within an effect can trigger cascading renders",
+    "count": 2
   },
   {
     "file": "src/hooks/use-job-workspace-navigation.ts",
@@ -1134,10 +2040,28 @@
     "count": 1
   },
   {
+    "file": "src/hooks/use-remembered-scroll.test.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty method 'disconnect'.",
+    "count": 1
+  },
+  {
+    "file": "src/hooks/use-remembered-scroll.test.tsx",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty method 'observe'.",
+    "count": 1
+  },
+  {
+    "file": "src/hooks/use-remembered-scroll.test.tsx",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 11
+  },
+  {
     "file": "src/hooks/use-replicache-jobs.ts",
     "rule": "@typescript-eslint/prefer-nullish-coalescing",
     "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
-    "count": 1
+    "count": 2
   },
   {
     "file": "src/hooks/use-shared-replicache.test.tsx",
@@ -1167,6 +2091,54 @@
     "file": "src/lib/catalogue-xlsx.ts",
     "rule": "@typescript-eslint/no-base-to-string",
     "message": "'readCell(row, ...keys)' will use Object's default stringification format ('[object Object]') when stringified.",
+    "count": 1
+  },
+  {
+    "file": "src/lib/drawing-links.ts",
+    "rule": "@typescript-eslint/prefer-optional-chain",
+    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+    "count": 1
+  },
+  {
+    "file": "src/lib/drawing-pdf-magnifier.render.test.ts",
+    "rule": "@typescript-eslint/no-unnecessary-type-assertion",
+    "message": "This assertion is unnecessary since it does not change the type of the expression.",
+    "count": 1
+  },
+  {
+    "file": "src/lib/drawing-viewport.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/lib/drawing-viewport.ts",
+    "rule": "@typescript-eslint/no-confusing-non-null-assertion",
+    "message": "Confusing combination of non-null assertion and equality test like `a! == b`, which looks very similar to `a !== b`.",
+    "count": 1
+  },
+  {
+    "file": "src/lib/generateOrderXlsx.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/lib/generateOrderXlsx.ts",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 2
+  },
+  {
+    "file": "src/lib/geometry-wasm/geometry.d.ts",
+    "rule": "@typescript-eslint/ban-tslint-comment",
+    "message": "tslint comment detected: \"/* tslint:disable */\"",
+    "count": 1
+  },
+  {
+    "file": "src/lib/keyboard-navigation.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
     "count": 1
   },
   {
@@ -1206,10 +2178,46 @@
     "count": 1
   },
   {
+    "file": "src/lib/offline-supplier-parts.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .version on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/lib/offline-test-document.test.ts",
+    "rule": "@typescript-eslint/class-literal-property-style",
+    "message": "Literals should be exposed using readonly fields.",
+    "count": 1
+  },
+  {
+    "file": "src/lib/order-wheel-usage.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/lib/pack-quantity.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 4
+  },
+  {
+    "file": "src/lib/permission-catalog.ts",
+    "rule": "@typescript-eslint/no-unnecessary-type-assertion",
+    "message": "This assertion is unnecessary since it does not change the type of the expression.",
+    "count": 1
+  },
+  {
     "file": "src/lib/photo-cache-queue.test.ts",
     "rule": "@typescript-eslint/no-empty-function",
     "message": "Unexpected empty method 'addEventListener'.",
     "count": 2
+  },
+  {
+    "file": "src/lib/pipe-components.pdf.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe array destructuring of an `any` array value.",
+    "count": 1
   },
   {
     "file": "src/lib/room-shape.ts",
@@ -1221,6 +2229,18 @@
     "file": "src/lib/size-utils.ts",
     "rule": "@typescript-eslint/prefer-regexp-exec",
     "message": "Use the `RegExp#exec()` method instead.",
+    "count": 1
+  },
+  {
+    "file": "src/lib/supplier-label.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/lib/upload-drawings.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
     "count": 1
   },
   {
@@ -1491,12 +2511,30 @@
     "file": "src/server/api/routers/catalogue.ts",
     "rule": "@typescript-eslint/prefer-nullish-coalescing",
     "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
-    "count": 12
+    "count": 13
   },
   {
     "file": "src/server/api/routers/catalogue.ts",
     "rule": "@typescript-eslint/prefer-regexp-exec",
     "message": "Use the `RegExp#exec()` method instead.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/drawings.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/drawings.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .id on an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/api/routers/drawings.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .organizationId on an `any` value.",
     "count": 1
   },
   {
@@ -1717,6 +2755,12 @@
   },
   {
     "file": "src/server/api/routers/materialList.ts",
+    "rule": "@typescript-eslint/no-unnecessary-type-assertion",
+    "message": "This assertion is unnecessary since it does not change the type of the expression.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/materialList.ts",
     "rule": "@typescript-eslint/no-unsafe-argument",
     "message": "Unsafe argument of type `any` assigned to a parameter of type `PermissionUser`.",
     "count": 3
@@ -1821,7 +2865,7 @@
     "file": "src/server/api/routers/materialList.ts",
     "rule": "@typescript-eslint/no-unsafe-member-access",
     "message": "Unsafe member access .leftJoin on an `any` value.",
-    "count": 2
+    "count": 4
   },
   {
     "file": "src/server/api/routers/materialList.ts",
@@ -1977,7 +3021,7 @@
     "file": "src/server/api/routers/materialList.ts",
     "rule": "@typescript-eslint/prefer-optional-chain",
     "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
-    "count": 2
+    "count": 3
   },
   {
     "file": "src/server/api/routers/organization.ts",
@@ -2073,7 +3117,7 @@
     "file": "src/server/api/routers/organization.ts",
     "rule": "@typescript-eslint/prefer-nullish-coalescing",
     "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
-    "count": 7
+    "count": 8
   },
   {
     "file": "src/server/api/routers/payment.ts",
@@ -2175,13 +3219,19 @@
     "file": "src/server/api/routers/rooms.ts",
     "rule": "@typescript-eslint/no-unsafe-member-access",
     "message": "Unsafe member access .id on an `any` value.",
-    "count": 2
+    "count": 6
   },
   {
     "file": "src/server/api/routers/rooms.ts",
     "rule": "@typescript-eslint/no-unsafe-member-access",
     "message": "Unsafe member access .organizationId on an `any` value.",
     "count": 15
+  },
+  {
+    "file": "src/server/api/routers/rooms.ts",
+    "rule": "@typescript-eslint/prefer-optional-chain",
+    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+    "count": 1
   },
   {
     "file": "src/server/api/routers/supplier.ts",
@@ -2206,6 +3256,18 @@
     "rule": "@typescript-eslint/no-unsafe-member-access",
     "message": "Unsafe member access .organizationId on an `any` value.",
     "count": 15
+  },
+  {
+    "file": "src/server/api/routers/supplier.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/server/api/routers/supplierPriceBooks.ts",
+    "rule": "@typescript-eslint/no-unnecessary-type-assertion",
+    "message": "This assertion is unnecessary since it does not change the type of the expression.",
+    "count": 6
   },
   {
     "file": "src/server/api/routers/user.ts",
@@ -2235,7 +3297,7 @@
     "file": "src/server/api/routers/user.ts",
     "rule": "@typescript-eslint/no-unsafe-member-access",
     "message": "Unsafe member access .id on an `any` value.",
-    "count": 3
+    "count": 5
   },
   {
     "file": "src/server/api/routers/user.ts",
@@ -2254,6 +3316,18 @@
     "rule": "@typescript-eslint/no-unsafe-member-access",
     "message": "Unsafe member access .role on an `any` value.",
     "count": 1
+  },
+  {
+    "file": "src/server/api/routers/user.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .tutorialCompletedAt on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/api/routers/user.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .tutorialOutcome on an `any` value.",
+    "count": 2
   },
   {
     "file": "src/server/api/trpc.ts",
@@ -2402,6 +3476,12 @@
   {
     "file": "src/server/db/schema.ts",
     "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of type `[any, any]` to a variable of type `[AnyPgColumn<{ tableName: string; }>, AnyPgColumn<{ tableName: string; }>]`.",
+    "count": 2
+  },
+  {
+    "file": "src/server/db/schema.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
     "message": "Unsafe assignment of type `[any]` to a variable of type `[AnyColumn<{ tableName: any; }>]`.",
     "count": 24
   },
@@ -2472,6 +3552,48 @@
     "count": 33
   },
   {
+    "file": "src/server/documents/packing-slips.integration.test.ts",
+    "rule": "@typescript-eslint/no-empty-function",
+    "message": "Unexpected empty async arrow function.",
+    "count": 4
+  },
+  {
+    "file": "src/server/drawings/equipment-links.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 2
+  },
+  {
+    "file": "src/server/drawings/equipment-links.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .document on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/drawings/equipment-links.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .drawing on an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/drawings/equipment-links.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .pdf on an `any` value.",
+    "count": 4
+  },
+  {
+    "file": "src/server/drawings/equipment-links.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-return",
+    "message": "Unsafe return of a value of type `any`.",
+    "count": 3
+  },
+  {
+    "file": "src/server/drawings/super-label.integration.test.ts",
+    "rule": "drizzle/enforce-update-with-where",
+    "message": "Without `.where(...)` you will update all the rows in a table. If you didn't want to do it, please use `db.update(...).set(...).where(...)` instead. Otherwise you can ignore this rule here",
+    "count": 1
+  },
+  {
     "file": "src/server/material-list-names.ts",
     "rule": "@typescript-eslint/no-unsafe-assignment",
     "message": "Unsafe assignment of an `any` value.",
@@ -2499,6 +3621,42 @@
     "file": "src/server/material-list-names.ts",
     "rule": "@typescript-eslint/no-unsafe-return",
     "message": "Unsafe return of a value of type `any`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/packing-slips/find-order.ts",
+    "rule": "@typescript-eslint/no-unsafe-argument",
+    "message": "Unsafe argument of type `any` assigned to a parameter of type `Record<string, string | Buffer<ArrayBufferLike>>`.",
+    "count": 1
+  },
+  {
+    "file": "src/server/packing-slips/order-comparison.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-assignment",
+    "message": "Unsafe assignment of an `any` value.",
+    "count": 1
+  },
+  {
+    "file": "src/server/packing-slips/production-cascade.test.ts",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "message": "Unsafe member access .targetLineIndexes on an `any` value.",
+    "count": 3
+  },
+  {
+    "file": "src/server/purchasing.integration.test.ts",
+    "rule": "@typescript-eslint/no-unnecessary-type-assertion",
+    "message": "This assertion is unnecessary since it does not change the type of the expression.",
+    "count": 5
+  },
+  {
+    "file": "src/server/purchasing.integration.test.ts",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 1
+  },
+  {
+    "file": "src/server/purchasing.integration.test.ts",
+    "rule": "drizzle/enforce-delete-with-where",
+    "message": "Without `.where(...)` you will delete all the rows in a table. If you didn't want to do it, please use `db.delete(...).where(...)` instead. Otherwise you can ignore this rule here",
     "count": 1
   },
   {
@@ -2695,6 +3853,24 @@
   },
   {
     "file": "src/server/rooms/detect-job.ts",
+    "rule": "@typescript-eslint/prefer-optional-chain",
+    "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/doors/door-rooms.ts",
+    "rule": "@typescript-eslint/no-unnecessary-type-assertion",
+    "message": "This assertion is unnecessary since it does not change the type of the expression.",
+    "count": 4
+  },
+  {
+    "file": "src/server/rooms/doors/door-rooms.ts",
+    "rule": "@typescript-eslint/prefer-for-of",
+    "message": "Expected a `for-of` loop instead of a `for` loop with this simple iteration.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/doors/infer-layers.ts",
     "rule": "@typescript-eslint/prefer-optional-chain",
     "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
     "count": 1
@@ -2910,6 +4086,42 @@
     "count": 1
   },
   {
+    "file": "src/server/rooms/tagged/neck-partition.ts",
+    "rule": "@typescript-eslint/no-unnecessary-type-assertion",
+    "message": "This assertion is unnecessary since it does not change the type of the expression.",
+    "count": 2
+  },
+  {
+    "file": "src/server/rooms/tagged/neck-partition.ts",
+    "rule": "@typescript-eslint/prefer-for-of",
+    "message": "Expected a `for-of` loop instead of a `for` loop with this simple iteration.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/tagged/neck-partition.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??=`) instead of an assignment expression, as it is simpler to read.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/tagged/outline.ts",
+    "rule": "@typescript-eslint/consistent-generic-constructors",
+    "message": "The generic type arguments should be specified as part of the constructor type arguments.",
+    "count": 1
+  },
+  {
+    "file": "src/server/rooms/upload-processing-error.node-test.ts",
+    "rule": "@typescript-eslint/no-floating-promises",
+    "message": "Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.",
+    "count": 2
+  },
+  {
+    "file": "src/server/rooms/upload-processing-error.ts",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 1
+  },
+  {
     "file": "src/server/rooms/upload-render-page.ts",
     "rule": "@typescript-eslint/no-unsafe-argument",
     "message": "Unsafe argument of type `any` assigned to a parameter of type `number`.",
@@ -3046,6 +4258,24 @@
     "rule": "@typescript-eslint/no-unsafe-member-access",
     "message": "Unsafe member access .organizationId on an `any` value.",
     "count": 1
+  },
+  {
+    "file": "src/server/utils/parse-xlsx.ts",
+    "rule": "@typescript-eslint/no-unnecessary-type-assertion",
+    "message": "This assertion is unnecessary since it does not change the type of the expression.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/parse-xlsx.ts",
+    "rule": "@typescript-eslint/prefer-nullish-coalescing",
+    "message": "Prefer using nullish coalescing operator (`??`) instead of a logical or (`||`), as it is a safer operator.",
+    "count": 1
+  },
+  {
+    "file": "src/server/utils/parse-xlsx.ts",
+    "rule": "@typescript-eslint/prefer-regexp-exec",
+    "message": "Use the `RegExp#exec()` method instead.",
+    "count": 2
   },
   {
     "file": "src/server/utils/seed-organization.ts",

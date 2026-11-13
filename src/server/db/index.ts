@@ -14,7 +14,11 @@ const globalForDb = globalThis as unknown as {
   conn: postgres.Sql | undefined;
 };
 
-const conn = globalForDb.conn ?? postgres(env.DATABASE_URL);
+const poolMax = Number(process.env.DATABASE_POOL_MAX ?? 10);
+if (!Number.isInteger(poolMax) || poolMax < 1 || poolMax > 20) {
+  throw new Error("DATABASE_POOL_MAX must be an integer from 1 to 20");
+}
+const conn = globalForDb.conn ?? postgres(env.DATABASE_URL, { max: poolMax });
 if (env.NODE_ENV !== "production") globalForDb.conn = conn;
 
 export const db = drizzle(timedPostgresClient(conn), {

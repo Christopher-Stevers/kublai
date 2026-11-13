@@ -104,6 +104,7 @@ function fixture() {
         {
           id: "1",
           description: "Unclear pipe",
+          sku: "",
           page: 1,
           evidence: "Unreadable quantity",
           quantity: null,
@@ -1733,7 +1734,7 @@ it("reopens a completed repeat-scan decision without changing it until saved", a
   fireEvent.click(recheck);
   expect(await screen.findByRole("button", { name: "Different delivery" })).toBeEnabled();
   expect(posts).toEqual([]);
-  fireEvent.click(screen.getByRole("button", { name: "Cancel", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(screen.queryByRole("button", { name: "Different delivery" })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Recheck" }));
   fireEvent.click(await screen.findByRole("button", { name: "Different delivery" }));
