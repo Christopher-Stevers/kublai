@@ -6,6 +6,18 @@ Current reviewed-build reference remains the prior accepted Phase 0/wizard evide
 
 <!-- DEV_DEPLOY_ENTRIES -->
 
+## 2026-11-13T02:14:43.012Z — Codex
+
+- Change: Downloading a folder queues every contained drawing set, including nested subfolders, with aggregate saved status and cancellation.
+- Commits: 313269970a7c00184af759ad7916b834119679c6
+- Build: `14172b28811debec762778498eb0e69be7e8da8d95ebd24dd463c70bcde3e6d7`; replaced: `61f74f4fc8f46a9534da1507cca6f19de68e81bd6fe870606220c7cc11790df4`.
+- Changed JavaScript gzip bytes: 35727 (review metadata only).
+- Flags: worker/shared worker source=false; shared scripts=true; large change=false.
+- Attempt record: /home/tim/.openclaw/workspace/kublai/.dev-deploy-attempts/2026-11-13T02-12-05.745Z-50b0b19b-d392-4623-b587-4ad657ba95ab.json.
+- Review status: waiting.
+
+
+
 ## 2026-11-13T02:10:50.118Z — Codex
 
 - Change: Recover expired sync sessions without discarding queued edits, show blocked sync clearly, and stop unused job pages and unopened features competing with startup.
