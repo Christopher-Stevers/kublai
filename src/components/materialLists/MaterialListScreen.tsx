@@ -515,7 +515,7 @@ export function MaterialListScreen({
                   {sections.map((section) => (
                   <MaterialFocusSection focused={!verifyOrderId && section.key === focusedSection?.key} key={section.key} aria-label={section.label ? `${section.label} parts` : undefined} data-order-id={section.orderId} className="space-y-3">
                     {section.label && <MaterialSectionHeading label={section.label} detail={section.detail} href={section.href} count={section.items.length} orderId={section.orderId} sectionKey={section.key} waiting={section.waiting} />}
-                    <div className="grid items-stretch grid-cols-[repeat(auto-fill,minmax(min(100%,9rem),1fr))] gap-2 sm:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] sm:gap-3">
+                    <div className="grid items-stretch grid-cols-[repeat(auto-fill,minmax(min(100%,9rem),1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))]">
                       {section.items.map((item) => {
                         const verifyOrderItem = verifyOrder?.items.find((orderItem) =>
                           matchesMaterialOrderLine(item, orderItem, verifySupplierId));
