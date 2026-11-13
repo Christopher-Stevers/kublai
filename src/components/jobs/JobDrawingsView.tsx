@@ -190,7 +190,9 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     false,
   );
   const downloadTasks = useDrawingDownloads();
-  const activeDownload = (id: string) => downloadTasks.find(task => drawingFolderDownloadSets(setsData?.sets ?? [], id).some(folder => task.id === `${account?.accountKey}:set:${folder.id}`) && (task.status === "queued" || task.status === "running"));
+  const activeDownload = (id: string) =>
+    downloadTasks.find(task => drawingFolderDownloadSets(setsData?.sets ?? [], id).some(folder => task.id === `${account?.accountKey}:set:${folder.id}`) && (task.status === "queued" || task.status === "running"));
+  const failedDownloads = (id: string) => downloadTasks.filter(task => task.status === "failed" && drawingFolderDownloadSets(setsData?.sets ?? [], id).some(folder => task.id === `${account?.accountKey}:set:${folder.id}`));
   const [downloadRevision, setDownloadRevision] = useState(0);
   useEffect(() => {
     const changed = () => setDownloadRevision(value => value + 1);
@@ -835,7 +837,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                     {Boolean(activeDownload(folder.id)) ? <Loader2Icon className="h-4 w-4 animate-spin" /> : folderSaved(folder.id) ? <CheckIcon className="h-4 w-4" /> : <DownloadIcon className="h-4 w-4" />}
                     {Boolean(activeDownload(folder.id)) ? "Cancel download" : folderSaved(folder.id) ? `Saved · ${(folderDownloadBytes(folder.id) / 1048576).toFixed(1)} MB` : checkingDownloads ? "Checking…" : "Download / repair"}
                   </Button>
-                  {Boolean(activeDownload(folder.id)) && <p role="status" className="mt-2 text-xs">{activeDownload(folder.id)?.progress}</p>}
+                  {activeDownload(folder.id) && <p role="status" className="mt-2 text-xs">{activeDownload(folder.id)?.progress}</p>}
+                  {failedDownloads(folder.id).map(task => <p key={task.id} role="alert" className="mt-2 text-sm text-destructive">{task.label}: {task.progress} Use Download / repair to retry.</p>)}
                 </div>
               </CardContent>
             </PressableCard>
