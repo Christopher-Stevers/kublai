@@ -6,6 +6,18 @@ Current reviewed-build reference remains the prior accepted Phase 0/wizard evide
 
 <!-- DEV_DEPLOY_ENTRIES -->
 
+## 2026-11-13T02:02:15.754Z — Codex
+
+- Change: Remove drawings helper text and center the sort toggle beside the Drawings heading.
+- Commits: e93caf642eb6828716a02b5b2a5fa08f23823260
+- Build: `052baeb5736ee7134bf3dc6e7dea327846ded8762c6e76b8dcec45274001744b`; replaced: `253c23d1ae19ebff258b29737caf7359feb2681f389be944b77dbf0a8e8a7a0b`.
+- Changed JavaScript gzip bytes: 212204 (review metadata only).
+- Flags: worker/shared worker source=false; shared scripts=false; large change=true.
+- Attempt record: /home/tim/.openclaw/workspace/kublai/.dev-deploy-attempts/2026-11-13T02-00-49.485Z-6063cdb2-bd63-45a3-bfd3-505feb75be0b.json.
+- Review status: waiting.
+
+
+
 ## 2026-11-12T19:51:55.153Z — Codex
 
 - Change: Prevent size taps and held sub-size choices from clicking through category choices in the part wizard.
