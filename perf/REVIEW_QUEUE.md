@@ -6,6 +6,18 @@ Current reviewed-build reference remains the prior accepted Phase 0/wizard evide
 
 <!-- DEV_DEPLOY_ENTRIES -->
 
+## 2026-11-13T02:17:18.941Z — Codex
+
+- Change: Hide the empty upload card when a drawing folder already contains subfolders or drawings.
+- Commits: f2d6be4486a86b8b2fcb4c2d1208a468e691712f
+- Build: `2eaf7437ea0777755cbb0dd37ff1cd354ca9abe162a44d0b379a0875d27f960c`; replaced: `14172b28811debec762778498eb0e69be7e8da8d95ebd24dd463c70bcde3e6d7`.
+- Changed JavaScript gzip bytes: 35738 (review metadata only).
+- Flags: worker/shared worker source=false; shared scripts=false; large change=false.
+- Attempt record: /home/tim/.openclaw/workspace/kublai/.dev-deploy-attempts/2026-11-13T02-15-50.037Z-35f761ab-3b4a-4979-a427-4772e70ba8a3.json.
+- Review status: waiting.
+
+
+
 ## 2026-11-13T02:14:43.012Z — Codex
 
 - Change: Downloading a folder queues every contained drawing set, including nested subfolders, with aggregate saved status and cancellation.
