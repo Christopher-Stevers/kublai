@@ -6,6 +6,18 @@ Current reviewed-build reference remains the prior accepted Phase 0/wizard evide
 
 <!-- DEV_DEPLOY_ENTRIES -->
 
+## 2026-11-13T02:06:05.197Z — Codex
+
+- Change: Folder cards show descendant drawing previews and total drawings across all nested folders.
+- Commits: 29f7922496ef13b79eca5ed762e94725cd273632
+- Build: `9123fcedabc46f314497de4509a77c275caf9cff012a58d7a040f2b74b2b6fc9`; replaced: `052baeb5736ee7134bf3dc6e7dea327846ded8762c6e76b8dcec45274001744b`.
+- Changed JavaScript gzip bytes: 123726 (review metadata only).
+- Flags: worker/shared worker source=false; shared scripts=true; large change=true.
+- Attempt record: /home/tim/.openclaw/workspace/kublai/.dev-deploy-attempts/2026-11-13T02-04-34.972Z-5795f4f3-0ba3-4ba4-8038-9fff8ac3fb86.json.
+- Review status: waiting.
+
+
+
 ## 2026-11-13T02:02:15.754Z — Codex
 
 - Change: Remove drawings helper text and center the sort toggle beside the Drawings heading.
