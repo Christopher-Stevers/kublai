@@ -731,6 +731,16 @@ describe("drawing set downloads", () => {
     state.fetchWorkspace.mockImplementation(async ({ sheetId }: { sheetId: string }) => ({ sheetId, metadata: {}, jobSheets: [] }));
     return store;
   }
+  it("keeps a download failure visible and lets the same folder retry", async () => {
+    offlineStore();
+    state.fetchSet.mockRejectedValueOnce(new Error("Device storage is full"));
+    render(<JobDrawingsView jobId="job" />);
+    fireEvent.click(screen.getByRole("button", { name: "Download Mechanical for offline use" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Device storage is full");
+    fireEvent.click(screen.getByRole("button", { name: "Download Mechanical for offline use" }));
+    await screen.findByText(/^Saved ·/);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
   it("downloads from the set card without opening it, including originals and workspaces", async () => {
     const store = offlineStore();
     state.canManage = false;
