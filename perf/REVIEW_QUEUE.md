@@ -6,6 +6,20 @@ Current reviewed-build reference remains the prior accepted Phase 0/wizard evide
 
 <!-- DEV_DEPLOY_ENTRIES -->
 
+## 2026-11-13T02:10:50.118Z — Codex
+
+- Change: Recover expired sync sessions without discarding queued edits, show blocked sync clearly, and stop unused job pages and unopened features competing with startup.
+- Commits: 67e4471732ee5cdfd2de5b8588dfa7bfdee66774, eefb17cb70dced6ca1bdc158c1017d5dbba96f0f
+- Build: `61f74f4fc8f46a9534da1507cca6f19de68e81bd6fe870606220c7cc11790df4`; replaced: `9123fcedabc46f314497de4509a77c275caf9cff012a58d7a040f2b74b2b6fc9`.
+- Changed JavaScript gzip bytes: 224559 (review metadata only).
+- Flags: worker/shared worker source=false; shared scripts=true; large change=true.
+- Attempt record: /home/tim/.openclaw/workspace/kublai/.dev-deploy-attempts/2026-11-13T02-09-22.433Z-636ee90f-e25a-40fa-8a13-e2f3c51a4450.json.
+- Validation: 26 tests passed against the exact deployed source, including real Replicache queued-mutation recovery, account-switch rejection, session-refresh timeout, offline job navigation, unopened feature loading, and startup warmup deferral. Canonical build/TypeScript and runtime health checks passed; public health and sign-in both returned 200.
+- Remaining evidence: no before/after field-phone timing or claim that all reported slow loads are resolved. Review startup and drawing timing independently; the paused zoom experiment is not included. Source and test receipts: `/tmp/sync-startup-67e44717/`.
+- Review status: waiting.
+
+
+
 ## 2026-11-13T02:06:05.197Z — Codex
 
 - Change: Folder cards show descendant drawing previews and total drawings across all nested folders.
