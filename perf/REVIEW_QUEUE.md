@@ -6,6 +6,18 @@ Current reviewed-build reference remains the prior accepted Phase 0/wizard evide
 
 <!-- DEV_DEPLOY_ENTRIES -->
 
+## 2026-11-13T02:44:28.177Z — Codex
+
+- Change: Restore original material tile spacing while keeping the smaller mobile tile minimum.
+- Commits: 62896e39a52784e5850a40e0a1e159c64ca13588
+- Build: `fc0d0703d3185f2038ce19f799f7ee000f59d795f37b05a2bd4c78dd0a451e0e`; replaced: `8979b89ade7d17bed11dba45285ce823176a3617e201594db84d577309ab33c5`.
+- Changed JavaScript gzip bytes: 36150 (review metadata only).
+- Flags: worker/shared worker source=false; shared scripts=false; large change=false.
+- Attempt record: /home/tim/.openclaw/workspace/kublai/.dev-deploy-attempts/2026-11-13T02-42-58.547Z-f59001f5-c778-438e-ac2d-ffaf0e46a5b0.json.
+- Review status: waiting.
+
+
+
 ## 2026-11-13T02:37:31.298Z — Codex
 
 - Change: Allow two material tiles on narrower mobile screens with a smaller minimum tile width and gap; preserve desktop sizing.
