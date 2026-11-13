@@ -925,7 +925,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
               <Skeleton key={index} className="aspect-[4/3] rounded-xl" />
             ))}
           </div>
-        ) : sheets.length === 0 ? (
+        ) : sheets.length === 0 && folders.length > 0 ? null : sheets.length === 0 ? (
           <Card>
             <CardContent className="p-0">
               <EmptyState
