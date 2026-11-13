@@ -1,4 +1,13 @@
-import type { TrialReader } from "./packing-slip-trial";
+/** Every reader that has produced a saved slip reading, including older ones
+ * still found on stored reviews. */
+export type SlipReader = "ocr" | "jev" | "terra" | "astra" | "liquid";
+export const readerLabels: Record<SlipReader, string> = {
+  ocr: "OCR only",
+  jev: "Jev Image",
+  terra: "Terra 6.1",
+  astra: "Astra Max",
+  liquid: "Liquid LFM3 direct",
+};
 
 export type ReceiptOrderItem = {
   jobPriceStatus?: string;
@@ -74,7 +83,7 @@ export type SlipLine = {
 export type SlipBox = { x: number; y: number; width: number; height: number };
 /** One reader's view of a row, kept when a later reader replaces it. */
 export type SlipReading = {
-  reader: TrialReader;
+  reader: SlipReader;
   shipped: number | null;
   unit: string | null;
   orderItemId: string | null;

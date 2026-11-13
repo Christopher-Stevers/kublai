@@ -121,17 +121,7 @@ import {
 } from "~/lib/slip-part-fit";
 import type { JobDocument } from "~/server/documents/types";
 import { useOnlineStatus } from "~/hooks/use-online-status";
-import {
-  PackingSlipTrialComparison,
-  useTrialComparison,
-} from "./PackingSlipTrial";
-import {
-  readersInTrial,
-  readerLabels,
-  type TrialLine,
-  type TrialReader,
-  type TrialResults,
-} from "~/lib/packing-slip-trial";
+import { readerLabels, type SlipReader } from "~/lib/packing-slip-review";
 
 type Entry = {
   id: string;
@@ -144,7 +134,6 @@ type Entry = {
   toReview?: number | null;
   ready?: number;
   approved: number;
-  reviewTrialRunId?: string;
   hasSuggestedOrder?: boolean;
   missingPages?: string | null;
   receivedAutomatically?: boolean;
@@ -343,11 +332,6 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
     id = query.get("document");
   const online = useOnlineStatus();
   const router = useRouter();
-  const comparison = useTrialComparison(jobId, id ?? undefined, online);
-  const trialResults =
-    comparison.trial && !comparison.trial.stale
-      ? comparison.trial.results
-      : null;
   const [docs, setDocs] = useState<Entry[]>([]),
     [detail, setDetail] = useState<Detail | null>(null),
     [error, setError] = useState(""),
@@ -1210,7 +1194,6 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                           run={run}
                           openRow={openLine}
                           setOpenRow={setOpenLine}
-                          trial={trialResults}
                           onResolve={setResolveTarget}
                           notify={(text, undo) => {
                             setNotice(text);
@@ -1255,20 +1238,9 @@ export function ReceivingWorkspace({ jobId }: { jobId: string }) {
                   Slip lab
                 </DialogTitle>
                 <DialogDescription>
-                  How this slip was read, other readers, and tools to read it
-                  again.
+                  How this slip was read, and tools to read it again.
                 </DialogDescription>
               </DialogHeader>
-              <PackingSlipTrialComparison
-                comparison={comparison}
-                online={online}
-                busy={busy}
-                selectedReader={r?.sourceTrial?.reader}
-                onUse={async (reader, runId) => {
-                  setLab(false);
-                  await run({ action: "trialDraft", reader, runId });
-                }}
-              />
               <section
                 aria-label="Slip tools"
                 className="space-y-4 rounded-lg border px-4 py-4 text-sm"
@@ -1977,7 +1949,7 @@ function sourceLine(l: ReceivingLine, detail: Detail) {
     : a?.lines[l.sourceIndex];
 }
 type ModelReading = {
-  reader: TrialReader;
+  reader: SlipReader;
   /** The slip's ordered column, when this reader's row is the one kept. */
   ordered: number | null;
   backordered?: number | null;
@@ -2262,9 +2234,7 @@ function readerCopies({
   lines,
   live,
   readings,
-  trialReadings,
   detail,
-  trial,
 }: {
   item: ReceiptOrderItem | undefined;
   /** What the order has counted by hand, not from any slip. */
@@ -2272,9 +2242,7 @@ function readerCopies({
   lines: ReceivingLine[];
   live: ReceivingLine[];
   readings: Array<ModelReading & { line: ReceivingLine }>;
-  trialReadings: Array<{ reader: TrialReader; t: TrialLine }>;
   detail: Detail;
-  trial: TrialResults | null;
 }): ReaderCopy[] {
   if (!lines.length)
     return [
@@ -2318,11 +2286,14 @@ function readerCopies({
         : label,
       reviewStatus,
       backorderChecks: shown.flatMap((line) => {
-        const prediction = line.predictionSource;
         const analyzed = sourceLine(line, detail);
-        const source = prediction
-          ? trial?.[prediction.reader]?.lines.find((t) => t.lineId === prediction.lineId)
-          : analyzed && (!line.readingSource || line.readingSource.reader === slipReader(analyzed)) ? analyzed : undefined;
+        const source =
+          !line.predictionSource &&
+          analyzed &&
+          (!line.readingSource ||
+            line.readingSource.reader === slipReader(analyzed))
+            ? analyzed
+            : undefined;
         const check = slipBackorderCheck(source ?? {
           ordered: line.paper?.ordered ?? line.ordered,
           shipped: line.paper?.quantity ?? line.quantity,
@@ -2340,7 +2311,7 @@ function readerCopies({
   };
   const byReader = new Map<string, ReaderCopy & { texts: string[] }>();
   const add = (
-    reader: TrialReader,
+    reader: SlipReader,
     ordered: number | null,
     shipped: number | null,
     unit: string | null,
@@ -2386,16 +2357,6 @@ function readerCopies({
       meanScore(x.match, x.quantity),
       x.line.description,
       x.backordered,
-    );
-  for (const { reader, t } of trialReadings)
-    add(
-      reader,
-      t.ordered,
-      t.shipped,
-      t.unit,
-      meanScore(t.confidence.match.value, t.confidence.quantity.value),
-      t.description,
-      t.backordered,
     );
   const ranked: ReaderCopy[] = [...byReader.values()]
     .map(({ texts, ...copy }) => {
@@ -2520,7 +2481,6 @@ function OrderComparison({
   run,
   openRow,
   setOpenRow,
-  trial,
   onResolve,
   notify,
 }: {
@@ -2531,7 +2491,6 @@ function OrderComparison({
   run: (a: Action) => Promise<boolean>;
   openRow: string | null;
   setOpenRow: (row: string | null) => void;
-  trial: TrialResults | null;
   onResolve: (target: ResolveTarget) => void;
   notify: (text: string, undo?: boolean) => void;
 }) {
@@ -3079,19 +3038,6 @@ function OrderComparison({
       setAsking({ fit: plan.fit.fit, unit: plan.fit.unit, item, go });
     else go();
   };
-  // Independent trial readers, when this slip was part of a comparison.
-  const others = (itemId: string, skip: Set<string>) =>
-    trial
-      ? readersInTrial(trial)
-          .filter((reader) => !skip.has(reader))
-          .flatMap((reader) =>
-            trial[reader]?.status === "complete"
-              ? trial[reader].lines
-                  .filter((t) => t.orderItemId === itemId)
-                  .map((t) => ({ reader, t }))
-              : [],
-          )
-      : [];
   return (
     <div>
       <Dialog open={!!notItem} onOpenChange={open => { if (!open && !removingDetection) setNotItem(null); }}>
@@ -3212,9 +3158,6 @@ function OrderComparison({
                 line: x.line,
               })),
             ),
-            trialReadings = item
-              ? others(item.id, new Set<string>(readings.map((x) => x.reader)))
-              : [],
             title = item ? item.description : lines[0]!.line.description,
             likely = item ? null : likelyName(detail, lines);
           const byHand = item ? (detail.receipts?.[item.id]?.byHand ?? 0) : 0;
@@ -3224,9 +3167,7 @@ function OrderComparison({
             lines: lines.map((x) => x.line),
             live: live.map((x) => x.line),
             readings,
-            trialReadings,
             detail,
-            trial,
           });
           const disposition = item ? r.orderResolutions?.[item.id] : undefined;
           const complete = rowComplete({ item, lines });
@@ -3376,23 +3317,17 @@ function OrderComparison({
           });
           const viewItem = () => item && showPreview({ kind: "item", item });
           const viewSlip = (copy: ReaderCopy) => {
-            const fromTrial = trialReadings.filter(
-              ({ reader }) => reader === copy.key,
-            );
             const matching = live.filter(({ line }) =>
               modelReadings(line, detail).some(
                 (reading) => reading.reader === copy.key,
               ),
             );
-            const sources = fromTrial.length
-              ? fromTrial.map(({ t }) => ({
-                  page: t.page,
-                  box: t.box ?? undefined,
-                }))
-              : (matching.length ? matching : lines).map(({ line }) => ({
-                  page: line.page,
-                  box: line.sourceBox ?? sourceLine(line, detail)?.box,
-                }));
+            const sources = (matching.length ? matching : lines).map(
+              ({ line }) => ({
+                page: line.page,
+                box: line.sourceBox ?? sourceLine(line, detail)?.box,
+              }),
+            );
             showPreview({
               kind: "slip",
               title: copy.description || title,

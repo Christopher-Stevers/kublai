@@ -1,4 +1,4 @@
-import type { SlipAnalysis, SlipLine, SlipBox } from "./packing-slip-review";
+import type { SlipAnalysis, SlipLine, SlipBox, SlipReader } from "./packing-slip-review";
 import { receivedLineQuantity, resolutionBlockers, type ReceivingResolution } from "./receiving-resolution";
 import {
   convertSlipQuantity,
@@ -26,12 +26,17 @@ export type ReceivingLine = {
     reader: "ocr" | "jev" | "terra";
     confidence?: SlipLine["confidenceDetails"];
   };
+  /** Older reviews drafted from a reader comparison. Kept so stored lines
+   * still load; nothing new writes it. */
   predictionSource?: {
     trialRunId: string;
-    reader: import("./packing-slip-trial").TrialReader;
+    reader: SlipReader;
     lineId: string;
     artifactSha256?: string;
-    confidence: import("./packing-slip-trial").TrialLine["confidence"];
+    confidence: Record<
+      "part" | "quantity" | "match" | "overall",
+      { value: number; basis: string; reason: string }
+    >;
   };
   kind?: ReceiptKind;
   humanEdited?: boolean;
@@ -70,9 +75,11 @@ export type ReceivingLine = {
 export type ReceivingReview = {
   /** Notes for an order item with no linked slip row. These never post receipt quantities. */
   orderResolutions?: Record<string, { disposition: "outstanding" | "backordered" | "cancel-requested" | "unresolved"; note: string; by: string; at: string }>;
+  /** Older reviews drafted from a reader comparison. Their lines still need a
+   * person's check before the slip is complete. Nothing new writes it. */
   sourceTrial?: {
     runId: string;
-    reader: import("./packing-slip-trial").TrialReader;
+    reader: SlipReader;
   };
   revision: number;
   humanReviewed?: boolean;
@@ -340,22 +347,7 @@ export function autoConfirmsLine(
     receiptUnit(line.unit) !== receiptUnit(item.unit)
   )
     return false;
-  // Imported trial readers keep their original confidence on the review line.
-  // Pair it with the immutable source quantity, never with a reviewer-edited value.
-  const prediction = line.predictionSource;
-  const savedPrediction = prediction &&
-    prediction.trialRunId === review.sourceTrial?.runId &&
-    prediction.reader === review.sourceTrial.reader &&
-    /^[a-f0-9]{64}$/i.test(prediction.artifactSha256 ?? "")
-      ? [{
-          orderItemId: source.orderItemId,
-          shipped: source.shipped,
-          unit: source.unit,
-          match: prediction.confidence.match.value,
-          quantity: prediction.confidence.quantity.value,
-        }]
-      : [];
-  return [...lineReadings(source), ...savedPrediction].some((reading) => {
+  return lineReadings(source).some((reading) => {
     if (
       reading.orderItemId !== item.id ||
       reading.shipped === null ||

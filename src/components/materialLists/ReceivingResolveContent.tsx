@@ -39,7 +39,7 @@ import {
   type ReceivingResolution,
 } from "~/lib/receiving-resolution";
 import { lineReadings, readSlipQuantity } from "~/lib/packing-slip-review";
-import { readerLabels } from "~/lib/packing-slip-trial";
+import { readerLabels } from "~/lib/packing-slip-review";
 import type { SlipBox } from "~/lib/packing-slip-review";
 import type { ReceivingLine } from "~/lib/receiving-review";
 import type { ReceivingDetail, ReceivingAction } from "./ReceivingWorkspace";

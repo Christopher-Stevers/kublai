@@ -60,8 +60,6 @@ import {
 import { orderFor, orderSnapshot, orderFingerprint } from "./service";
 import { matchLines } from "./match";
 import { seedPreviousReceipt } from "./review-draft";
-import { trialDocument } from "./trial-store";
-import { trialDraft, mergeTrialDraft } from "./trial-draft";
 import { canCreateFromSlip } from "./receiving-access";
 import { catalogueFor, forgetCatalogue } from "./catalogue-match";
 import { applyPartFit, orderPartFacts } from "./part-fit";
@@ -70,7 +68,6 @@ import {
   publishOrganizationCatalogueEvent,
 } from "~/server/material-list-events";
 import type { ReceivingInput } from "./receiving-input";
-import { readersInTrial } from "~/lib/packing-slip-trial";
 import { comparisonRows } from "./order-comparison";
 import { jobOrders } from "./find-order-service";
 import { matchConfidence } from "./match-confidence";
@@ -320,7 +317,6 @@ export async function receivingQueue(
         approved:
           r?.lines.filter((l) => l.approved).length ??
           (a?.applied ? Object.keys(a.applied.quantities).length : 0),
-        reviewTrialRunId: r?.sourceTrial?.runId,
         missingPages: missingPagesAfterReading(r, a),
         receivedAutomatically: !!r?.autopilot && !r.autopilot.undone,
       };
@@ -638,7 +634,6 @@ async function history(
     before: ReceivingReview;
     after: ReceivingReview;
   },
-  developmentImport = false,
   removedOrderItem?: typeof orderItems.$inferSelect,
   autopilot = false,
 ) {
@@ -674,18 +669,14 @@ async function history(
     documentId: doc.id,
     versionId: review.versionId,
     runId: requestId,
-    kind: developmentImport ? "analysis" : "confirmation",
+    kind: "confirmation",
     userId: access.user.id,
     release: process.env.NEXT_PUBLIC_APP_RELEASE ?? "unknown",
     data: {
       schemaVersion: 2,
-      operation: developmentImport ? "trial-import" : input.action,
-      undoable: !developmentImport && undoActions.has(input.action) && !(input.action === "line" && input.fit),
-      initiator: developmentImport
-        ? "development-trial"
-        : autopilot
-          ? "autopilot"
-          : "human",
+      operation: input.action,
+      undoable: undoActions.has(input.action) && !(input.action === "line" && input.fit),
+      initiator: autopilot ? "autopilot" : "human",
       targetLineId: "lineId" in input ? input.lineId : undefined,
       targetLineIds: "lineIds" in input ? input.lineIds : undefined,
       targetItemId: "itemId" in input ? input.itemId : undefined,
@@ -893,7 +884,7 @@ export async function mutateReceiving(
   access: DocumentAccess,
   input: ReceivingInput,
 ) {
-  if (input.action !== "detectLine") return mutateReceivingImpl(access, input, false);
+  if (input.action !== "detectLine") return mutateReceivingImpl(access, input);
   receiveAccess(access);
   const current = await receivingQueue(access, input.documentId);
   if (!("review" in current) || !current.review || !current.document || current.review.revision !== input.revision || current.document.currentVersionId !== input.versionId)
@@ -911,7 +902,7 @@ export async function mutateReceiving(
   const { version } = await readableVersion(access, input.versionId);
   const extracted = await extractSlip(access.job.organizationId, version.sha256, version.mimeType);
   const detected = await withSlipTrace(access.job.organizationId, input.requestId, () => detectSelectedLine(extracted.pages, input.page, input.sourceBox, doc.packingSlip!.orderId, item!));
-  return mutateReceivingImpl(access, input, false, detected);
+  return mutateReceivingImpl(access, input, detected);
 }
 
 /** Worker only, never an API action: receives every line of a slip without
@@ -943,18 +934,9 @@ export async function receiveWithoutCheck(
       fromHandCount: false,
       documentChecked: true,
     },
-    false,
     undefined,
     run,
   );
-}
-
-/** Development-only ingestion. Not exposed as an API action or human approval. */
-export async function importTrialReview(
-  access: DocumentAccess,
-  input: Extract<ReceivingInput, { action: "trialDraft" }>,
-) {
-  return mutateReceivingImpl(access, input, true);
 }
 
 /** What lets the worker receive a slip without a check. */
@@ -967,7 +949,6 @@ export type AutopilotRun = {
 async function mutateReceivingImpl(
   access: DocumentAccess,
   input: ReceivingInput,
-  developmentImport: boolean,
   detected?: Awaited<ReturnType<typeof detectSelectedLine>>,
   autopilot?: AutopilotRun,
 ) {
@@ -983,42 +964,6 @@ async function mutateReceivingImpl(
         input.documentId,
         { write: true },
       );
-      if (developmentImport) {
-        if (input.action !== "trialDraft")
-          return fail("Only trial drafts can be imported.");
-        const saved = doc.receivingReview;
-        if (
-          doc.packingSlipAnalysis?.applied ||
-          saved?.retiredBy ||
-          saved?.humanReviewed ||
-          saved?.orderConfirmed ||
-          saved?.documentChecked ||
-          saved?.duplicateDecision ||
-          saved?.lines.some(
-            (l) =>
-              !!l.approved ||
-              l.checked === true ||
-              l.humanEdited === true ||
-              !!l.ignored ||
-              !!l.partId ||
-              !!l.note,
-          )
-        )
-          return {
-            replayed: false,
-            skipped: "Saved human decisions were preserved.",
-            materialListId: undefined,
-          };
-        if (
-          saved?.sourceTrial?.runId === input.runId &&
-          saved?.sourceTrial?.reader === input.reader
-        )
-          return {
-            replayed: true,
-            skipped: "This trial draft is already imported.",
-            materialListId: undefined,
-          };
-      }
       const review = ensure(doc, fresh.user.id);
       const [prior] = await tx
         .select({
@@ -1034,10 +979,7 @@ async function mutateReceivingImpl(
               fresh.job.organizationId,
             ),
             eq(packingSlipReviewHistory.runId, input.requestId),
-            eq(
-              packingSlipReviewHistory.kind,
-              developmentImport ? "analysis" : "confirmation",
-            ),
+            eq(packingSlipReviewHistory.kind, "confirmation"),
           ),
         )
         .limit(1);
@@ -1186,75 +1128,6 @@ async function mutateReceivingImpl(
         if (data!.before!.orderResolutions) review.orderResolutions = structuredClone(data!.before!.orderResolutions);
         else delete review.orderResolutions;
         review.documentChecked = false;
-      } else if (input.action === "trialDraft") {
-        const trial = await trialDocument(fresh, doc.id, input.runId, state);
-        if (!trial || trial.stale)
-          fail(
-            "This comparison is not for the current source file.",
-            "CONFLICT",
-          );
-        if (
-          developmentImport &&
-          readersInTrial(trial!.entry?.readers).some(
-            (r) => trial!.results[r]?.status !== "complete",
-          )
-        )
-          fail(
-            "All readers in this trial must finish before importing the trial draft.",
-            "CONFLICT",
-          );
-        const prediction = trial!.results[input.reader];
-        if (prediction?.status !== "complete")
-          fail("This reader has not completed the slip.");
-        const chosenOrderId = doc.packingSlip?.orderId ?? prediction!.orderId;
-        const order = chosenOrderId
-          ? await orderFor(tx, fresh, chosenOrderId)
-          : null;
-        if (order && !doc.packingSlip) {
-          const [list] = await tx
-            .select()
-            .from(materialLists)
-            .where(
-              and(
-                eq(materialLists.id, order.materialListId!),
-                eq(materialLists.jobId, fresh.job.id),
-                eq(materialLists.organizationId, fresh.job.organizationId),
-              ),
-            )
-            .limit(1);
-          if (!list) fail("Material list unavailable.");
-          doc.packingSlip = {
-            orderId: order.id,
-            orderNumber: order.orderNumber ?? order.id,
-            materialListId: list!.id,
-            materialListName: list!.name,
-          };
-        }
-        const items = order ? await orderSnapshot(tx, fresh, order.id) : [];
-        const prepared = trialDraft({
-          results: trial!.results,
-          reader: input.reader,
-          runId: trial!.runId,
-          versionId: doc.currentVersionId!,
-          userId: fresh.user.id,
-          items,
-        });
-        prepared.review.supplierId = order?.supplierId ?? null;
-        if (prediction!.orderId && order && prediction!.orderId !== order.id)
-          prepared.review.warnings.push(
-            "This reader suggests a different order. The existing link was preserved; resolve the order before approving.",
-          );
-        const revision = review.revision;
-        const merged = mergeTrialDraft(review, prepared.review);
-        Object.assign(review, merged, {
-          revision,
-          sourceTrial: prepared.review.sourceTrial,
-        });
-        doc.packingSlipAnalysis = {
-          ...prepared.analysis,
-          applied: doc.packingSlipAnalysis?.applied,
-          confirmedItems: doc.packingSlipAnalysis?.confirmedItems,
-        };
       } else if (input.action === "reopen") {
         delete review.duplicateDecision;
         delete review.duplicateChecked;
@@ -2118,7 +1991,7 @@ async function mutateReceivingImpl(
         ["header", "link", "reconstruct", "approve"].includes(input.action)
       )
         renameLinkedSlip(state, doc, doc.packingSlip);
-      if (!developmentImport && !autopilot) review.humanReviewed = true;
+      if (!autopilot) review.humanReviewed = true;
       review.revision++;
       if (autopilot && review.autopilot)
         review.autopilot.revision = review.revision;
@@ -2131,7 +2004,6 @@ async function mutateReceivingImpl(
         input,
         before,
         replacedDocument,
-        developmentImport,
         removedOrderItem,
         !!autopilot,
       );

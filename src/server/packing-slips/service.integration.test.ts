@@ -21,7 +21,6 @@ const test = vi.hoisted(() => ({
   update: vi.fn(),
   receive: true,
   send: true,
-  trial: null as unknown,
   extractionFails: false,
   extractionStarted: false,
   extractionGate: null as Promise<void> | null,
@@ -55,7 +54,6 @@ import { assertManualReceiptEditable } from "./manual-receiving";
 import {
   mutateReceiving,
   receivingQueue,
-  importTrialReview,
   receivingOrderComparison,
   receivingOrderCandidates,
 } from "./receiving-service";
@@ -77,7 +75,6 @@ import {
   confirmSlipReceipt,
   refreshSlipReview,
 } from "./service";
-vi.mock("./trial-store", () => ({ trialDocument: async () => test.trial }));
 vi.mock("./selected-line", () => ({ detectSelectedLine: test.selectedLine }));
 vi.mock("./extract", () => ({
   extractSlip: async () => {
@@ -218,7 +215,6 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
     vi.unstubAllEnvs();
     test.receive = true;
     test.send = true;
-    test.trial = null;
     test.extractionFails = false;
     test.extractionStarted = false;
     test.extractionGate = null;
@@ -773,7 +769,6 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
     test.receive = true;
-    test.trial = null;
     await db
       .update(schema.orders)
       .set({ status: "cancelled" })
@@ -933,7 +928,6 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       clearSlipAnalysis(access, doc.documentId, analysis.runId),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
     test.receive = true;
-    test.trial = null;
     await expect(
       clearSlipAnalysis(access, doc.documentId, id(90)),
     ).rejects.toMatchObject({ code: "CONFLICT" });
@@ -1386,204 +1380,6 @@ describe.skipIf(!socket)("packing slip receipt transactions", () => {
       expect(Number((await item()).receivedQuantity)).toBe(2);
     },
   );
-  it.each(["astra", "liquid"] as const)(
-    "imports %s proposals without changing receipts, and rejects stale or foreign matches",
-    async (reader) => {
-      const { access, doc } = await ready();
-      const document = (await workspace()).documents[0]!;
-      const score = {
-        value: 0.99,
-        basis: "self_assessed",
-        reason: "Fixture source",
-      };
-      const prediction = {
-        schemaVersion: 1,
-        caseId: "case-001",
-        reader,
-        model: "gpt-6-astra",
-        status: "complete",
-        sourceSha256: "a".repeat(64),
-        documentKind: "delivery",
-        orderId: order,
-        lines: [
-          {
-            lineId: "one",
-            page: 1,
-            box: null,
-            evidence: "Valve 4 ea",
-            description: "Valve",
-            sku: null,
-            ordered: 10,
-            shipped: 4,
-            backordered: 6,
-            unit: "ea",
-            unitPrice: null,
-            orderItemId: id(6),
-            confidence: {
-              part: score,
-              quantity: score,
-              match: score,
-              overall: score,
-            },
-            issues: [],
-          },
-        ],
-        warnings: [],
-      };
-      test.trial = {
-        runId: "trial-testing-001",
-        stale: false,
-        entry: { versionId: document.currentVersionId },
-        results: { [reader]: prediction },
-      };
-      await reviewAction(access, doc.documentId, {
-        action: "trialDraft",
-        runId: "trial-testing-001",
-        reader,
-      });
-      let review = (await workspace()).documents[0]!.receivingReview!;
-      expect(review.lines[0]!.quantity).toBe(4);
-      expect(review.lines[0]!.approved).toBeUndefined();
-      expect(review.lines[0]!.predictionSource?.reader).toBe(reader);
-      expect(review.orderConfirmed).toBe(false);
-      expect(Number((await item()).receivedQuantity)).toBe(2);
-      test.trial = { ...(test.trial as object), stale: true };
-      await expect(
-        reviewAction(access, doc.documentId, {
-          action: "trialDraft",
-          runId: "trial-testing-001",
-          reader,
-        }),
-      ).rejects.toMatchObject({ code: "CONFLICT" });
-      test.trial = {
-        runId: "trial-testing-001",
-        stale: false,
-        results: {
-          [reader]: {
-            ...prediction,
-            lines: [{ ...prediction.lines[0], orderItemId: id(99) }],
-          },
-        },
-      };
-      await reviewAction(access, doc.documentId, {
-        action: "trialDraft",
-        runId: "trial-testing-001",
-        reader,
-      });
-      review = (await workspace()).documents[0]!.receivingReview!;
-      expect(review.lines[0]!.orderItemId).toBeNull();
-      expect(Number((await item()).receivedQuantity)).toBe(2);
-      test.receive = false;
-      await expect(
-        reviewAction(access, doc.documentId, {
-          action: "trialDraft",
-          runId: "trial-testing-001",
-          reader,
-        }),
-      ).rejects.toMatchObject({ code: "FORBIDDEN" });
-    },
-  );
-  it("stages a development trial once without human labels, receipt changes or overwriting later edits", async () => {
-    const { access, doc } = await ready();
-    const score = { value: 0.9, basis: "self_assessed", reason: "Fixture" };
-    const prediction = {
-      status: "complete",
-      documentKind: "delivery",
-      orderId: order,
-      warnings: [],
-      lines: [
-        {
-          lineId: "one",
-          page: 1,
-          box: null,
-          evidence: "Valve 4 ea",
-          description: "Valve",
-          sku: null,
-          ordered: 10,
-          shipped: 4,
-          backordered: 6,
-          unit: "ea",
-          unitPrice: null,
-          orderItemId: id(6),
-          issues: [],
-          confidence: {
-            part: score,
-            quantity: score,
-            match: score,
-            overall: score,
-          },
-        },
-      ],
-    };
-    test.trial = {
-      runId: "trial-testing-001",
-      stale: false,
-      results: { astra: prediction },
-    };
-    const input = {
-      action: "trialDraft" as const,
-      jobId: job,
-      documentId: doc.documentId,
-      revision: 1,
-      requestId: randomUUID(),
-      runId: "trial-testing-001",
-      reader: "astra" as const,
-    };
-    await expect(importTrialReview(access, input)).rejects.toMatchObject({
-      code: "CONFLICT",
-    });
-    test.trial = {
-      runId: input.runId,
-      stale: false,
-      results: Object.fromEntries(
-        ["astra", "terra", "jev", "ocr"].map((reader) => [
-          reader,
-          { ...prediction, reader },
-        ]),
-      ),
-    };
-    await importTrialReview(access, input);
-    const saved = (await workspace()).documents[0]!.receivingReview!;
-    expect(saved.humanReviewed).not.toBe(true);
-    expect(saved.documentChecked).toBe(false);
-    expect(saved.lines[0]!.approved).toBeUndefined();
-    expect(saved.lines[0]!.quantity).toBe(4);
-    expect(Number((await item()).receivedQuantity)).toBe(2);
-    const imported = (
-      await db.select().from(schema.packingSlipReviewHistory)
-    ).find(
-      (h) => (h.data as { operation?: string }).operation === "trial-import",
-    );
-    expect(imported?.kind).toBe("analysis");
-    const second = await importTrialReview(access, {
-      ...input,
-      revision: saved.revision,
-      requestId: randomUUID(),
-    });
-    expect(second.replayed).toBe(true);
-    expect((await workspace()).documents[0]!.receivingReview!.revision).toBe(
-      saved.revision,
-    );
-    await reviewAction(access, doc.documentId, {
-      action: "header",
-      kind: "delivery",
-      supplierId: null,
-      supplierName: "Human correction",
-      deliveryNumber: "Checked",
-      supplierOrderNumber: "",
-      deliveryDate: "",
-      confirmed: true,
-    });
-    const before = (await workspace()).documents[0]!.receivingReview!;
-    const skipped = await importTrialReview(access, {
-      ...input,
-      revision: before.revision,
-      requestId: randomUUID(),
-    });
-    expect(skipped).toHaveProperty("skipped");
-    expect((await workspace()).documents[0]!.receivingReview).toEqual(before);
-    expect(Number((await item()).receivedQuantity)).toBe(2);
-  });
   it("preserves saved review decisions when cleared detection reuses an identical source", async () => {
     const { access } = await ready();
     const duplicate = await saveDocumentVersion(
