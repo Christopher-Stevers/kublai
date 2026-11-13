@@ -25,6 +25,7 @@ import {
   useReplicacheSyncing,
   type ReplicacheSyncStatus,
 } from "~/hooks/use-replicache-material-list";
+import { useSyncSessionStatus } from "~/hooks/use-sync-session-status";
 
 type MaterialListSyncStatus = ReplicacheSyncStatus;
 type VerifyStatus = "pending" | "partial" | "complete" | "problem";
@@ -198,9 +199,14 @@ function MaterialListItemComponent({
   const isReplicacheSyncing = useReplicacheSyncing(
     !syncStatus && !!item.pendingSync,
   );
-  const itemSyncStatus =
+  const transportStatus = useSyncSessionStatus(
     syncStatus ??
-    resolveReplicacheSyncStatus(item.pendingSync, isReplicacheSyncing);
+    resolveReplicacheSyncStatus(item.pendingSync, isReplicacheSyncing),
+  );
+  // Keep the card pending if sync is blocked, even when its local value is saved.
+  const itemSyncStatus: MaterialListSyncStatus =
+    transportStatus === "sign-in-required" || transportStatus === "connection-error"
+      ? "pending" : transportStatus;
   const orderedQuantity = verifyOrderedQuantity ?? item.quantity;
   const orderedQuantityNumber = Math.max(
     0,
