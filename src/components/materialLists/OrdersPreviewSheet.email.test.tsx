@@ -264,7 +264,7 @@ describe("preview send acknowledgement", () => {
       { ...order, id: "second-order", supplierId: "second-supplier" },
     ], sent: [] });
     render(<OrdersPreviewSheet open onOpenChange={vi.fn()} materialListId="list" hasToolItems />);
-    const buttons = await screen.findAllByRole("button", { name: "Send", exact: true });
+    const buttons = await screen.findAllByRole("button", { name: "Send" });
     act(() => {
       buttons[0]!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       buttons[0]!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -273,7 +273,7 @@ describe("preview send acknowledgement", () => {
     expect(state.save).toHaveBeenCalledOnce();
     expect(launched).toEqual([]);
     expect(screen.getByRole("button", { name: "Sending..." })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Send", exact: true })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
     await act(async () => finish({ id: "accepted-request" }));
   });
 
@@ -294,7 +294,7 @@ describe("preview send acknowledgement", () => {
     expect(screen.getByLabelText("Internal Notes")).toHaveValue("Retained note");
     expect(launched).toHaveLength(1);
     expect(state.save).toHaveBeenCalledOnce();
-    expect(screen.getByRole("button", { name: "Send", exact: true })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
   });
 
   it("distinguishes an acknowledged order from a failed preview refresh", async () => {
@@ -333,7 +333,7 @@ describe("preview send acknowledgement", () => {
     fireEvent.click(await show());
     await screen.findByText(/The email draft could not be opened/);
     expect(state.save).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Send", exact: true })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
   });
 
   it("preserves explicit Close while retaining the pending latch on reopen", async () => {
@@ -341,8 +341,8 @@ describe("preview send acknowledgement", () => {
     state.save.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
     const change = vi.fn();
     const view = render(<OrdersPreviewSheet open onOpenChange={change} materialListId="list" isToolRequest />);
-    fireEvent.click(await screen.findByRole("button", { name: "Send", exact: true }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Close", exact: true })[0]!);
+    fireEvent.click(await screen.findByRole("button", { name: "Send" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Close" })[0]!);
     expect(change).toHaveBeenCalledWith(false);
     view.rerender(<OrdersPreviewSheet open={false} onOpenChange={change} materialListId="list" isToolRequest />);
     view.rerender(<OrdersPreviewSheet open onOpenChange={change} materialListId="list" isToolRequest />);

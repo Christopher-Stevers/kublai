@@ -167,7 +167,7 @@ describe("PhotoQueueDialog", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Library" }));
 
-    expect(screen.getByText("reviewed-elbow.webp")).toBeInTheDocument();
+    expect(screen.getByText("reviewed-elbow.webp", { selector: "div" })).toBeInTheDocument();
     expect(screen.getByText("2 uses")).toBeInTheDocument();
     expect(
       screen.getByPlaceholderText("Search filenames, source URLs, or notes"),

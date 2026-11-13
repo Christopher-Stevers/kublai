@@ -53,6 +53,8 @@
     "**/dist/**",
     "**/.next/**",
     "apps/mobile/android/**",
-    "tmp/**"
+    "tmp/**",
+    "perf/**",
+    "scripts/fixtures/**"
   ]
 }

@@ -80,7 +80,7 @@ it("runs at most one trailing refresh for hints arriving during a pending read",
         resolve = done;
       }),
   );
-  const h = setup(refresh);
+  const h = setup(refresh as unknown as Parameters<typeof setup>[0]);
   h.listener.status?.(true);
   h.listener.catchUp?.();
   await tick();

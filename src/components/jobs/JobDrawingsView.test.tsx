@@ -528,7 +528,7 @@ describe("Drawings", () => {
     render(<JobDrawingsView jobId="job" />);
     fireEvent.keyDown(screen.getByRole("button", { name: "More actions for Mechanical" }), { key: "Enter" });
     expect(screen.queryByRole("button", { name: "Open M-101" })).toBeNull();
-    fireEvent.click(screen.getByRole("menuitem", { name: "Move", exact: true }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Move" }));
     expect(screen.queryByRole("option", { name: "Mechanical" })).toBeNull();
     expect(screen.queryByRole("option", { name: /Child/ })).toBeNull();
     expect(screen.getByRole("button", { name: "Move here" })).toBeDisabled();

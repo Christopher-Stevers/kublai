@@ -354,7 +354,7 @@ it("persists only an opened job's exact latest50 history key, excluding chat aut
   }));
   expect(shouldPersistDeviceQuery(query)).toBe(false);
   pending.rollback();
-  pending.finish();
+  pending.finish?.();
   expect(shouldPersistDeviceQuery(query)).toBe(true);
   client.clear();
 });

@@ -78,7 +78,7 @@ it("reconciles an accepted merge immediately even when animation completion neve
   const animate = vi.fn(() => ({ finished: new Promise<void>(() => undefined) }));
   vi.stubGlobal("matchMedia", () => ({ matches: false }));
   const original = HTMLElement.prototype.animate;
-  HTMLElement.prototype.animate = animate as typeof original;
+  HTMLElement.prototype.animate = animate as unknown as typeof original;
   try {
     const onMerged = vi.fn();
     const { result, unmount } = renderHook(() => useCardMerge({ disabled: false, onMerged }));
@@ -111,7 +111,7 @@ it.each(["reduced motion", "unavailable animation", "cancelled animation"])("kee
     if (mode === "unavailable animation") throw new Error("Unavailable");
     return { finished: Promise.reject(new Error("Cancelled")) };
   });
-  HTMLElement.prototype.animate = animate as typeof original;
+  HTMLElement.prototype.animate = animate as unknown as typeof original;
   try {
     const onMerged = vi.fn();
     const { result } = renderHook(() => useCardMerge({ disabled: false, onMerged }));

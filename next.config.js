@@ -28,6 +28,7 @@ const config = {
         name: "app-press-browser",
         chunks: "all",
         layer: "app-pages-browser",
+        /** @param {{ layer?: string; nameForCondition?: () => string | null }} module */
         test(module) {
           return module.layer === "app-pages-browser" &&
             typeof module.nameForCondition === "function" &&

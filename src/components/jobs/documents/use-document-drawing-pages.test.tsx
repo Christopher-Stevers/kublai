@@ -94,7 +94,7 @@ function pages(versionId = version, name = "Saved page"): Pages {
       createdAt: new Date(0),
       updatedAt: new Date(0),
     },
-  ] as Pages;
+  ] as unknown as Pages;
 }
 function deferred<T>() {
   let resolve!: (value: T) => void, reject!: (error: Error) => void;

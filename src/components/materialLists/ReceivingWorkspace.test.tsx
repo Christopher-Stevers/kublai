@@ -2509,7 +2509,7 @@ it.each(["backordered", "unexplained"] as const)("Accept preserves existing %s a
     counterpartFingerprint: resolutionCounterpartFingerprint(state.items[0] as ReceiptOrderItem),
     match: "unresolved", specification: "confirmed", quantity: "confirmed",
     delivery: "short", siteQuantity: 6, acceptedQuantity: 6,
-    remainder, excess: "returned", note: "Keep the recorded receiving decision.",
+    remainder, excess: "returned" as "return", note: "Keep the recorded receiving decision.",
   };
   render(<ReceivingWorkspace jobId="job" />);
   const row = (await screen.findByRole("heading", { name: "Valve" })).closest("li")!;

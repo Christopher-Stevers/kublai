@@ -157,8 +157,8 @@ vi.mock("~/hooks/use-drawing-scale-save", async original => {
   const actual = await original<typeof DrawingScaleSaveModule>();
   function useFixtureScale(options: Parameters<typeof actual.useDrawingScaleSave>[0]) {
     return { isPending: false, save: async (scale: DrawingMetadata["scale"]) => {
-      try { if (!options.canStart()) return false; const next = await mocks.setScale({sheetId:options.sheetId,scale}) as DrawingMetadata;
-        await mocks.cancel({sheetId:options.sheetId});mocks.data = mocks.data ? {...mocks.data,metadata:next} : null;
+      try { if (!options.canStart()) return false; const next = await (mocks.setScale as (input: unknown) => unknown)({sheetId:options.sheetId,scale}) as DrawingMetadata;
+        await (mocks.cancel as (input: unknown) => unknown)({sheetId:options.sheetId});mocks.data = mocks.data ? {...mocks.data,metadata:next} : null;
         options.onAccepted(next);return true;
       } catch (reason) { options.onError(reason);return false; }
     } };
@@ -1597,14 +1597,14 @@ describe("drawing workspace workflows", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select first annotation" }));
     fireEvent.click(screen.getByRole("button", { name: "Details" }));
     const panel = screen.getByLabelText("Drawing tools panel");
-    fireEvent.click(within(panel).getByRole("button", { name: "Delete", exact: true }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Delete" }));
     expect(within(panel).getByRole("button", { name: "Removing…" })).toBeDisabled();
-    expect(screen.getByText(`Removing ${entity.data.type}…`)).toBeVisible();
+    expect(screen.getByText(`Removing ${(entity.data as { type: string }).type}…`)).toBeVisible();
     expect(mocks.data!.entities[0]!.visibility).toBe("published");
     await act(async () => { reject(new Error("This item changed. Refresh and try again.")); });
-    expect(screen.queryByText(`Removing ${entity.data.type}…`)).toBeNull();
+    expect(screen.queryByText(`Removing ${(entity.data as { type: string }).type}…`)).toBeNull();
     expect(screen.getByText("This item changed. Refresh and try again.")).toBeVisible();
-    expect(within(panel).getByRole("button", { name: "Delete", exact: true })).toBeEnabled();
+    expect(within(panel).getByRole("button", { name: "Delete" })).toBeEnabled();
     expect(mocks.data!.entities[0]!.visibility).toBe("published");
   });
   it("sends one removal for duplicate viewer callbacks before controls rerender", async () => {
@@ -1627,7 +1627,7 @@ describe("drawing workspace workflows", () => {
       expect(await first).toBe(true);
     });
     expect(mocks.data!.entities[0]!.visibility).toBe("archived");
-    expect(screen.queryByText(`Removing ${entity.data.type}…`)).toBeNull();
+    expect(screen.queryByText(`Removing ${(entity.data as { type: string }).type}…`)).toBeNull();
   });
   it("selects a measurement normally and resumes only from Edit", async () => {
     const entity=existingMarkup("published");
@@ -2603,26 +2603,26 @@ describe("instant private saved view name integration", () => {
   }
   async function rename() {
     fireEvent.click(screen.getByRole("button", {name: "Select saved view"}));
-    fireEvent.click(await screen.findByRole("button", {name: "Edit", exact: true}));
+    fireEvent.click(await screen.findByRole("button", {name: "Edit"}));
     fireEvent.change(screen.getByLabelText("Saved view name"), {target: {value: "New saved view"}});
-    fireEvent.click(screen.getByRole("button", {name: "Save", exact: true}));
+    fireEvent.click(screen.getByRole("button", {name: "Save"}));
   }
   afterEach(() => {for (const client of clients.splice(0)) client.clear();});
   it("online document cached capabilities/manual writes cannot unlock editing; fresh response does", async () => {
     const {client, key} = mountName(null, true);
     fireEvent.click(screen.getByRole("button", {name: "Select saved view"}));
-    expect(screen.queryByRole("button", {name: "Edit", exact: true})).toBeNull();
+    expect(screen.queryByRole("button", {name: "Edit"})).toBeNull();
     act(() => {client.setQueryData(key, client.getQueryData(key));});
-    expect(screen.queryByRole("button", {name: "Edit", exact: true})).toBeNull();
+    expect(screen.queryByRole("button", {name: "Edit"})).toBeNull();
     await act(async () => {await client.fetchQuery({queryKey: key, staleTime: 0, queryFn: async () => mocks.data!});});
-    expect(await screen.findByRole("button", {name: "Edit", exact: true})).toBeVisible();
+    expect(await screen.findByRole("button", {name: "Edit"})).toBeVisible();
     expect(mocks.save).not.toHaveBeenCalled();
   });
   it("manual authority loss disables an open document form and blocks the saved-view fast path", async () => {
     const {client, key} = mountName(null, true);
     await act(async () => {await client.fetchQuery({queryKey: key, staleTime: 0, queryFn: async () => mocks.data!});});
     fireEvent.click(screen.getByRole("button", {name: "Select saved view"}));
-    fireEvent.click(await screen.findByRole("button", {name: "Edit", exact: true}));
+    fireEvent.click(await screen.findByRole("button", {name: "Edit"}));
     fireEvent.change(screen.getByLabelText("Saved view name"), {target: {value: "Unconfirmed draft"}});
     act(() => {client.setQueryData(key, client.getQueryData(key));});
     expect(screen.getByRole("button", {name: "Checking access…"})).toBeDisabled();
@@ -2637,11 +2637,11 @@ describe("instant private saved view name integration", () => {
     expect(previousViewer.onScaleChange).toBeDefined();
     rerender(tree(true)); rerender(tree());
     fireEvent.click(screen.getByRole("button", {name: "Select saved view"}));
-    expect(screen.queryByRole("button", {name: "Edit", exact: true})).toBeNull();
+    expect(screen.queryByRole("button", {name: "Edit"})).toBeNull();
     await act(async () => {await previousViewer.onScaleChange?.({unit: "m", unitsPerSheetWidth: 120});});
     expect(mocks.setScale).not.toHaveBeenCalled(); expect(mocks.save).not.toHaveBeenCalled();
     await act(async () => {await client.fetchQuery({queryKey: key, staleTime: 0, queryFn: async () => mocks.data!});});
-    expect(await screen.findByRole("button", {name: "Edit", exact: true})).toBeEnabled();
+    expect(await screen.findByRole("button", {name: "Edit"})).toBeEnabled();
   });
   it("closes form and changes surviving selected/list title before response, restores refused name draft", async () => {
     const request = deferred<DrawingEntity>(); mocks.save.mockReturnValue(request.promise);
@@ -2663,7 +2663,7 @@ describe("instant private saved view name integration", () => {
     const {client, key} = mountName(); await rename();
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
     const before = client.getQueryData<Workspace>(key)!;
-    await act(async () => {client.setQueryData(key, {...before, entities: [{...privateView(), revision: 9, data: {name: "Remote saved view", sourceSheetId: sheetId, center: {x: .5,y: .5}, zoom: 1}}]});});
+    await act(async () => {client.setQueryData(key, {...before, entities: [{...privateView(), revision: 9, data: {name: "Remote saved view", sourceSheetId: sheetId, center: {x: .5,y: .5}, zoom: 1}} as DrawingEntity]});});
     await screen.findByRole("heading", {name: "Remote saved view"});
     await act(async () => {request.reject(new Error("Conflict"));});
     expect(screen.queryByLabelText("Saved view name")).toBeNull();
@@ -2691,8 +2691,8 @@ describe("instant private saved view name integration", () => {
       mocks.account = {userId: "other", accountKey: "org:other", store: null}; client.clear(); unmount();
       await act(async () => {network.resolve({...privateView(), revision: 5});});
     } else {
-      await act(async () => {network.resolve({...privateView(), revision: 5, data: {name: "Confirmed saved view", sourceSheetId: sheetId, center: {x: .5,y: .5}, zoom: 1}});});
-      await act(async () => {client.setQueryData<Workspace>(key, previous => previous && ({...previous, entities: [{...privateView(), revision: 9, data: {name: "Remote saved view", sourceSheetId: sheetId, center: {x: .5,y: .5}, zoom: 1}}]}));});
+      await act(async () => {network.resolve({...privateView(), revision: 5, data: {name: "Confirmed saved view", sourceSheetId: sheetId, center: {x: .5,y: .5}, zoom: 1}} as DrawingEntity);});
+      await act(async () => {client.setQueryData<Workspace>(key, previous => previous && ({...previous, entities: [{...privateView(), revision: 9, data: {name: "Remote saved view", sourceSheetId: sheetId, center: {x: .5,y: .5}, zoom: 1}} as DrawingEntity]}));});
     }
     await act(async () => {disk.resolve(null);});
     const written = saveSnapshot.mock.calls as unknown as Array<[string, Workspace]>;
@@ -2759,22 +2759,22 @@ describe("shared issue real-controller integration",()=>{
     const client=new QueryClient({defaultOptions:{queries:{retry:false}}});client.setQueryData(["drawing",{sheetId}],mocks.data);client.setQueryData(["drawing",{sheetId,omitHyperlinks:true}],mocks.data);
     const view=render(<QueryClientProvider client={client}><DrawingWorkspace jobId={jobId} sheet={sheet} onOpenSheet={vi.fn()}/></QueryClientProvider>);
     const props=mocks.viewer.mock.lastCall?.[0] as ComponentProps<typeof DrawingSheetViewer>;act(()=>props.onSelect?.(entityId));
-    fireEvent.click(await screen.findByRole("button",{name:"Edit",exact:true}));
+    fireEvent.click(await screen.findByRole("button",{name:"Edit"}));
     fireEvent.change(screen.getByLabelText("Issue title"),{target:{value:"New shared title"}});
     return {client,view};
   }
   it("keeps a real accepted issue saved when refresh hangs or rejects",async()=>{
     let finish!:(entity:DrawingEntity)=>void;mocks.save.mockReturnValue(new Promise(resolve=>{finish=resolve;}));mocks.invalidate.mockReturnValueOnce(new Promise(()=>undefined));
-    const {client,view}=await mountIssue();fireEvent.click(screen.getByRole("button",{name:"Save",exact:true}));
+    const {client,view}=await mountIssue();fireEvent.click(screen.getByRole("button",{name:"Save"}));
     expect(screen.getByRole("button",{name:"Saving…"})).toBeDisabled();await waitFor(()=>expect(mocks.save).toHaveBeenCalledOnce());
-    await act(async()=>finish({...issue(),revision:5,data:{...(issue().data as Extract<DrawingEntity,{kind:"issue"}>["data"]),title:"New shared title"}}));
+    await act(async()=>finish({...issue(),revision:5,data:{...(issue().data as Extract<DrawingEntity,{kind:"issue"}>["data"]),title:"New shared title"}} as DrawingEntity));
     await waitFor(()=>expect(screen.queryByRole("button",{name:"Saving…"})).toBeNull());
     expect(screen.queryByText(/unsaved item/)).toBeNull();expect(screen.queryByLabelText("Issue title")).toBeNull();expect(screen.getByRole("heading",{name:"New shared title"})).toBeVisible();view.unmount();client.clear();
   });
   it("uncertain ACK retains draft and offers only a read recovery without copy/retry writes",async()=>{
-    mocks.save.mockRejectedValue(Error("ACK lost"));const {client,view}=await mountIssue();fireEvent.click(screen.getByRole("button",{name:"Save",exact:true}));
+    mocks.save.mockRejectedValue(Error("ACK lost"));const {client,view}=await mountIssue();fireEvent.click(screen.getByRole("button",{name:"Save"}));
     await screen.findByRole("button",{name:"Check latest issue"});expect(screen.getByLabelText("Issue title")).toHaveValue("New shared title");expect(screen.queryByRole("button",{name:"Save as new private copy"})).toBeNull();
-    fireEvent.click(screen.getByRole("button",{name:"Save",exact:true}));expect(mocks.save).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole("button",{name:"Save"}));expect(mocks.save).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole("button",{name:"Check latest issue"}));await waitFor(()=>expect(mocks.readWorkspace).toHaveBeenCalledOnce());
     expect(screen.getByLabelText("Issue title")).toHaveValue("New shared title");expect(mocks.save).toHaveBeenCalledOnce();view.unmount();client.clear();
   });

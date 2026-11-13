@@ -333,7 +333,7 @@ describe("PartDetailsDialog inline add", () => {
       fireEvent.change(screen.getByPlaceholderText("e.g., Long sweep, DWV"), {target:{value:"Unsaved description draft"}});
       fireEvent.click(screen.getByRole("button", {name: "Search For Image"}));
       expect(screen.getByText("Find Part Image with Google")).toBeInTheDocument();
-      fireEvent.click(screen.getByRole("button", {name: "Paste", exact:true}));
+      fireEvent.click(screen.getByRole("button", {name: "Paste"}));
       await waitFor(() => expect(photoTransport.attach).toHaveBeenCalledExactlyOnceWith("/images/catalog/uploads/new.webp"));
       expect(screen.queryByText("Find Part Image with Google")).toBeNull();
       expect(document.querySelector('img[src="/images/catalog/uploads/new.webp"]')).toBeInTheDocument();
@@ -360,7 +360,7 @@ describe("PartDetailsDialog inline add", () => {
     Object.defineProperty(navigator, "clipboard", {configurable:true, value:{read:async()=>[{types:["image/png"],getType:async()=>new Blob(["synthetic"],{type:"image/png"})}]}});
     try {
       render(<PartDetailsDialog mode="edit" partId="part-existing" open onOpenChange={() => {}} />);
-      fireEvent.click(screen.getByRole("button", {name:"Search For Image"})); fireEvent.click(screen.getByRole("button", {name:"Paste",exact:true}));
+      fireEvent.click(screen.getByRole("button", {name:"Search For Image"})); fireEvent.click(screen.getByRole("button", {name:"Paste"}));
       await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
       expect(photoTransport.attach).not.toHaveBeenCalled(); expect(screen.getByText("Find Part Image with Google")).toBeInTheDocument();
       await act(async () => { uploaded({ok:true,json:async()=>({url:"/images/catalog/uploads/uploaded.webp"})} as Response); await upload; });

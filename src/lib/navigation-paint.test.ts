@@ -271,7 +271,9 @@ it("fresh real wheel input cancels a claimed navigation while synthetic wheel do
   const add = vi.spyOn(window, "addEventListener"),
     stop = installNavigationInput();
   try {
-    const callback = add.mock.calls.find((row) => row[0] === "wheel")?.[1];
+    const callback = add.mock.calls.find(
+      (row) => (row[0] as string) === "wheel",
+    )?.[1] as ((event: Event) => void) | undefined;
     if (typeof callback !== "function") throw Error("Missing wheel listener");
     navigationPaint.beginInput(true);
     expect(navigationPaint.claimLocal()).not.toBeNull();

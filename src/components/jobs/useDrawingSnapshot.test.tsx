@@ -68,7 +68,7 @@ it("opens locally while the browser still reports online, then applies live upda
   const read = vi.fn(async () => ({ id: "saved" }));
   const hook = renderHook(({ live, revoked }: { live: { id: string } | undefined; revoked: boolean }) =>
     useDrawingSnapshot("drawing", live, read, { localFirst: true, accessRevoked: revoked }),
-    { initialProps: { live: undefined, revoked: false } });
+    { initialProps: { live: undefined as { id: string } | undefined, revoked: false } });
   await waitFor(() => expect(hook.result.current.data).toEqual({ id: "saved" }));
   hook.rerender({ live: { id: "updated" }, revoked: false });
   expect(hook.result.current.data).toEqual({ id: "updated" });
