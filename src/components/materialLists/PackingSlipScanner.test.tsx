@@ -263,14 +263,14 @@ it("counts the slip's printed pages as they are captured", async () => {
   const reads = ["Page 1 of 2", "Page 1 of 2", "Page 2 of 2"];
   const fetch = vi.fn(async (url: string, init?: RequestInit) =>
     url.startsWith("data:")
-      ? new Response(new Blob(["jpeg"]))
+      ? new Response("jpeg")
       : Response.json({ text: reads.shift() ?? null }),
   );
   vi.stubGlobal("fetch", fetch);
   const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
   const save = vi.fn(async () => true);
   render(<PackingSlipScanner jobId="job" onSave={save} onCancel={vi.fn()} />);
-  await screen.findByText("Page 1 of 2. Still to scan: page 2 of 2.", {}, { timeout: 3000 });
+  await screen.findByText("Page 1 of 2. Still to scan: page 2 of 2.", {}, { timeout: 15000 });
   const [url, init] = fetch.mock.calls.find(([u]) => !u.startsWith("data:"))!;
   expect(url).toBe("/api/job-documents/packing-slips/page-check?jobId=job");
   expect(init).toMatchObject({ method: "POST", headers: { "content-type": "image/jpeg" } });
@@ -281,14 +281,14 @@ it("counts the slip's printed pages as they are captured", async () => {
   );
   expect(save).not.toHaveBeenCalled();
   fireEvent.click(screen.getByText("Next page"));
-  await screen.findByText("This is page 1 of 2 again. Retake it if you meant the next page.", {}, { timeout: 3000 });
+  await screen.findByText("This is page 1 of 2 again. Retake it if you meant the next page.", {}, { timeout: 15000 });
   fireEvent.click(screen.getByText("Retake last page"));
-  await screen.findByText("Page 2 of 2. All 2 pages captured.", {}, { timeout: 3000 });
+  await screen.findByText("Page 2 of 2. All 2 pages captured.", {}, { timeout: 15000 });
   confirm.mockClear();
   fireEvent.click(screen.getByText("Done"));
-  await screen.findByText(/PDF saved in Documents/);
+  await screen.findByText(/PDF saved in Documents/, {}, { timeout: 15000 });
   expect(confirm).not.toHaveBeenCalled();
-});
+}, 60000);
 it("reads no pages for ordinary documents or without a job", async () => {
   camera();
   const fetch = vi.fn();

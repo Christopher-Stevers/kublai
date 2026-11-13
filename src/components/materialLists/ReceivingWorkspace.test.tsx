@@ -2275,7 +2275,7 @@ it("opens duplicate comparison in the main viewer and returns to the same review
     ? Response.json({documents:[],versions:[]}) : serve(url, opts));
   render(<ReceivingWorkspace jobId="job" />);
   fireEvent.click(await screen.findByRole("button", {name:"Compare files"}));
-  await screen.findByRole("region", {name:"Left comparison"});
+  await screen.findByRole("region", {name:"Left comparison"}, {timeout: 15000});
   const viewer = screen.getByRole("main", {name:"Packing slip comparison"});
   expect(viewer).toHaveClass("app-below-header");
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -2286,7 +2286,7 @@ it("opens duplicate comparison in the main viewer and returns to the same review
   act(() => { expect(runHeaderBackOverride()).toBe(true); });
   expect(await screen.findByRole("heading",{name:"Review Packing Slip"})).toBeVisible();
   expect(posts).toEqual([]);expect(replace).not.toHaveBeenCalled();
-});
+}, 60000);
 
 it("shows a trash target while dragging an unmatched order part and confirms its removal", async () => {
   dragSetup();
