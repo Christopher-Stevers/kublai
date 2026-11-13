@@ -149,7 +149,8 @@ export async function verifyOverlay({ repo, source, previous, manifest }) {
       (before[target] !== undefined
         ? await fs.readFile(base + "/" + target, "utf8")
         : "");
-    const diff = git(["diff", commit + "^", commit, "--", step.commitPath]);
+    if (step.contextLines !== undefined && step.contextLines !== 0) fail("Unsupported diff context");
+    const diff = git(["diff", ...(step.contextLines === 0 ? ["--unified=0"] : []), commit + "^", commit, "--", step.commitPath]);
     if (!diff) fail("Empty committed runtime patch");
     reconstructed[target] = applyExactHunks(start, diff);
   }
