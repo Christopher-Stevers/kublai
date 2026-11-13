@@ -6,6 +6,18 @@ Current reviewed-build reference remains the prior accepted Phase 0/wizard evide
 
 <!-- DEV_DEPLOY_ENTRIES -->
 
+## 2026-11-13T02:20:16.327Z — Codex
+
+- Change: Keep failed drawing folder downloads visible with their actual error and retry guidance.
+- Commits: 6004adaa2df024d6e6e19009c55f4a9e5117a340
+- Build: `e6c52aadc6fc9f9f508a12cd77a087e9b08a406aa62ecb63cd8517f9cc3c4ac6`; replaced: `2eaf7437ea0777755cbb0dd37ff1cd354ca9abe162a44d0b379a0875d27f960c`.
+- Changed JavaScript gzip bytes: 35805 (review metadata only).
+- Flags: worker/shared worker source=false; shared scripts=false; large change=false.
+- Attempt record: /home/tim/.openclaw/workspace/kublai/.dev-deploy-attempts/2026-11-13T02-18-29.270Z-f0730ab5-e73c-4234-96fd-3412ef13f096.json.
+- Review status: waiting.
+
+
+
 ## 2026-11-13T02:17:18.941Z — Codex
 
 - Change: Hide the empty upload card when a drawing folder already contains subfolders or drawings.
