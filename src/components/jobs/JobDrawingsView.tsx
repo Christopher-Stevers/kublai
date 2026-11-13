@@ -4,6 +4,7 @@ import { getQueryKey } from "@trpc/react-query";
 import { useTierOneReadOptions } from "~/hooks/use-tier-one-read-options";
 import { useInstantDrawingMetadata } from "~/hooks/use-instant-drawing-metadata";
 import { verifyDrawingDownload, type DownloadMarker } from "~/lib/drawing-download-check";
+import { drawingFolderSummary } from "~/lib/drawing-folder-summary";
 import { drawingMoveTargets } from "~/lib/drawing-folder-move";
 import { requestPersistentDeviceStorage } from "~/lib/persistent-device-storage";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
@@ -696,6 +697,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   // Folders.
   const folders = (setsData?.sets ?? []).filter(folder => (folder.parentId ?? null) === setId);
   const orderedFolders = folderOrder.sortFolders(folders);
+  const folderSummaries = new Map(folders.map(folder => [folder.id, drawingFolderSummary(setsData?.sets ?? [], folder.id)]));
   const openFolder = (id: string) => {
     if (!sandbox) recordDrawingFolderOpen(id);
     setSetId(id);
@@ -727,9 +729,10 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
               className="card-lift cursor-pointer gap-0 overflow-hidden py-0"
               onClick={() => openFolder(folder.id)}
             >
-              {folder.coverImageUrl ? (
+              <div className="relative">
+              {folderSummaries.get(folder.id)?.coverImageUrl ? (
                 <DrawingThumbnail
-                  src={folder.coverImageUrl}
+                  src={folderSummaries.get(folder.id)!.coverImageUrl!}
                   alt=""
                   loading="lazy"
                   className="bg-muted aspect-[16/9] w-full border-b object-contain"
@@ -739,6 +742,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                   <FolderIcon className="h-12 w-12" />
                 </div>
               )}
+              {folderSummaries.get(folder.id)?.hasSubfolders && <span className="bg-background/90 absolute bottom-3 left-3 rounded-md border p-2 shadow-sm" aria-label="Contains subfolders"><FolderIcon className="h-5 w-5" /></span>}
+              </div>
               <CardHeader className="flex flex-row items-start justify-between gap-2 px-4 pt-3 pb-0">
                 <CardTitle className="min-w-0 leading-tight break-words">
                   {folder.name}
@@ -803,8 +808,8 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                 )}
               </CardHeader>
               <CardContent className="text-muted-foreground px-4 pt-1 pb-4 text-sm">
-                {folder.sheetCount}{" "}
-                {folder.sheetCount === 1 ? "drawing" : "drawings"}
+                {folderSummaries.get(folder.id)!.count}{" "}
+                {folderSummaries.get(folder.id)!.count === 1 ? "drawing" : "drawings"}
                 <div className="mt-3" onClick={event => event.stopPropagation()}>
                   <Button
                     variant="outline"
