@@ -6,6 +6,18 @@ Current reviewed-build reference remains the prior accepted Phase 0/wizard evide
 
 <!-- DEV_DEPLOY_ENTRIES -->
 
+## 2026-11-13T02:37:31.298Z — Codex
+
+- Change: Allow two material tiles on narrower mobile screens with a smaller minimum tile width and gap; preserve desktop sizing.
+- Commits: ea4451529b7b9ed182ab84b2e8605685b840792e
+- Build: `8979b89ade7d17bed11dba45285ce823176a3617e201594db84d577309ab33c5`; replaced: `e2dc1d5e8147900a00551a6cdb2d67f6918b60f8cf3a34bb109145ed0a39bc43`.
+- Changed JavaScript gzip bytes: 36147 (review metadata only).
+- Flags: worker/shared worker source=false; shared scripts=false; large change=false.
+- Attempt record: /home/tim/.openclaw/workspace/kublai/.dev-deploy-attempts/2026-11-13T02-36-00.601Z-aafffc92-9dd8-4c21-b495-2517578c782c.json.
+- Review status: waiting.
+
+
+
 ## 2026-11-13T02:31:35.174Z — Codex
 
 - Change: Allow managers to delete empty custom document folders; protect the three default folders and folder contents.
