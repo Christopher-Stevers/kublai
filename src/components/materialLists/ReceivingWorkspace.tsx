@@ -2494,8 +2494,6 @@ function OrderComparison({
   onResolve: (target: ResolveTarget) => void;
   notify: (text: string, undo?: boolean) => void;
 }) {
-  // One toggle for every row: opening the other readers on one opens them all.
-  const [showOthers, setShowOthers] = useState(false);
   const modifying = useRef(false);
   const [notItem, setNotItem] = useState<{ ids: string[]; selected: string } | null>(null);
   const [removingDetection, setRemovingDetection] = useState(false);
@@ -3718,36 +3716,7 @@ function OrderComparison({
                           )}
                         </>
                       )}
-                      {copies.length > 1 && (
-                        <button
-                          type="button"
-                          aria-expanded={showOthers}
-                          onClick={() => setShowOthers(!showOthers)}
-                          className="text-muted-foreground hover:text-foreground relative z-10 mt-2 inline-flex items-center gap-1 text-xs font-medium"
-                        >
-                          {showOthers
-                            ? "Hide other readers"
-                            : `${copies.length - 1} other ${copies.length === 2 ? "reader" : "readers"}`}
-                          <ChevronDownIcon
-                            className={`size-3.5 transition-transform motion-reduce:transition-none ${showOthers ? "rotate-180" : ""}`}
-                          />
-                        </button>
-                      )}
                     </div>
-                  </div>
-                  <div>
-                    {showOthers &&
-                      copies.slice(1).map((copy) => (
-                        <div
-                          key={copy.key}
-                          role="group"
-                          aria-label={`${copy.label} reading`}
-                          className="text-muted-foreground relative mt-3 border-t border-dashed pt-2.5"
-                        >
-                          {reading(copy, false)}
-                          {verdict(copy)}
-                        </div>
-                      ))}
                   </div>
                   {lines.length > 0 && (
                     <button
