@@ -30,3 +30,19 @@ export function drawingFolderSummary(folders: DrawingFolderSummaryInput[], id: s
   }
   return { count, coverImageUrl, hasSubfolders: Boolean(children.get(id)?.length) };
 }
+
+/** Includes sets with drawings at every level; empty containers need no download. */
+export function drawingFolderDownloadSets<T extends DrawingFolderSummaryInput>(folders: T[], id: string): T[] {
+  const pending = [id], seen = new Set<string>(), result: T[] = [];
+  const byId = new Map(folders.map(folder => [folder.id, folder]));
+  while (pending.length) {
+    const next = pending.shift()!;
+    if (seen.has(next)) continue;
+    seen.add(next);
+    const folder = byId.get(next);
+    if (!folder) continue;
+    if (folder.sheetCount > 0) result.push(folder);
+    for (const child of byId.values()) if (child.parentId === next) pending.push(child.id);
+  }
+  return result;
+}

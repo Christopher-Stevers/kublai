@@ -13,3 +13,13 @@ it('keeps the folder cover and counts cyclic cached entries only once', () => {
 it('shows empty folders honestly', () => {
   expect(drawingFolderSummary([{id:'empty',sheetCount:0}], 'empty')).toEqual({count:0,coverImageUrl:null,hasSubfolders:false});
 });
+
+it('downloads every nonempty nested set, including parent drawings, without siblings or duplicates', async () => {
+  const { drawingFolderDownloadSets } = await import('./drawing-folder-summary');
+  expect(drawingFolderDownloadSets([
+    {id:'root',sheetCount:2,parentId:'deep'},
+    {id:'empty',sheetCount:0,parentId:'root'},
+    {id:'deep',sheetCount:5,parentId:'empty'},
+    {id:'sibling',sheetCount:9},
+  ],'root').map(folder=>folder.id)).toEqual(['root','deep']);
+});

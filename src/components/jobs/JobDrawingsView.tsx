@@ -4,7 +4,7 @@ import { getQueryKey } from "@trpc/react-query";
 import { useTierOneReadOptions } from "~/hooks/use-tier-one-read-options";
 import { useInstantDrawingMetadata } from "~/hooks/use-instant-drawing-metadata";
 import { verifyDrawingDownload, type DownloadMarker } from "~/lib/drawing-download-check";
-import { drawingFolderSummary } from "~/lib/drawing-folder-summary";
+import { drawingFolderSummary, drawingFolderDownloadSets } from "~/lib/drawing-folder-summary";
 import { drawingMoveTargets } from "~/lib/drawing-folder-move";
 import { requestPersistentDeviceStorage } from "~/lib/persistent-device-storage";
 import { PriorityActionBar } from "~/components/ui/priority-action-bar";
@@ -190,7 +190,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     false,
   );
   const downloadTasks = useDrawingDownloads();
-  const activeDownload = (id: string) => downloadTasks.find(task => task.id === `${account?.accountKey}:set:${id}` && (task.status === "queued" || task.status === "running"));
+  const activeDownload = (id: string) => downloadTasks.find(task => drawingFolderDownloadSets(setsData?.sets ?? [], id).some(folder => task.id === `${account?.accountKey}:set:${folder.id}`) && (task.status === "queued" || task.status === "running"));
   const [downloadRevision, setDownloadRevision] = useState(0);
   useEffect(() => {
     const changed = () => setDownloadRevision(value => value + 1);
@@ -401,7 +401,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
     if (!sandbox) recordDrawingSheetOpen(id);
     openSheet(id);
   };
-  const downloadFolder = async (targetId = setId) => {
+  const downloadSingleSet = async (targetId: string) => {
     if (!account?.store || !targetId) return;
     const currentFolder = setsData?.sets.find(folder => folder.id === targetId);
     if (currentFolder && savedSets[targetId] === (currentFolder.downloadVersion ?? `${new Date(currentFolder.updatedAt).toISOString()}:${currentFolder.sheetCount}`)) return;
@@ -473,6 +473,19 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   const sheetIndex = sheets.findIndex((sheet) => sheet.id === sheetId);
   const sheet = sheetIndex >= 0 ? sheets[sheetIndex] : null;
   useRootFlag("data-drawing-quick-wheel-page", quickWheel && Boolean(sheet));
+  const downloadFolder = async (targetId = setId) => {
+    if (!targetId) return;
+    for (const folder of drawingFolderDownloadSets(setsData?.sets ?? [], targetId)) await downloadSingleSet(folder.id);
+  };
+  const folderSaved = (id: string) => {
+    const targets = drawingFolderDownloadSets(setsData?.sets ?? [], id);
+    return targets.length > 0 && targets.every(folder => savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`));
+  };
+  const folderDownloadBytes = (id: string) => drawingFolderDownloadSets(setsData?.sets ?? [], id).reduce((total, folder) => total + (downloadSizes[folder.id] ?? 0), 0);
+  const cancelFolderDownload = (id: string) => {
+    for (const folder of drawingFolderDownloadSets(setsData?.sets ?? [], id)) drawingDownloadQueue.cancel(`${account?.accountKey}:set:${folder.id}`);
+  };
+
   const flags = setId ? setData : setsData;
   const canUpload =
     !sandbox &&
@@ -815,12 +828,12 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
                     variant="outline"
                     size="sm"
                     className="w-full"
-                    disabled={!account?.store || !setsSnapshot.online || !folder.sheetCount || savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`)}
-                    aria-label={Boolean(activeDownload(folder.id)) ? `Cancel download of ${folder.name}` : savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) ? `${folder.name} downloaded` : `Download ${folder.name} for offline use`}
-                    onClick={() => Boolean(activeDownload(folder.id)) ? drawingDownloadQueue.cancel(`${account?.accountKey}:set:${folder.id}`) : void downloadFolder(folder.id)}
+                    disabled={!account?.store || !setsSnapshot.online || !folderSummaries.get(folder.id)!.count || folderSaved(folder.id)}
+                    aria-label={Boolean(activeDownload(folder.id)) ? `Cancel download of ${folder.name}` : folderSaved(folder.id) ? `${folder.name} downloaded` : `Download ${folder.name} for offline use`}
+                    onClick={() => Boolean(activeDownload(folder.id)) ? cancelFolderDownload(folder.id) : void downloadFolder(folder.id)}
                   >
-                    {Boolean(activeDownload(folder.id)) ? <Loader2Icon className="h-4 w-4 animate-spin" /> : savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) ? <CheckIcon className="h-4 w-4" /> : <DownloadIcon className="h-4 w-4" />}
-                    {Boolean(activeDownload(folder.id)) ? "Cancel download" : savedSets[folder.id] === (folder.downloadVersion ?? `${new Date(folder.updatedAt).toISOString()}:${folder.sheetCount}`) ? `Saved · ${((downloadSizes[folder.id] ?? 0) / 1048576).toFixed(1)} MB` : checkingDownloads ? "Checking…" : "Download / repair"}
+                    {Boolean(activeDownload(folder.id)) ? <Loader2Icon className="h-4 w-4 animate-spin" /> : folderSaved(folder.id) ? <CheckIcon className="h-4 w-4" /> : <DownloadIcon className="h-4 w-4" />}
+                    {Boolean(activeDownload(folder.id)) ? "Cancel download" : folderSaved(folder.id) ? `Saved · ${(folderDownloadBytes(folder.id) / 1048576).toFixed(1)} MB` : checkingDownloads ? "Checking…" : "Download / repair"}
                   </Button>
                   {Boolean(activeDownload(folder.id)) && <p role="status" className="mt-2 text-xs">{activeDownload(folder.id)?.progress}</p>}
                 </div>
