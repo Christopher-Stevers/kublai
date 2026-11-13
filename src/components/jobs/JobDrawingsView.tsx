@@ -3,7 +3,6 @@ import { useCreateDrawingSet } from "~/hooks/use-create-drawing-set";
 import { getQueryKey } from "@trpc/react-query";
 import { useTierOneReadOptions } from "~/hooks/use-tier-one-read-options";
 import { useInstantDrawingMetadata } from "~/hooks/use-instant-drawing-metadata";
-import { OfflineStorageStatus } from "./OfflineStorageStatus";
 import { verifyDrawingDownload, type DownloadMarker } from "~/lib/drawing-download-check";
 import { drawingMoveTargets } from "~/lib/drawing-folder-move";
 import { requestPersistentDeviceStorage } from "~/lib/persistent-device-storage";
@@ -717,7 +716,6 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
   );
   const folderGrid = (
     <div className="space-y-3">
-      <OfflineStorageStatus />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {orderedFolders.map((folder) => (
             <PressableCard
@@ -1202,8 +1200,7 @@ function JobDrawingsContent({ jobId }: { jobId: string }) {
       <PageHeader
         level="section"
         title="Drawings"
-        description="Drawing sets to view on site"
-        className="flex-row items-start justify-between"
+        className="flex-row items-center justify-between sm:items-center"
         actions={
           <div className="flex shrink-0 items-center gap-2">
             {canUpload && folders.length > 0 && (
