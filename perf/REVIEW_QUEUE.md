@@ -6,6 +6,18 @@ Current reviewed-build reference remains the prior accepted Phase 0/wizard evide
 
 <!-- DEV_DEPLOY_ENTRIES -->
 
+## 2026-11-13T02:31:35.174Z — Codex
+
+- Change: Allow managers to delete empty custom document folders; protect the three default folders and folder contents.
+- Commits: 3d96569b5e9c40f37e11a2a6c0987a637bdaab2a
+- Build: `e2dc1d5e8147900a00551a6cdb2d67f6918b60f8cf3a34bb109145ed0a39bc43`; replaced: `e6c52aadc6fc9f9f508a12cd77a087e9b08a406aa62ecb63cd8517f9cc3c4ac6`.
+- Changed JavaScript gzip bytes: 40721 (review metadata only).
+- Flags: worker/shared worker source=false; shared scripts=false; large change=false.
+- Attempt record: /home/tim/.openclaw/workspace/kublai/.dev-deploy-attempts/2026-11-13T02-30-10.052Z-19bcae39-efbe-47e6-8f71-2abf8d853801.json.
+- Review status: waiting.
+
+
+
 ## 2026-11-13T02:20:16.327Z — Codex
 
 - Change: Keep failed drawing folder downloads visible with their actual error and retry guidance.
