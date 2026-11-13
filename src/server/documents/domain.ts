@@ -433,6 +433,19 @@ export function applyDocumentAction(
       detail = `Created folder ${folder.name}`;
       break;
     }
+    case "deleteFolder": {
+      assertFolderRole(state, actor, action.folderId, "manager");
+      const folder = state.folders.find(entry => entry.id === action.folderId)!;
+      if (isDefaultDocumentFolder(folder))
+        fail("BAD_REQUEST", "Default job folders cannot be deleted.");
+      if (state.folders.some(entry => entry.parentId === folder.id) ||
+          state.documents.some(entry => entry.folderId === folder.id))
+        fail("BAD_REQUEST", "Move this folder’s documents and subfolders elsewhere before deleting it. Documents in the recycle bin must also be restored and moved first.");
+      state.folders = state.folders.filter(entry => entry.id !== folder.id);
+      resultId = auditFolder = folder.id;
+      detail = `Deleted folder ${folder.name}`;
+      break;
+    }
     case "updateFolder": {
       assertFolderRole(state, actor, action.folderId, "manager");
       const folder = state.folders.find(

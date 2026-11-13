@@ -29,3 +29,14 @@ it("prevents renaming or moving all default folders even for managers", () => {
   }
   expect(() => applyDocumentAction(state, actor, { action: "updateFolder", folderId: custom, name: "Renamed" })).not.toThrow();
 });
+it("deletes empty custom folders but protects defaults, children and permissions", () => {
+  const state = ensureDefaultDocumentFolders(emptyDocumentState(), "job", "owner");
+  for (const folder of state.folders) expect(() => applyDocumentAction(state, actor, { action: "deleteFolder", folderId: folder.id })).toThrow(/cannot be deleted/);
+  const custom = applyDocumentAction(state, actor, { action: "createFolder", name: "Custom" }).id;
+  const child = applyDocumentAction(state, actor, { action: "createFolder", name: "Child", parentId: custom }).id;
+  expect(() => applyDocumentAction(state, actor, { action: "deleteFolder", folderId: custom })).toThrow(/Move this folder/);
+  expect(() => applyDocumentAction(state, { ...actor, userId: "reader", canWrite: false, canManage: false }, { action: "deleteFolder", folderId: child })).toThrow();
+  applyDocumentAction(state, actor, { action: "deleteFolder", folderId: child });
+  applyDocumentAction(state, actor, { action: "deleteFolder", folderId: custom });
+  expect(state.folders).toHaveLength(3);
+});

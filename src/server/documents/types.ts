@@ -146,6 +146,7 @@ export type DocumentAction =
       expectedVersionId: string;
       details: SubmittalInput;
     }
+  | { action: "deleteFolder"; folderId: string }
   | { action: "createFolder"; name: string; parentId?: string | null }
   | {
       action: "updateFolder";

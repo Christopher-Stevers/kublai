@@ -1009,6 +1009,14 @@ export function JobDocumentsView({
                         >
                           Folder permissions
                         </DropdownMenuItem>
+                        {!isDefaultDocumentFolder(folder) && <DropdownMenuItem
+                          variant="destructive"
+                          disabled={processing}
+                          onSelect={() => { void (async () => {
+                            if (!await confirmAction({ title: "Delete folder?", description: `Delete “${folder.name}”? The folder must be empty. Move any documents or subfolders elsewhere first.`, confirmLabel: "Delete folder", destructive: true })) return;
+                            if (await mutate({ action: "deleteFolder", folderId: folder.id })) notify("Folder deleted.", "success");
+                          })(); }}
+                        >Delete folder</DropdownMenuItem>}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}

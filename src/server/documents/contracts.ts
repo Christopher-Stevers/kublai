@@ -48,6 +48,7 @@ export const documentActionSchema = z.discriminatedUnion("action", [
     expectedVersionId: id,
     details: submittalInputSchema,
   }),
+  z.object({ action: z.literal("deleteFolder"), folderId: id }),
   z.object({ action: z.literal("createFolder"), name, parentId: folderId }),
   z.object({
     action: z.literal("updateFolder"),
