@@ -20,3 +20,23 @@ test("checkout is advertised only when explicitly enabled", async () => {
   vi.stubEnv("STRIPE_CHECKOUT_ENABLED", "true");
   expect(await caller.getCheckoutAvailability()).toEqual({ enabled: true });
 });
+
+test("reports the development Executive seat without inventing subscription or checkout access", async () => {
+  vi.stubEnv("DEPLOY_ENVIRONMENT", "development");
+  vi.stubEnv("FOREMANHQ_DEV_EXECUTIVE_USER_IDS", "user_DevExecutive");
+  vi.stubEnv("STRIPE_CHECKOUT_ENABLED", "false");
+  const development = paymentRouter.createCaller({
+    userId: "user_DevExecutive", user: { id: "user_DevExecutive", role: "user", stripeSubscriptionId: null, subscriptionStatus: null },
+    headers: new Headers(), db: {},
+  } as unknown as Awaited<ReturnType<typeof createTRPCContext>>);
+  expect(await development.getSubscriptionStatus()).toMatchObject({
+    hasManagingAccount: true,
+    accountTypeLabel: "Executive Account",
+    hasActiveSubscription: false,
+    subscriptionStatus: null,
+  });
+  expect(await development.getCheckoutAvailability()).toEqual({ enabled: false });
+  expect(stripeConstructor).not.toHaveBeenCalled();
+  vi.stubEnv("DEPLOY_ENVIRONMENT", "production");
+  expect(await development.getSubscriptionStatus()).toMatchObject({ hasManagingAccount: false, accountType: "standard" });
+});

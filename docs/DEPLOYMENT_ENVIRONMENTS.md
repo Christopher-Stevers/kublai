@@ -66,3 +66,18 @@ Verify with `python3 infra/aws/test_deployment.py`, Terraform tests, typecheck,
 lint, migration repeat-run checks, both HTTPS health endpoints, Docker cgroup
 settings, and database-role cross-environment CONNECT checks. Database secrets
 must never appear in commands, logs, repository files, or PR descriptions.
+
+## Development Executive accounts
+
+Set `FOREMANHQ_DEV_EXECUTIVE_USER_IDS` in the development runtime configuration
+(`/foremanhq/dev/app-env`) to a comma-separated list of verified AWS Clerk user
+IDs. Restart/redeploy development after changing the list. Confirm each ID
+against the user's verified Clerk identity and development account; Omarchy
+uses a different Clerk instance and its IDs must not be copied here.
+
+The server grants Executive permissions only with `DEPLOY_ENVIRONMENT=development`
+and an exact ID match. The container launcher supplies that environment from
+the deployment target, overriding any stale value in the env file. Production
+ignores the list. This does not create subscriptions, grant administrator status,
+change stored permission flags, bypass organization approval, or enable billing.
+Worker accounts remain workers. Removing the ID and restarting revokes the seat.
